@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<!-- Évolud Chantier – conçu et développé par Saïd OUFQIR -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F3864">
+<meta name="author" content="Saïd OUFQIR">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Évolud">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Évolud Chantier</title>
+<style>
+:root { --navy:#1F3864; --blue:#2F5597; --pale:#F2F6FC; --line:#e2e7f0; --txt:#1d2433; --mut:#5b667a; --red:#C00000; --green:#2e7d32; --orange:#E26B0A; --violet:#7030A0; --r:12px; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { margin:0; background:#eef2f8; color:var(--txt); font:15px/1.4 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+header { position:sticky; top:0; z-index:10; background:var(--navy); color:#fff; padding:10px 14px calc(10px) 14px; padding-top:calc(10px + env(safe-area-inset-top)); display:flex; align-items:center; gap:10px; }
+header .t { font-weight:700; font-size:17px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+header button { background:rgba(255,255,255,.14); color:#fff; border:0; border-radius:9px; padding:7px 10px; font-size:14px; }
+#sync { font-size:12px; opacity:.9; }
+main { padding:12px 12px calc(150px + env(safe-area-inset-bottom)); max-width:1100px; margin:0 auto; }
+nav.tabs { position:fixed; bottom:calc(58px + env(safe-area-inset-bottom)); left:0; right:0; background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; z-index:10; }
+/* bande réservée en bas pour le badge Netlify : le menu reste au-dessus */
+.zone-badge { position:fixed; bottom:0; left:0; right:0; height:calc(58px + env(safe-area-inset-bottom)); background:#eef2f8; z-index:9; }
+nav.tabs a { flex:1; text-align:center; padding:8px 2px 9px; color:var(--mut); text-decoration:none; font-size:11px; }
+nav.tabs a b { display:block; font-size:20px; line-height:1.2; }
+nav.tabs a.on { color:var(--blue); font-weight:700; }
+.card { background:#fff; border-radius:var(--r); padding:12px 14px; margin-bottom:10px; box-shadow:0 1px 2px rgba(20,40,80,.06); }
+.card h3 { margin:0 0 8px; font-size:15px; color:var(--navy); }
+.row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.grow { flex:1; min-width:0; }
+.mut { color:var(--mut); font-size:13px; }
+.small { font-size:12px; }
+h2 { font-size:18px; color:var(--navy); margin:6px 2px 10px; }
+input, select, textarea { width:100%; font:inherit; padding:10px 11px; border:1px solid #cfd6e3; border-radius:10px; background:#fff; color:var(--txt); }
+textarea { min-height:70px; }
+label { display:block; font-size:12px; color:var(--mut); margin:8px 0 3px; font-weight:600; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:10px; padding:11px 14px; font:inherit; font-weight:650; background:var(--blue); color:#fff; text-decoration:none; cursor:pointer; }
+.btn.sec { background:#e7edf7; color:var(--navy); }
+.btn.red { background:var(--red); } .btn.green { background:var(--green); } .btn.orange { background:var(--orange); }
+.btn.block { width:100%; } .btn.sm { padding:7px 10px; font-size:13px; border-radius:8px; }
+.btn:disabled { opacity:.45; }
+.list .it { display:flex; gap:10px; align-items:center; padding:11px 2px; border-bottom:1px solid var(--line); text-decoration:none; color:inherit; }
+.list .it:last-child { border-bottom:0; }
+.pill { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11.5px; font-weight:700; white-space:nowrap; }
+.s-a_planifier { background:#eceff4; color:#4b5565; } .s-affectee { background:#dbe8fb; color:#1c4d9b; } .s-rdv { background:#efe1fa; color:var(--violet); }
+.s-en_cours { background:#fde9d7; color:#a34a00; } .s-terminee { background:#dff3e0; color:#1b5e20; } .s-bloquee { background:#fbe0e0; color:var(--red); } .s-gamma { background:#1b5e20; color:#fff; }
+.e-BBNE { color:#2F5597; } .e-GROSFILEX { color:#7030A0; } .e-GDS { color:#0091c7; } .e-ISOWECK { color:#d35f00; } .e-ATS { color:#4c8c2b; }
+.kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:10px; }
+.kpi { text-decoration:none; color:inherit; display:block; background:#fff; border-radius:var(--r); padding:10px 12px; border-left:5px solid var(--blue); }
+.kpi .v { font-size:24px; font-weight:800; color:var(--navy); } .kpi .l { font-size:12px; color:var(--mut); }
+.kpi.r { border-color:var(--red); } .kpi.r .v { color:var(--red); } .kpi.g { border-color:var(--green); } .kpi.g .v { color:var(--green); } .kpi.o { border-color:var(--orange); } .kpi.o .v { color:var(--orange); }
+.bar { height:10px; background:#e8edf5; border-radius:6px; overflow:hidden; } .bar i { display:block; height:100%; background:var(--blue); }
+.seg { display:flex; gap:4px; flex-wrap:wrap; }
+.seg button { border:1px solid #cfd6e3; background:#fff; border-radius:8px; padding:6px 8px; font-size:12.5px; font-weight:600; color:var(--mut); }
+.seg button.on[data-v="a_faire"] { background:#fde9d7; border-color:#f3b37d; color:#a34a00; }
+.seg button.on[data-v="fait"] { background:#dff3e0; border-color:#94cf97; color:#1b5e20; }
+.seg button.on[data-v="dp"] { background:#fbe0e0; border-color:#ec9a9a; color:var(--red); }
+.seg button.on[data-v="rdv"] { background:#efe1fa; border-color:#c79be6; color:var(--violet); }
+.seg button.on[data-v="annule"] { background:#eceff4; color:#4b5565; }
+.seg button.on[data-v=""] { background:#f6f7f9; }
+.prest { padding:9px 0; border-bottom:1px dashed var(--line); }
+.thumbs { display:flex; gap:6px; flex-wrap:wrap; }
+.thumbs figure { margin:0; width:96px; } .thumbs img { width:96px; height:96px; object-fit:cover; border-radius:8px; display:block; background:#ddd; }
+.thumbs figcaption { font-size:10.5px; color:var(--mut); line-height:1.2; margin-top:2px; }
+.toast { position:fixed; left:50%; bottom:calc(140px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:#1d2433; color:#fff; padding:10px 16px; border-radius:20px; font-size:14px; z-index:50; max-width:90%; text-align:center; }
+.mrow { display:grid; grid-template-columns:1.2fr 1fr .8fr .8fr 1fr; gap:6px; margin-bottom:6px; }
+.mrow input { padding:8px; font-size:13px; }
+table.t { width:100%; border-collapse:collapse; font-size:13px; } table.t th { text-align:left; color:var(--mut); font-weight:600; padding:6px 4px; border-bottom:1px solid var(--line); } table.t td { padding:6px 4px; border-bottom:1px solid var(--line); }
+.banner { background:#fff3cd; color:#7a5b00; border-radius:10px; padding:9px 12px; font-size:13px; margin-bottom:10px; }
+.chk { width:22px; height:22px; flex:none; }
+.login { max-width:420px; margin:40px auto; }
+.pw { overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff; margin-top:6px; max-height:70vh; -webkit-overflow-scrolling:touch; }
+.pi { position:relative; } .pi > img { width:100%; display:block; }
+.pin { position:absolute; transform:translate(-50%,-50%); min-width:26px; height:26px; padding:0 5px; border-radius:99px; border:2px solid #fff; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 1px 4px rgba(0,0,0,.45); z-index:2; }
+.pin.dim { opacity:.45; } .pin.pd { background:#5b667a; pointer-events:none; } .pin.st { position:static; transform:none; flex:none; }
+.legend { display:flex; flex-wrap:wrap; gap:8px; font-size:11px; color:var(--mut); margin-top:6px; } .legend i { display:inline-block; width:10px; height:10px; border-radius:99px; margin-right:3px; vertical-align:-1px; }
+.mini { position:relative; display:block; height:150px; overflow:hidden; border-radius:10px; border:1px solid var(--line); background:#fff; }
+.mini img { position:absolute; left:50%; top:50%; width:300%; max-width:none; } .mini .pin { left:50%; top:50%; }
+.mini .lbl { position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.65); color:#fff; font-size:11px; padding:2px 8px; border-radius:99px; }
+.sheet { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(58px + env(safe-area-inset-bottom)); width:min(100%,1100px); max-height:72vh; overflow:auto; z-index:40; margin:0 !important; border-radius:16px 16px 0 0 !important; box-shadow:0 -8px 30px rgba(20,40,80,.35); border-top:3px solid var(--orange); }
+body.so main { padding-bottom:80vh; }
+.req { display:flex; gap:6px; flex-wrap:wrap; font-size:12px; margin-bottom:8px; } .req span { padding:2px 8px; border-radius:20px; border:1px dashed #cfd6e3; color:var(--mut); } .req span.ok { border:1px solid var(--green); color:var(--green); font-weight:700; }
+.signature { text-align:center; font-size:11.5px; color:var(--mut); margin:18px 0 4px; letter-spacing:.2px; }
+.fplan { break-inside:avoid; margin-top:10px; } .fplan img { border:1px solid #ccc; }
+.sigs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; } .sigs div { border:1px solid #bbb; border-radius:6px; height:70px; padding:4px 6px; font-size:11px; color:var(--mut); }
+@media print { .sheet, #sheet { display:none !important; } .pw { max-height:none; overflow:visible; } }
+@media print { header, nav.tabs, .zone-badge, .noprint { display:none !important; } main { padding:0; } .card { box-shadow:none; border:1px solid #ccc; } body { background:#fff; } }
+.pdc-g { background:#dff3e0; color:#1b5e20; } .pdc-o { background:#fde9d7; color:#a34a00; } .pdc-r { background:#fbe0e0; color:var(--red); }
+.pdc .pill { white-space:normal; } .pdc-it { border-top:1px solid var(--line); padding-top:8px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header><div class="t" id="title">Évolud</div><span id="sync"></span><button id="btnSync" title="Synchroniser">⟳</button></header>
+<main id="app"></main>
+<nav class="tabs" id="tabs"></nav>
+<div class="zone-badge"></div>
+<script src="boot.js"></script>
+<script src="idx.js"></script>
+</body>
+</html>
