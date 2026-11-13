@@ -1,5 +1,5 @@
 /* Évolud – cache hors ligne · conçu et développé par Saïd OUFQIR */
-const C = 'evolud-v588', IMG = 'evolud-img';
+const C = 'evolud-v589', IMG = 'evolud-img';
 const FILES = ['./', 'index.html', 'boot.js', 'idx.js', 'data.js.enc', 'lib.js.enc', 'plan.js.enc', 'app.js.enc', 'diags.js.enc', 'charge.js.enc', 'mt.js.enc', 'fin.js.enc', 'opr.js.enc', 'cr.js.enc', 'ajout.js.enc', 'v52.js.enc', 'v53.js.enc', 'v54.js.enc', 'v55.js.enc', 'ops.js.enc', 'plans.json.enc', 'plans2.json.enc', 'manifest.json', 'icon-192.png', 'icon-512.png'];  // v5.8.0 : fichiers chiffrés
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C && k !== IMG).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
