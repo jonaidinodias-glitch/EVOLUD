@@ -10,7 +10,7 @@
   'use strict';
   if (window.EvoludTuto) return;
 
-  var VERSION = 'tuto-1.9';
+  var VERSION = 'tuto-2.0';
   var KEY_SEEN = 'evolud_tuto_seen_v1';
 
   /* ---------- Stockage local sécurisé (peut échouer selon le navigateur) ---------- */
@@ -139,6 +139,11 @@
     {
       id: 'gamma', ico: '📤', titre: 'Gamma : mise à jour du jour et dépôt', roles: 'ckd',
       blocs: [
+        ['🛡️ Alertes, PV signés, dossier de contestation', [
+          'Accueil → bandeau « ⏰ … logements atteignent une date limite sous 7 jours » : liste des actions (démarrer, finir, programmer la VTS), copie ou SMS pour le chef, notifications.',
+          'Fiche logement → « 🛡️ Preuves et délais » : PV d\'état des lieux, de passage, de refus d\'accès ou d\'absence, signé sur le téléphone (date, heure, GPS). Un refus ou une absence signé gèle automatiquement les pénalités.',
+          '« 📄 Dossier de contestation » (fiche logement ou écran pénalités) : synthèse, arguments, chronologie, périodes neutralisées, calcul et preuves, à imprimer en PDF.'
+        ]],
         ['🔄 Mise à jour quotidienne Gamma → Évolud', [
           'Une fois par jour, une seule personne (Saïd, Alex, Thibault ou Marine) ouvre Gamma et touche le favori « 🔄 Gamma → Évolud ».',
           'Le favori lit Gamma (logements, étapes, dates de travaux, RDV VTE, bons de commande) et met à jour l\'appli de toute l\'équipe en 1 à 3 minutes.',

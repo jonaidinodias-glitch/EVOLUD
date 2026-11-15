@@ -124,9 +124,9 @@ function run() {
       var p = e.extendedProps || {}, ug = String(p.code_ug || (String(e.title || '').match(/\b(\d{6})\b/) || [])[1] || '');
       if (!ug) return; var o = L[ug] = L[ug] || { id: p.id_ug || '' }; if (!o.id && p.id_ug) o.id = String(p.id_ug);
       var t = String(e.title || ''), s = ymd(e.start), f = ymd(e.end) || s;
-      if (/travaux/i.test(t)) { if (!o.deb || s < o.deb) o.deb = s; if (!o.fin || f > o.fin) o.fin = f; stats.trav++; }
-      else if (/\bVTS\b|r[ée]ception|sortie/i.test(t)) { o.vtsRdv = String(e.start || '').slice(0, 16); stats.vts++; }
-      else if (/\bVTE\b|entr[ée]e/i.test(t)) { o.vteRdv = String(e.start || '').slice(0, 16); stats.vte++; }
+      if (/travaux/i.test(t)) { if (!o.deb || s < o.deb) o.deb = s; if (!o.fin || f > o.fin) o.fin = f; (o.trav = o.trav || []).push({ deb: s, fin: f }); stats.trav++; }
+      else if (/\bVTS\b|r[ée]ception|sortie/i.test(t)) { o.vtsRdv = String(e.start || '').slice(0, 16); (o.vts = o.vts || []).push(s); stats.vts++; }
+      else if (/\bVTE\b|entr[ée]e/i.test(t)) { o.vteRdv = String(e.start || '').slice(0, 16); (o.vte = o.vte || []).push({ d: s, h: String(e.start || '').slice(11, 16), f: String(e.end || '').slice(11, 16) }); stats.vte++; }
       else { (o.ev = o.ev || []).push([t.slice(0, 60), s, f]); }
       if (p.tce) o.tce = p.tce; if (p.moe) o.moe = p.moe; if (p.charge) o.charge = p.charge;
     });
