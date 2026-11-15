@@ -10,7 +10,7 @@
   'use strict';
   if (window.EvoludTuto) return;
 
-  var VERSION = 'tuto-1.0';
+  var VERSION = 'tuto-1.1';
   var KEY_SEEN = 'evolud_tuto_seen_v1';
 
   /* ---------- Stockage local sécurisé (peut échouer selon le navigateur) ---------- */
@@ -202,7 +202,7 @@
 
   /* ---------- Styles ---------- */
   var css = [
-    '.etu-fab{position:fixed;right:14px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:9998;width:46px;height:46px;border-radius:50%;border:0;background:#1f3a5f;color:#fff;font:700 22px/46px system-ui,-apple-system,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}',
+    '.etu-fab{position:fixed;right:14px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:2147483000;width:50px;height:50px;border-radius:50%;border:0;background:#e8792b;color:#fff;font:700 24px/50px system-ui,-apple-system,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}',
     '.etu-ov{position:fixed;inset:0;z-index:9999;background:#f3f5f8;display:flex;flex-direction:column;font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#1d2733}',
     '.etu-hd{background:#1f3a5f;color:#fff;padding:calc(12px + env(safe-area-inset-top)) 14px 12px;display:flex;align-items:center;gap:10px}',
     '.etu-hd h2{flex:1;margin:0;font-size:18px}',
@@ -450,8 +450,23 @@
   function init() {
     injectCss();
     addFab();
-    // 1re ouverture : propose la visite guidée (une fois l'appli affichée)
-    if (lsGet(KEY_SEEN) !== VERSION) setTimeout(tour, 1500);
+    // L'appli se déchiffre puis redessine la page : on remet le bouton et le style
+    // s'ils ont été effacés (vérification toutes les 1,5 s, coût négligeable).
+    setInterval(function () {
+      if (!document.body) return;
+      injectCss();
+      addFab();
+    }, 1500);
+    // 1re ouverture : la visite démarre seulement quand la barre du bas est affichée
+    // (donc après la connexion), au plus tard on abandonne après 10 minutes.
+    if (lsGet(KEY_SEEN) !== VERSION) {
+      var tries = 0;
+      var w = setInterval(function () {
+        tries++;
+        if (findTab('Accueil') && findTab('Plus')) { clearInterval(w); setTimeout(tour, 800); }
+        else if (tries > 400) clearInterval(w);
+      }, 1500);
+    }
   }
 
   window.EvoludTuto = {
