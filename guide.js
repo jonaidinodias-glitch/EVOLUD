@@ -10,7 +10,7 @@
   'use strict';
   if (window.EvoludTuto) return;
 
-  var VERSION = 'tuto-1.3';
+  var VERSION = 'tuto-1.4';
   var KEY_SEEN = 'evolud_tuto_seen_v1';
 
   /* ---------- Stockage local sécurisé (peut échouer selon le navigateur) ---------- */
@@ -138,7 +138,8 @@
           'Démarrage (j) : démarrage des travaux en retard sur le délai du scénario.',
           'Plafond (j) : travaux plus longs que la durée maximale.',
           'Global (j) : délai VTE → VTS dépassé.',
-          'Fais glisser le tableau vers la gauche pour voir le montant en €.'
+          'Fais glisser le tableau vers la gauche pour voir le montant en €.',
+          'Touche la carte rouge ou orange (« 🔍 Pourquoi ce montant ? ») : explication logement par logement, cause (démarrage, travaux, menuiseries, VTS), contrôles diag / double plafond / dates Gamma, export Excel et note direction en PDF.'
         ]],
         ['Faire baisser les pénalités', [
           'Pour chaque logement en tête de liste : y a-t-il eu double plafond, attente de diag ou locataire absent ?',
@@ -316,7 +317,7 @@
         '</div></div>';
     });
     if (!count) html += '<div class="etu-empty">Aucun résultat pour « ' + esc(state.q) + ' ».</div>';
-    html += '<div class="etu-sign" data-act="sig">Guide Évolud Chantier · conçu et développé par Saïd OUFQIR</div><div class="etu-key"></div>';
+    html += '<div class="etu-sign">Guide Évolud Chantier · conçu et développé par Saïd OUFQIR</div>';
     body.innerHTML = html;
   }
 
@@ -341,31 +342,8 @@
       var t = ov.querySelector('[data-id="' + sectionId + '"]');
       if (t) t.scrollIntoView({ block: 'start' });
     }
-    var sigTaps = 0;
     ov.addEventListener('click', function (e) {
-      // TEMPORAIRE : 5 appuis sur la signature = affiche le lien d'installation complet (à retirer ensuite)
-      if (e.target.closest('[data-act="sig"]')) {
-        if (++sigTaps < 5) return;
-        sigTaps = 0;
-        var k = ''; try { k = localStorage.getItem('evolud_k') || ''; } catch (x) { }
-        var box = ov.querySelector('.etu-key');
-        if (!k) { box.innerHTML = '<p style="text-align:center;color:#b3261e">Aucune clé trouvée sur ce téléphone.</p>'; return; }
-        var lien = location.origin + location.pathname + '#k=' + k;
-        box.innerHTML = '<div style="background:#fff;border:2px solid #e8792b;border-radius:12px;padding:12px;margin-top:10px">' +
-          '<b>🔑 Lien d\'installation complet</b><textarea readonly style="width:100%;box-sizing:border-box;height:90px;margin:8px 0;font-size:13px">' + esc(lien) + '</textarea>' +
-          '<button class="etu-tourbtn" data-act="copykey" style="margin:0">📋 Copier le lien</button></div>';
-        box.querySelector('textarea').addEventListener('focus', function () { this.select(); });
-        box.lien = lien;
-        return;
-      }
       var b = e.target.closest('button');
-      if (b && b.dataset.act === 'copykey') {
-        var l = ov.querySelector('.etu-key').lien, ta = ov.querySelector('.etu-key textarea');
-        var okMsg = function () { b.textContent = '✅ Copié – colle-le dans Claude'; };
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(l).then(okMsg, function () { ta.select(); document.execCommand('copy'); okMsg(); });
-        else { ta.select(); document.execCommand('copy'); okMsg(); }
-        return;
-      }
       if (!b) return;
       if (b.dataset.act === 'close') return close();
       if (b.dataset.act === 'tour') { close(); return tour(); }
