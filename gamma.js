@@ -137,10 +137,20 @@ function run() {
       var ok = o.ph && o.ph.slice(1).some(function (p) { return /^Ok$/i.test(p[0]); }); // conception validée (VTE faite) ou au-delà
       return ok || o.deb || (o.vteRdv && o.vteRdv.slice(0, 10) <= TODAY) || (C.ugs && C.ugs.indexOf(ug) >= 0);
     });
-    msg('3/4 – Lecture des bons de commande des VTE (' + ids.length + ' logements)…', 22);
-    return pool(ids, 4, function (ug) { return readVTE(L[ug].id); }, function (d, n) { msg('3/4 – Bons de commande : <b>' + d + ' / ' + n + '</b>', 22 + 58 * d / n); });
+    // mémoire des bons de commande déjà lus (sur cet appareil) : on ne relit que les nouveaux logements,
+    // ceux dont l'étape Gamma a changé, et une petite partie des plus anciens (contrôle tournant)
+    var KC = 'evolud_bdc_cache_v1', cache = {}; try { cache = JSON.parse(localStorage.getItem(KC) || '{}') || {}; } catch (e) { cache = {}; }
+    var sig = function (o) { return (o.ph || []).map(function (p) { return p[0] + ':' + p[1]; }).join('|') + '#' + o.sc + '#' + o.forf; };
+    var now0 = Date.now(), old = [], todo = ids.filter(function (ug) { var c = cache[ug]; if (!c || c.sig !== sig(L[ug])) return true; if (now0 - (c.at || 0) > 14 * 864e5) old.push(ug); return false; });
+    old.sort(function (a, b) { return (cache[a].at || 0) - (cache[b].at || 0); }); todo = todo.concat(old.slice(0, 30));
+    ids.forEach(function (ug) { if (cache[ug] && todo.indexOf(ug) < 0 && cache[ug].bdc) L[ug].bdc = cache[ug].bdc; });
+    stats.cache = ids.length - todo.length;
+    msg('3/4 – Bons de commande : ' + todo.length + ' à lire' + (stats.cache ? ' (' + stats.cache + ' déjà connus)' : '') + '…', 22);
+    return pool(todo, 4, function (ug) { return readVTE(L[ug].id); }, function (d, n) { msg('3/4 – Bons de commande : <b>' + d + ' / ' + n + '</b>' + (stats.cache ? ' · ' + stats.cache + ' déjà connus' : ''), 22 + 58 * d / n); })
+      .then(function (B) { Object.keys(B).forEach(function (ug) { cache[ug] = { sig: sig(L[ug]), bdc: B[ug] || null, at: Date.now() }; }); try { localStorage.setItem(KC, JSON.stringify(cache)); } catch (e) { } return B; });
   }).then(function (B) {
-    Object.keys(B).forEach(function (ug) { if (B[ug]) { L[ug].bdc = B[ug]; stats.bdc++; } });
+    Object.keys(B).forEach(function (ug) { if (B[ug]) L[ug].bdc = B[ug]; });
+    Object.keys(L).forEach(function (ug) { if (L[ug].bdc) stats.bdc++; });
     msg('4/4 – Envoi vers Évolud…', 82);
     var s = JSON.stringify(L), parts = [], SZ = 30000;
     for (var i = 0; i < s.length; i += SZ) parts.push(s.slice(i, i + SZ));
