@@ -1,6 +1,6 @@
 /* Évolud – cache hors ligne · conçu et développé par Saïd OUFQIR */
-const C = 'evolud-v5824', IMG = 'evolud-img';
-const FILES = ['./', 'index.html', 'boot.js', 'idx.js', 'data.js.enc', 'lib.js.enc', 'plan.js.enc', 'app.js.enc', 'diags.js.enc', 'charge.js.enc', 'mt.js.enc', 'fin.js.enc', 'opr.js.enc', 'cr.js.enc', 'ajout.js.enc', 'v52.js.enc', 'v53.js.enc', 'v54.js.enc', 'v55.js.enc', 'ops.js.enc', 'tuto.js', 'plans.json.enc', 'plans2.json.enc', 'manifest.json', 'icon-192.png', 'icon-512.png'];  // v5.8.0 : fichiers chiffrés
+const C = 'evolud-v5825', IMG = 'evolud-img';
+const FILES = ['./', 'index.html', 'boot.js', 'idx.js', 'data.js.enc', 'lib.js.enc', 'plan.js.enc', 'app.js.enc', 'diags.js.enc', 'charge.js.enc', 'mt.js.enc', 'fin.js.enc', 'opr.js.enc', 'cr.js.enc', 'ajout.js.enc', 'v52.js.enc', 'v53.js.enc', 'v54.js.enc', 'v55.js.enc', 'ops.js.enc', 'guide.js', 'plans.json.enc', 'plans2.json.enc', 'manifest.json', 'icon-192.png', 'icon-512.png'];  // v5.8.0 : fichiers chiffrés
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C && k !== IMG).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
@@ -25,7 +25,7 @@ function addTuto(r) {
   const ct = r.headers.get('content-type') || '';
   if (ct && !ct.includes('html')) return r;
   return r.text().then(t => {
-    if (!t.includes('tuto.js')) t = t.includes('</body>') ? t.replace('</body>', '<script src="tuto.js"></script></body>') : t + '<script src="tuto.js"></script>';
+    if (!t.includes('guide.js')) t = t.includes('</body>') ? t.replace('</body>', '<script src="guide.js"></script></body>') : t + '<script src="guide.js"></script>';
     const h = new Headers(r.headers); h.set('content-type', 'text/html; charset=utf-8'); h.delete('content-length');
     return new Response(t, { status: 200, headers: h });
   });
