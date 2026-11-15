@@ -10,7 +10,7 @@
   'use strict';
   if (window.EvoludTuto) return;
 
-  var VERSION = 'tuto-1.1';
+  var VERSION = 'tuto-1.2';
   var KEY_SEEN = 'evolud_tuto_seen_v1';
 
   /* ---------- Stockage local sécurisé (peut échouer selon le navigateur) ---------- */
@@ -245,7 +245,18 @@
     var s = document.createElement('style');
     s.id = 'etu-css';
     s.textContent = css;
-    document.head.appendChild(s);
+    (document.head || document.documentElement).appendChild(s);
+    // Si la politique de sécurité (CSP) de la page bloque le style ajouté,
+    // on passe par une feuille de style construite, non concernée par ce blocage.
+    var ok = false;
+    try { ok = !!(s.sheet && s.sheet.cssRules.length); } catch (e) { ok = false; }
+    if (!ok && window.CSSStyleSheet && 'adoptedStyleSheets' in document) {
+      try {
+        if (!window.__etuSheet) { window.__etuSheet = new CSSStyleSheet(); window.__etuSheet.replaceSync(css); }
+        if (document.adoptedStyleSheets.indexOf(window.__etuSheet) < 0)
+          document.adoptedStyleSheets = document.adoptedStyleSheets.concat([window.__etuSheet]);
+      } catch (e) { /* sans effet */ }
+    }
   }
 
   /* ---------- Utilitaires ---------- */
