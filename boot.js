@@ -3,7 +3,7 @@
    Sans la clé de l'application (transmise dans le lien d'installation), rien n'est lisible. */
 (function () {
   'use strict';
-  var SCRIPTS = ['data', 'lib', 'plan', 'app', 'diags', 'charge', 'mt', 'fin', 'opr', 'cr', 'ajout', 'v52', 'v53', 'v54', 'v55', 'ops', 'pen', 'etat', 'gam', 'pano', 'vr', 'proteg'];
+  var SCRIPTS = ['data', 'lib', 'plan', 'app', 'diags', 'charge', 'mt', 'fin', 'opr', 'cr', 'ajout', 'v52', 'v53', 'v54', 'v55', 'ops', 'pen', 'etat', 'gam', 'pano', 'vr', 'proteg', 'm6', 'outils'];
   var ENC_FETCH = { 'plans.json': 'application/json', 'plans2.json': 'application/json' };
   var LS = 'evolud_k';
   var keyP = null, cache = {};

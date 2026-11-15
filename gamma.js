@@ -80,9 +80,11 @@ function readVTE(id) {
     var res = H2.filter(function (h) { return /R[ée]sum[ée] de la commande/i.test(txt(h)); })[0];
     if (!res) return null;
     var sec = H2.filter(function (h) { return /ligne n°/i.test(txt(h)); }).map(function (h) {
-      var n = txt(h).replace(/^.*ligne n°\s*\d+\s*:\s*/i, ''); var el = h.nextElementSibling, tot = 0, com = '';
-      for (var k = 0; k < 4 && el; k++, el = el.nextElementSibling) { var ta = el.querySelector && el.querySelector('textarea'); if (ta && !com) com = (ta.value || ta.textContent || '').trim().slice(0, 400); var tr = el.querySelectorAll ? [].slice.call(el.querySelectorAll('tr')).filter(function (r) { return /Total g[ée]n[ée]ral/i.test(txt(r)); })[0] : null; if (tr) { tot = num(txt(tr.cells[tr.cells.length - 1])); break; } }
-      return [n, Math.round(tot * 100) / 100, com];
+      var n = txt(h).replace(/^.*ligne n°\s*\d+\s*:\s*/i, ''); var el = h.nextElementSibling, tot = 0, com = '', SL = [];
+      for (var k = 0; k < 4 && el; k++, el = el.nextElementSibling) { var ta = el.querySelector && el.querySelector('textarea'); if (ta && !com) com = (ta.value || ta.textContent || '').trim().slice(0, 400);
+        var trs = el.querySelectorAll ? [].slice.call(el.querySelectorAll('tbody tr')) : [], tr = trs.filter(function (r) { return /Total g[ée]n[ée]ral/i.test(txt(r)); })[0];
+        if (tr) { trs.forEach(function (r) { var c = r.cells; if (c.length >= 5 && !/Total|Budget|Delta/i.test(txt(r))) SL.push([txt(c[0]).slice(0, 160), num(txt(c[1])), txt(c[2]), num(txt(c[3])), num(txt(c[4]))]); }); tot = num(txt(tr.cells[tr.cells.length - 1])); break; } }
+      return [n, Math.round(tot * 100) / 100, com, SL];
     });
     var tab = res.nextElementSibling && res.nextElementSibling.querySelector('table');
     var L = [], tot = 0, cible = 0;
@@ -139,7 +141,7 @@ function run() {
     });
     // mémoire des bons de commande déjà lus (sur cet appareil) : on ne relit que les nouveaux logements,
     // ceux dont l'étape Gamma a changé, et une petite partie des plus anciens (contrôle tournant)
-    var KC = 'evolud_bdc_cache_v1', cache = {}; try { cache = JSON.parse(localStorage.getItem(KC) || '{}') || {}; } catch (e) { cache = {}; }
+    var KC = 'evolud_bdc_cache_v2', cache = {}; try { cache = JSON.parse(localStorage.getItem(KC) || '{}') || {}; } catch (e) { cache = {}; }
     var sig = function (o) { return (o.ph || []).map(function (p) { return p[0] + ':' + p[1]; }).join('|') + '#' + o.sc + '#' + o.forf; };
     var now0 = Date.now(), old = [], todo = ids.filter(function (ug) { var c = cache[ug]; if (!c || c.sig !== sig(L[ug])) return true; if (now0 - (c.at || 0) > 14 * 864e5) old.push(ug); return false; });
     old.sort(function (a, b) { return (cache[a].at || 0) - (cache[b].at || 0); }); todo = todo.concat(old.slice(0, 30));
