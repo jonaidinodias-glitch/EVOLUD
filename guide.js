@@ -10,7 +10,7 @@
   'use strict';
   if (window.EvoludTuto) return;
 
-  var VERSION = 'tuto-1.8';
+  var VERSION = 'tuto-1.9';
   var KEY_SEEN = 'evolud_tuto_seen_v1';
 
   /* ---------- Stockage local sécurisé (peut échouer selon le navigateur) ---------- */
@@ -105,7 +105,9 @@
           '🔄 Vue d\'ensemble / 🚶 Visite à hauteur d\'homme, 📏 Mesurer (2 points), ➕ Point de travaux : touche le mur ou le plafond, la tâche est créée.',
           'Dans le navigateur du casque Meta Quest : « 🥽 Visiter en VR » (joystick gauche pour avancer), « 🥽 Réalité mixte » (maquette posée sur le réel, joystick pour la tourner).',
           '« 🥽 Poser des travaux dans le réel » : gâchette pour poser un point sur le vrai mur ; en sortant du casque, on choisit les travaux de chaque point. Toujours à l\'arrêt, jamais en circulation sur chantier.',
-          'La maquette reste sur l\'appareil qui l\'a importée ; les tâches sont partagées avec toute l\'équipe.'
+          'Chaque point : priorité P1/P2/P3, coût estimé, description et photo.',
+          'Vue Direction 3D sous la maquette : compteurs (points, coût, P1, % terminés), filtres par corps d\'état, liste cliquable qui amène la caméra sur le point, ▶ mode présentation automatique, rapport Excel et JSON.',
+          'Formats acceptés : GLB et OBJ. La maquette reste sur l\'appareil qui l\'a importée ; les tâches sont partagées avec toute l\'équipe.'
         ]],
         ['Modifier une VTE déjà validée', [
           'Rouvre la VTE, modifie le poste et appuie sur le bouton d\'enregistrement à côté de ce poste.'
