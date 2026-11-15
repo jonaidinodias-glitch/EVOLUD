@@ -10,7 +10,7 @@
   'use strict';
   if (window.EvoludTuto) return;
 
-  var VERSION = 'tuto-1.4';
+  var VERSION = 'tuto-1.5';
   var KEY_SEEN = 'evolud_tuto_seen_v1';
 
   /* ---------- Stockage local sécurisé (peut échouer selon le navigateur) ---------- */
@@ -66,6 +66,11 @@
     {
       id: 'accueil', ico: '🏠', titre: 'Accueil – tableau de bord', roles: 'ckd',
       blocs: [
+        ['📊 État complet du chantier', [
+          'Gros bouton bleu en haut de l\'Accueil : tous les indicateurs en un écran.',
+          'Avancement (VTE, travaux, VTS par étape et par chantier), montants facturables / facturés / reste à facturer, pénalités, délais dépassés (côté Bouygues et bloqués client), diags, menuiseries à poser, réserves, tâches.',
+          'Boutons Excel complet et PDF direction. Aucune saisie : tout est calculé automatiquement.'
+        ]],
         ['À quoi ça sert', [
           'Voir en un coup d\'œil l\'avancement : VTE faites, travaux en cours, VTS, retards.',
           'Chaque chiffre ou carte cliquable ouvre la liste des logements concernés.'

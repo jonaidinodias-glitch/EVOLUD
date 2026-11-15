@@ -1,9 +1,9 @@
 /* Évolud Chantier – chargeur chiffré · conçu et développé par Saïd OUFQIR
-   v5.9.0 : module pen (pénalités détaillées) · v5.8.1 : le code, les données et les plans sont chiffrés (AES-256-GCM) ; plans regroupés en paquets.
+   v5.9.0 : modules pen (pénalités détaillées) et etat (état complet) · v5.8.1 : le code, les données et les plans sont chiffrés (AES-256-GCM) ; plans regroupés en paquets.
    Sans la clé de l'application (transmise dans le lien d'installation), rien n'est lisible. */
 (function () {
   'use strict';
-  var SCRIPTS = ['data', 'lib', 'plan', 'app', 'diags', 'charge', 'mt', 'fin', 'opr', 'cr', 'ajout', 'v52', 'v53', 'v54', 'v55', 'ops', 'pen'];
+  var SCRIPTS = ['data', 'lib', 'plan', 'app', 'diags', 'charge', 'mt', 'fin', 'opr', 'cr', 'ajout', 'v52', 'v53', 'v54', 'v55', 'ops', 'pen', 'etat'];
   var ENC_FETCH = { 'plans.json': 'application/json', 'plans2.json': 'application/json' };
   var LS = 'evolud_k';
   var keyP = null, cache = {};
