@@ -42,23 +42,23 @@ var txt = function (e) { return e ? (e.textContent || '').replace(/\s+/g, ' ').t
 var num = function (s) { s = String(s || '').replace(/[€\s]/g, ''); if (/,\d{3}(\.|$)/.test(s) || /\.\d{1,2}$/.test(s)) s = s.replace(/,/g, ''); else s = s.replace(/\./g, '').replace(',', '.'); var n = parseFloat(s); return isNaN(n) ? 0 : n; };
 var ymd = function (s) { var m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})/); return m ? m[0] : ''; };
 
-function readCommandes() {
-  return getDoc(BASE + '?module=commandes&filtre_reset=1').then(function (doc) {
-    var t = doc.querySelector('#example') || [].slice.call(doc.querySelectorAll('table')).filter(function (x) { return /Code UG/i.test(txt(x.tHead)); })[0];
-    if (!t) { if (doc.querySelector('input[type=password]')) throw new Error('LOGIN'); throw new Error('liste des logements introuvable dans Gamma'); }
-    var H = [].slice.call(t.tHead.rows[0].cells).map(txt);
-    var ix = function (re) { for (var i = 0; i < H.length; i++) if (re.test(H[i])) return i; return -1; };
-    var I = { ug: ix(/^Code UG/i), a: ix(/^Adresse/i), v: ix(/^Ville/i), cite: ix(/^Cit/i), an: ix(/^Ann/i), cl: ix(/^Classe/i), doc: ix(/^Document/i), p1: ix(/^Pr[ée]paration/i), p2: ix(/^Conception/i), p3: ix(/^R[ée]alisation/i), p4: ix(/^R[ée]ception/i), sc: ix(/^Sc[ée]nario/i), act: ix(/^Action/i) };
+function readCommandes() { // liste des logements : même source JSON que le tableau « Avancement commande » de Gamma
+  var url = location.origin + '/pages/data_tableau_general.php?id_ville=0&id_pot=0&annee=0&scenario=0&territoire=0&etat=0&antenne=0';
+  return fetch(url, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error('Gamma ' + r.status); return r.text(); }).then(function (t) {
+    var j; try { j = JSON.parse(t); } catch (e) { if (/password|connexion/i.test(t)) throw new Error('LOGIN'); throw new Error('liste des logements illisible (Gamma a peut-être changé)'); }
+    var rows = Array.isArray(j) ? j : (j.data || j.aaData || []);
+    if (!rows.length) throw new Error('aucun logement renvoyé par Gamma');
+    var frag = function (h) { return parser.parseFromString('<div>' + String(h == null ? '' : h) + '</div>', 'text/html').body.firstChild; };
+    var ph = function (h) { var d = frag(h), img = d.querySelector('img'), sp = d.querySelector('span'); return [txt(sp) || txt(d), img ? (img.getAttribute('title') || '') : '']; };
     var out = {};
-    [].slice.call(t.tBodies[0].rows).forEach(function (tr) {
-      var c = tr.cells; if (!c.length || I.ug < 0) return;
-      var ug = txt(c[I.ug]); if (!/^\d{5,7}$/.test(ug)) return;
-      var ph = function (k) { var td = c[I[k]]; if (!td) return ['', '']; var img = td.querySelector('img'); var hid = td.querySelector('span'); return [txt(hid) || '', img ? (img.getAttribute('title') || '') : '']; };
-      var link = tr.querySelector('a[href*="id_ug="]'); var id = link ? (link.getAttribute('href').match(/id_ug=(\d+)/) || [])[1] : '';
-      var sc = I.sc >= 0 ? txt(c[I.sc]) : '', m = sc.match(/n°\s*(\d+)\s*\(([\d\s.,]+)\s*€\)/);
-      out[ug] = { id: id || '', a: txt(c[I.a]), v: txt(c[I.v]), cite: I.cite >= 0 ? txt(c[I.cite]) : '', an: I.an >= 0 ? txt(c[I.an]) : '', cl: I.cl >= 0 ? txt(c[I.cl]) : '', doc: I.doc >= 0 ? txt(c[I.doc]).slice(0, 200) : '',
-        ph: [ph('p1'), ph('p2'), ph('p3'), ph('p4')], sc: m ? +m[1] : '', forf: m ? num(m[2]) : 0 };
+    rows.forEach(function (r) {
+      var ug = txt(frag(r.code_ug)); if (!/^\d{5,7}$/.test(ug)) return;
+      var act = frag(r.action), link = act.querySelector('a[href*="id_ug="]'), id = link ? ((link.getAttribute('href').match(/id_ug=(\d+)/) || [])[1] || '') : (String(r.id_ug || ''));
+      var sc = txt(frag(r.scenario)), m = sc.match(/n°\s*(\d+)\s*\(([\d\s.,]+)\s*€\)/);
+      out[ug] = { id: id, a: txt(frag(r.adresse)), v: txt(frag(r.ville)), cite: txt(frag(r.pot)), an: txt(frag(r.annee)), cl: txt(frag(r.classe)), doc: txt(frag(r.document)).slice(0, 200),
+        ph: [ph(r.preparation), ph(r.conception), ph(r.realisation), ph(r.reception)], sc: m ? +m[1] : '', forf: m ? num(m[2]) : 0 };
     });
+    if (!Object.keys(out).length) throw new Error('format de la liste Gamma non reconnu');
     return out;
   });
 }
@@ -134,7 +134,7 @@ function run() {
     var ids = Object.keys(L).filter(function (ug) {
       var o = L[ug]; if (!o.id) return false;
       var ann = o.ph && o.ph.every(function (p) { return /Annul/i.test(p[0]); }); if (ann) return false;
-      var ok = o.ph && o.ph.some(function (p) { return /^Ok$/i.test(p[0]); });
+      var ok = o.ph && o.ph.slice(1).some(function (p) { return /^Ok$/i.test(p[0]); }); // conception validée (VTE faite) ou au-delà
       return ok || o.deb || (o.vteRdv && o.vteRdv.slice(0, 10) <= TODAY) || (C.ugs && C.ugs.indexOf(ug) >= 0);
     });
     msg('3/4 – Lecture des bons de commande des VTE (' + ids.length + ' logements)…', 22);
