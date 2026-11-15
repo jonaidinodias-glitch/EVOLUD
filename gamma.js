@@ -143,7 +143,7 @@ function run() {
     // ceux dont l'étape Gamma a changé, et une petite partie des plus anciens (contrôle tournant)
     var KC = 'evolud_bdc_cache_v2', cache = {}; try { cache = JSON.parse(localStorage.getItem(KC) || '{}') || {}; } catch (e) { cache = {}; }
     var sig = function (o) { return (o.ph || []).map(function (p) { return p[0] + ':' + p[1]; }).join('|') + '#' + o.sc + '#' + o.forf; };
-    var now0 = Date.now(), old = [], todo = ids.filter(function (ug) { var c = cache[ug]; if (!c || c.sig !== sig(L[ug])) return true; if (now0 - (c.at || 0) > 14 * 864e5) old.push(ug); return false; });
+    var now0 = Date.now(), old = [], todo = ids.filter(function (ug) { var c = cache[ug]; if (!c || c.sig !== sig(L[ug])) return true; if (c.bdc && (c.bdc.sec || []).length && !(c.bdc.sec || []).some(function (x) { return x && x[3] && x[3].length; })) return true; /* v5.14 : relire une fois pour avoir le détail des lignes par rubrique */ if (now0 - (c.at || 0) > 14 * 864e5) old.push(ug); return false; });
     old.sort(function (a, b) { return (cache[a].at || 0) - (cache[b].at || 0); }); todo = todo.concat(old.slice(0, 30));
     ids.forEach(function (ug) { if (cache[ug] && todo.indexOf(ug) < 0 && cache[ug].bdc) L[ug].bdc = cache[ug].bdc; });
     stats.cache = ids.length - todo.length;
