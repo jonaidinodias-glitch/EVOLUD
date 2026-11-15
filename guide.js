@@ -10,7 +10,7 @@
   'use strict';
   if (window.EvoludTuto) return;
 
-  var VERSION = 'tuto-1.5';
+  var VERSION = 'tuto-1.8';
   var KEY_SEEN = 'evolud_tuto_seen_v1';
 
   /* ---------- Stockage local sécurisé (peut échouer selon le navigateur) ---------- */
@@ -92,6 +92,21 @@
           'Prise de cotes menuiseries : ajoute chaque menuiserie (L × H, sens, vitrage, volet, entrée d\'air).',
           'Valide la VTE : la fiche travaux et les tâches sont créées automatiquement.'
         ]],
+        ['🌐 Visite 360° des pièces', [
+          'Logement ou VTE → bouton « 🌐 Visite 360° des pièces ».',
+          'Choisis la pièce, touche « 📷 Ajouter » et prends la photo en mode PANO de l\'appareil photo (tourner lentement sur soi-même), ou une photo grand angle.',
+          'Glisse le doigt pour tourner dans la pièce. « ➕ Point de travaux » puis touche l\'endroit : la tâche est créée et affectée.',
+          '📍 place la pièce sur le plan. « 📷 Nouveau passage » garde l\'historique daté (avant / pendant / après).',
+          '⛶ Plein écran : fonctionne aussi dans le navigateur d\'un casque Meta Quest.'
+        ]],
+        ['🧊 Maquette 3D, VR et réalité mixte', [
+          'Logement → « 🧊 Maquette 3D · 🥽 VR / réalité mixte ».',
+          'Importer un scan 3D (iPhone Pro + appli de scan, export GLB sans compression) ou une maquette du bâtiment (Revit, SketchUp… en GLB).',
+          '🔄 Vue d\'ensemble / 🚶 Visite à hauteur d\'homme, 📏 Mesurer (2 points), ➕ Point de travaux : touche le mur ou le plafond, la tâche est créée.',
+          'Dans le navigateur du casque Meta Quest : « 🥽 Visiter en VR » (joystick gauche pour avancer), « 🥽 Réalité mixte » (maquette posée sur le réel, joystick pour la tourner).',
+          '« 🥽 Poser des travaux dans le réel » : gâchette pour poser un point sur le vrai mur ; en sortant du casque, on choisit les travaux de chaque point. Toujours à l\'arrêt, jamais en circulation sur chantier.',
+          'La maquette reste sur l\'appareil qui l\'a importée ; les tâches sont partagées avec toute l\'équipe.'
+        ]],
         ['Modifier une VTE déjà validée', [
           'Rouvre la VTE, modifie le poste et appuie sur le bouton d\'enregistrement à côté de ce poste.'
         ]],
@@ -120,8 +135,14 @@
       ]
     },
     {
-      id: 'gamma', ico: '📤', titre: 'Dépôt sur Gamma', roles: 'ckd',
+      id: 'gamma', ico: '📤', titre: 'Gamma : mise à jour du jour et dépôt', roles: 'ckd',
       blocs: [
+        ['🔄 Mise à jour quotidienne Gamma → Évolud', [
+          'Une fois par jour, une seule personne (Saïd, Alex, Thibault ou Marine) ouvre Gamma et touche le favori « 🔄 Gamma → Évolud ».',
+          'Le favori lit Gamma (logements, étapes, dates de travaux, RDV VTE, bons de commande) et met à jour l\'appli de toute l\'équipe en 1 à 3 minutes.',
+          'Si c\'est déjà fait dans la journée, il l\'indique : inutile de recommencer. L\'Accueil affiche « Gamma à jour… par … ».',
+          'Installer son favori : Plus → 🔄 Bouton Gamma → Copier le favori, puis suivre les instructions (Edge ou Safari).'
+        ]],
         ['Principe', [
           'L\'onglet Gamma liste les tâches terminées avec leurs photos géolocalisées, prêtes à déposer.',
           'Sur le PC : ouvre Gamma dans Edge et utilise le bouton « Évolud → Gamma » de la barre des favoris.',
