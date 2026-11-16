@@ -28,9 +28,11 @@ function btn(label, fn, main) { var b = document.createElement('button'); b.text
 function close() { box.remove(); }
 
 /* ---------- serveur Évolud ---------- */
-function api(body) {
+function api(body, essai) {   // v5.24.2 : jusqu'à 4 essais si le réseau coupe (« Load failed »)
+  essai = essai || 1;
   var b = Object.assign({ token: C.t, device: C.d, user: C.n }, body);
-  return fetch(C.u, { method: 'POST', body: JSON.stringify(b) }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || 'erreur serveur'); return j; });
+  return fetch(C.u, { method: 'POST', body: JSON.stringify(b) }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || 'erreur serveur'); return j; })
+    .catch(function (e) { if (essai >= 4 || /jeton|token|autoris/i.test(String(e && e.message))) throw e; return new Promise(function (ok) { setTimeout(ok, 2000 * essai); }).then(function () { return api(body, essai + 1); }); });
 }
 
 /* ---------- lecture Gamma ---------- */
@@ -79,14 +81,15 @@ function fieldAfter(doc, re) {   // valeur du premier champ (ou texte) qui suit 
   var all = doc.body ? doc.body.getElementsByTagName('*') : [], hit = false, LBL = /^(Nom locataire|T[ée]l[ée]phone locataire|Mail locataire|Date visite|Heure de la visite|Agent MOE|Choix (TCE|MOE))/i;
   for (var i = 0; i < all.length; i++) { var e = all[i], tg = e.tagName, tx = (e.textContent || '').trim();
     if (!hit) { if (e.children.length === 0 && re.test(tx) && tx.length < 40) hit = true; continue; }
-    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tg)) { if (/^(hidden|button|submit)$/i.test(e.type || '')) continue; var v = String(e.value || e.getAttribute('value') || e.textContent || '').trim(); if (!v) { var ph = String(e.getAttribute('placeholder') || '').trim(); if (ph && !re.test(ph)) v = ph; } return v; }
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tg)) { if (/^(hidden|button|submit)$/i.test(e.type || '')) continue; var v = tg === 'SELECT' ? String((e.selectedOptions && e.selectedOptions[0] && e.selectedOptions[0].textContent) || (e.querySelector('option[selected]') || {}).textContent || '').trim() : String(e.value || e.getAttribute('value') || e.getAttribute('data-value') || e.textContent || '').trim(); if (!v) { var ph = String(e.getAttribute('placeholder') || '').trim(); if (ph && !re.test(ph)) v = ph; } return v; }
     if (e.children.length === 0 && tx && !/^(SCRIPT|STYLE|OPTION)$/.test(tg)) { if (LBL.test(tx)) return ''; return tx; }
   }
   return '';
 }
 function readDossier(id) {
   return getDoc(BASE + '?module=dossier&id_ug=' + id).then(function (doc) {
-    var n = fieldAfter(doc, /^Nom locataire$/i), t = fieldAfter(doc, /^T[ée]l[ée]phone locataire$/i).replace(/[^\d+]/g, '');
+    var n = fieldAfter(doc, /^\s*Nom\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i) || fieldAfter(doc, /^\s*Locataire\s*\*?\s*:?\s*$/i), t = fieldAfter(doc, /^\s*T[ée]l[ée]phone\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i).replace(/[^\d+]/g, '');
+    if (!n) { try { var h = doc.body.innerHTML, k = h.search(/Nom\s*(du\s*)?locataire/i); if (k >= 0) localStorage.setItem('evolud_dbg_nom', h.slice(k, k + 600)); } catch (e) { } }
     if (/^[\d\s.+]{8,}$/.test(n) && !t) { t = n.replace(/[^\d+]/g, ''); n = ''; }   // sécurité : un numéro lu à la place du nom
     if (/^[\d\s.+]{8,}$/.test(n)) n = '';
     if (t === '0' || /^0+$/.test(t)) t = '';
@@ -172,14 +175,14 @@ function run() {
   }).then(function (B) {
     Object.keys(B).forEach(function (ug) { if (B[ug]) L[ug].bdc = B[ug]; });
     // v5.24 : coordonnées des locataires (page Dossier) – lues une fois puis gardées en mémoire, contrôle tous les 30 jours
-    var KL = 'evolud_loc_cache_v2', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
+    var KL = 'evolud_loc_cache_v3', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
     var cand = Object.keys(L).filter(function (ug) { var o = L[ug]; return o.id && (o.bdc || o.deb || o.vteRdv); });
     var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5; }).slice(0, 400);
     cand.forEach(function (ug) { if (lc[ug] && lc[ug].v) L[ug].loc = lc[ug].v; });
-    stats.loc = cand.filter(function (u) { return L[u].loc; }).length;
+    stats.loc = cand.filter(function (u) { return L[u].loc; }).length; stats.nom = cand.filter(function (u) { return L[u].loc && L[u].loc[0]; }).length;
     if (!todoL.length) return B;
     return pool(todoL, 4, function (ug) { return readDossier(L[ug].id); }, function (d, n) { msg('3/4 – Locataires (page Dossier) : <b>' + d + ' / ' + n + '</b>', 76 + 6 * d / n); })
-      .then(function (R) { Object.keys(R).forEach(function (ug) { lc[ug] = { v: R[ug] || null, at: Date.now() }; if (R[ug]) L[ug].loc = R[ug]; }); try { localStorage.setItem(KL, JSON.stringify(lc)); } catch (e) { } stats.loc = Object.keys(L).filter(function (u) { return L[u].loc; }).length; return B; });
+      .then(function (R) { Object.keys(R).forEach(function (ug) { lc[ug] = { v: R[ug] || null, at: Date.now() }; if (R[ug]) L[ug].loc = R[ug]; }); try { localStorage.setItem(KL, JSON.stringify(lc)); } catch (e) { } stats.loc = Object.keys(L).filter(function (u) { return L[u].loc; }).length; stats.nom = Object.keys(L).filter(function (u) { return L[u].loc && L[u].loc[0]; }).length; return B; });
   }).then(function (B) {
     Object.keys(L).forEach(function (ug) { if (L[ug].bdc) stats.bdc++; });
     msg('4/4 – Envoi vers Évolud…', 82);
@@ -190,12 +193,12 @@ function run() {
     for (var k = parts.length + 1; k <= parts.length + 15; k++) recs.push({ c: 'params', id: 'gammaD' + k, updatedAt: now, data: { id: 'gammaD' + k, v: '', deleted: true, updatedAt: now, by: by } });
     var meta = { date: TODAY, heure: HEURE, par: by, n: parts.length, stats: stats, ts: now };
     var send = [], seq = Promise.resolve();
-    for (var j = 0; j < recs.length; j += 6) send.push(recs.slice(j, j + 6));
+    for (var j = 0; j < recs.length; j += 3) send.push(recs.slice(j, j + 3));   // v5.24.2 : envois plus petits
     send.forEach(function (part, q) { seq = seq.then(function () { msg('4/4 – Envoi vers Évolud : ' + (q + 1) + ' / ' + (send.length + 1), 82 + 16 * q / send.length); return api({ action: 'sync', since: now, records: part }); }); });
     return seq.then(function () { return api({ action: 'sync', since: now, records: [{ c: 'params', id: 'gammaMaj', updatedAt: Date.now(), data: { id: 'gammaMaj', v: meta, updatedAt: Date.now(), by: by } }] }); }).then(function () { return stats; })
       .catch(function (e) { e.data = s; e.meta = meta; throw e; });
   }).then(function (st) {
-    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
+    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.loc && !st.nom ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">Noms des locataires non trouvés : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
     btn('Fermer', close, true);
   }).catch(function (e) {
     if (e.message === 'LOGIN') { msg('⚠️ Tu n\'es pas connecté à Gamma. Connecte-toi puis touche à nouveau le bouton.', 100); btn('Fermer', close, true); return; }
