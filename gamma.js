@@ -77,12 +77,16 @@ function readPlanning() {
 }
 
 // v5.24 : page Dossier = nom et téléphone du locataire (étape 2 « Planification de la visite d'entrée »)
-function fieldAfter(doc, re) {   // valeur du premier champ (ou texte) qui suit le libellé
-  var all = doc.body ? doc.body.getElementsByTagName('*') : [], hit = false, LBL = /^(Nom locataire|T[ée]l[ée]phone locataire|Mail locataire|Date visite|Heure de la visite|Agent MOE|Choix (TCE|MOE))/i;
+function fieldAfter(doc, re) {   // v5.24.4 : la page Dossier répète les champs à chaque étape : on prend la PREMIÈRE valeur NON VIDE
+  var all = doc.body ? doc.body.getElementsByTagName('*') : [], hit = false, LBL = /^(Nom locataire|T[ée]l[ée]phone locataire|Mail locataire|Date (de )?(visite|d[ée]but|fin)|Heure|Agent MOE|Choix (TCE|MOE)|Code UG|Adresse|Cit[ée]|Ville|Sc[ée]nario)/i;
   for (var i = 0; i < all.length; i++) { var e = all[i], tg = e.tagName, tx = (e.textContent || '').trim();
     if (!hit) { if (e.children.length === 0 && re.test(tx) && tx.length < 40) hit = true; continue; }
-    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tg)) { if (/^(hidden|button|submit)$/i.test(e.type || '')) continue; var v = tg === 'SELECT' ? String((e.selectedOptions && e.selectedOptions[0] && e.selectedOptions[0].textContent) || (e.querySelector('option[selected]') || {}).textContent || '').trim() : String(e.value || e.getAttribute('value') || e.getAttribute('data-value') || e.textContent || '').trim(); if (!v) { var ph = String(e.getAttribute('placeholder') || '').trim(); if (ph && !re.test(ph)) v = ph; } return v; }
-    if (e.children.length === 0 && tx && !/^(SCRIPT|STYLE|OPTION)$/.test(tg)) { if (LBL.test(tx)) return ''; return tx; }
+    var v = '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tg)) { if (/^(hidden|button|submit)$/i.test(e.type || '')) continue;
+      v = tg === 'SELECT' ? String((e.selectedOptions && e.selectedOptions[0] && e.selectedOptions[0].textContent) || (e.querySelector('option[selected]') || {}).textContent || '').trim() : String(e.value || e.getAttribute('value') || e.getAttribute('data-value') || e.textContent || '').trim();
+      if (!v) { var ph = String(e.getAttribute('placeholder') || '').trim(); if (ph && !re.test(ph)) v = ph; }
+      if (v) return v; hit = false; continue; }
+    if (e.children.length === 0 && tx && !/^(SCRIPT|STYLE|OPTION)$/.test(tg)) { if (LBL.test(tx)) { hit = re.test(tx); continue; } return tx; }
   }
   return '';
 }
@@ -179,7 +183,7 @@ function run() {
   }).then(function (B) {
     Object.keys(B).forEach(function (ug) { if (B[ug]) L[ug].bdc = B[ug]; });
     // v5.24 : coordonnées des locataires (page Dossier) – lues une fois puis gardées en mémoire, contrôle tous les 30 jours
-    var KL = 'evolud_loc_cache_v3', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
+    var KL = 'evolud_loc_cache_v4', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
     var cand = Object.keys(L).filter(function (ug) { var o = L[ug]; return o.id && (o.bdc || o.deb || o.vteRdv); });
     var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5 || (c.v && !c.v[0]); }).slice(0, 400);   // v5.24.3 : on relit les dossiers où le nom manque
     cand.forEach(function (ug) { if (lc[ug] && lc[ug].v) L[ug].loc = lc[ug].v; });
