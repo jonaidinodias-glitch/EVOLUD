@@ -89,7 +89,11 @@ function fieldAfter(doc, re) {   // valeur du premier champ (ou texte) qui suit 
 function readDossier(id) {
   return getDoc(BASE + '?module=dossier&id_ug=' + id).then(function (doc) {
     var n = fieldAfter(doc, /^\s*Nom\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i) || fieldAfter(doc, /^\s*Locataire\s*\*?\s*:?\s*$/i), t = fieldAfter(doc, /^\s*T[ée]l[ée]phone\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i).replace(/[^\d+]/g, '');
-    if (!n) { try { var h = doc.body.innerHTML, k = h.search(/Nom\s*(du\s*)?locataire/i); if (k >= 0) localStorage.setItem('evolud_dbg_nom', h.slice(k, k + 600)); } catch (e) { } }
+    if (!n) { try {   // v5.24.3 : 2 autres façons de lire le nom (valeur dans le code HTML, ou texte entre les deux libellés)
+      var h = doc.body.innerHTML, k = h.search(/Nom\s*(du\s*)?locataire/i);
+      if (k >= 0) { var seg = h.slice(k, k + 900).split(/T[ée]l[ée]phone/i)[0], mv = seg.match(/(?:value|placeholder|data-value)\s*=\s*["']([^"']{2,80})["']/i) || seg.replace(/<[^>]+>/g, '\n').replace(/Nom\s*(du\s*)?locataire\s*\*?\s*:?/i, '').match(/([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' .-]{1,60})/);
+        if (mv) n = mv[1].trim(); if (!n) localStorage.setItem('evolud_dbg_nom', h.slice(k, k + 600)); }
+    } catch (e) { } }
     if (/^[\d\s.+]{8,}$/.test(n) && !t) { t = n.replace(/[^\d+]/g, ''); n = ''; }   // sécurité : un numéro lu à la place du nom
     if (/^[\d\s.+]{8,}$/.test(n)) n = '';
     if (t === '0' || /^0+$/.test(t)) t = '';
@@ -177,7 +181,7 @@ function run() {
     // v5.24 : coordonnées des locataires (page Dossier) – lues une fois puis gardées en mémoire, contrôle tous les 30 jours
     var KL = 'evolud_loc_cache_v3', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
     var cand = Object.keys(L).filter(function (ug) { var o = L[ug]; return o.id && (o.bdc || o.deb || o.vteRdv); });
-    var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5; }).slice(0, 400);
+    var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5 || (c.v && !c.v[0]); }).slice(0, 400);   // v5.24.3 : on relit les dossiers où le nom manque
     cand.forEach(function (ug) { if (lc[ug] && lc[ug].v) L[ug].loc = lc[ug].v; });
     stats.loc = cand.filter(function (u) { return L[u].loc; }).length; stats.nom = cand.filter(function (u) { return L[u].loc && L[u].loc[0]; }).length;
     if (!todoL.length) return B;
@@ -198,7 +202,7 @@ function run() {
     return seq.then(function () { return api({ action: 'sync', since: now, records: [{ c: 'params', id: 'gammaMaj', updatedAt: Date.now(), data: { id: 'gammaMaj', v: meta, updatedAt: Date.now(), by: by } }] }); }).then(function () { return stats; })
       .catch(function (e) { e.data = s; e.meta = meta; throw e; });
   }).then(function (st) {
-    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.loc && !st.nom ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">Noms des locataires non trouvés : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
+    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
     btn('Fermer', close, true);
   }).catch(function (e) {
     if (e.message === 'LOGIN') { msg('⚠️ Tu n\'es pas connecté à Gamma. Connecte-toi puis touche à nouveau le bouton.', 100); btn('Fermer', close, true); return; }
