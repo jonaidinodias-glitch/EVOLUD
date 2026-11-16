@@ -74,6 +74,22 @@ function readPlanning() {
     .then(function (r) { return r.json(); }).catch(function () { return []; });
 }
 
+// v5.24 : page Dossier = nom et téléphone du locataire (étape 2 « Planification de la visite d'entrée »)
+function fieldAfter(doc, re) {
+  var all = doc.body ? doc.body.getElementsByTagName('*') : [], hit = false;
+  for (var i = 0; i < all.length; i++) { var e = all[i], tg = e.tagName;
+    if (!hit && /^(LABEL|SPAN|P|DIV|TD|TH|B|STRONG|H\d)$/.test(tg) && e.children.length === 0 && re.test((e.textContent || '').trim()) && (e.textContent || '').trim().length < 40) { hit = true; continue; }
+    if (hit && /^(INPUT|TEXTAREA|SELECT)$/.test(tg)) { var v = String(e.value || e.getAttribute('value') || e.textContent || '').trim(); if (!v) { var ph = String(e.getAttribute('placeholder') || '').trim(); if (ph && !re.test(ph)) v = ph; } return v; }
+  }
+  return '';
+}
+function readDossier(id) {
+  return getDoc(BASE + '?module=dossier&id_ug=' + id).then(function (doc) {
+    var n = fieldAfter(doc, /^Nom locataire$/i), t = fieldAfter(doc, /^T[ée]l[ée]phone locataire$/i).replace(/[^\d+]/g, '');
+    if (t === '0' || /^0+$/.test(t)) t = '';
+    return (n || t) ? [n.slice(0, 60), t.slice(0, 20)] : null;
+  }).catch(function () { return null; });
+}
 function readVTE(id) {
   return getDoc(BASE + '?module=visualisation_visite&id_ug=' + id).then(function (doc) {
     var H2 = [].slice.call(doc.querySelectorAll('h2'));
@@ -152,6 +168,16 @@ function run() {
       .then(function (B) { Object.keys(B).forEach(function (ug) { cache[ug] = { sig: sig(L[ug]), bdc: B[ug] || null, at: Date.now() }; }); try { localStorage.setItem(KC, JSON.stringify(cache)); } catch (e) { } return B; });
   }).then(function (B) {
     Object.keys(B).forEach(function (ug) { if (B[ug]) L[ug].bdc = B[ug]; });
+    // v5.24 : coordonnées des locataires (page Dossier) – lues une fois puis gardées en mémoire, contrôle tous les 30 jours
+    var KL = 'evolud_loc_cache_v1', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
+    var cand = Object.keys(L).filter(function (ug) { var o = L[ug]; return o.id && (o.bdc || o.deb || o.vteRdv); });
+    var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5; }).slice(0, 400);
+    cand.forEach(function (ug) { if (lc[ug] && lc[ug].v) L[ug].loc = lc[ug].v; });
+    stats.loc = cand.filter(function (u) { return L[u].loc; }).length;
+    if (!todoL.length) return B;
+    return pool(todoL, 4, function (ug) { return readDossier(L[ug].id); }, function (d, n) { msg('3/4 – Locataires (page Dossier) : <b>' + d + ' / ' + n + '</b>', 76 + 6 * d / n); })
+      .then(function (R) { Object.keys(R).forEach(function (ug) { lc[ug] = { v: R[ug] || null, at: Date.now() }; if (R[ug]) L[ug].loc = R[ug]; }); try { localStorage.setItem(KL, JSON.stringify(lc)); } catch (e) { } stats.loc = Object.keys(L).filter(function (u) { return L[u].loc; }).length; return B; });
+  }).then(function (B) {
     Object.keys(L).forEach(function (ug) { if (L[ug].bdc) stats.bdc++; });
     msg('4/4 – Envoi vers Évolud…', 82);
     var s = JSON.stringify(L), parts = [], SZ = 30000;
@@ -166,7 +192,7 @@ function run() {
     return seq.then(function () { return api({ action: 'sync', since: now, records: [{ c: 'params', id: 'gammaMaj', updatedAt: Date.now(), data: { id: 'gammaMaj', v: meta, updatedAt: Date.now(), by: by } }] }); }).then(function () { return stats; })
       .catch(function (e) { e.data = s; e.meta = meta; throw e; });
   }).then(function (st) {
-    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
+    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
     btn('Fermer', close, true);
   }).catch(function (e) {
     if (e.message === 'LOGIN') { msg('⚠️ Tu n\'es pas connecté à Gamma. Connecte-toi puis touche à nouveau le bouton.', 100); btn('Fermer', close, true); return; }
