@@ -10,7 +10,7 @@
 (function () {
   'use strict';
   if (window.EvoludScen) return;
-  var VERSION = 'scen-1.1';
+  var VERSION = 'scen-1.2';
   var KEY = 'evolud_comparatif_scenarios_v1', KEYS = 'evolud_forfaits_scenarios_v1', KEYG = 'evolud_scen_gamma_import_v1';
 
   /* ---------- outils ---------- */
@@ -406,12 +406,19 @@
     chargeGamma().then(function () { render(); if (ug) ouvrir(String(ug)); }); }
   function fermer() { root.classList.remove('open'); document.documentElement.style.overflow = ''; }
   // bouton visible seulement pour les comptes qui voient l'onglet « Balance » (conducteur / direction), jamais pour les équipes
-  function autorise() {   // texte propre de l'élément (sans celui de ses enfants) = « Balance »
+  function autorise() {   // l'onglet « Balance » est visible (conducteur / direction) ; jamais pour les équipes
+    var zones = document.querySelectorAll('nav, #tabs, .tabs, footer, [class*="tab"], [class*="nav"]');
+    for (var i = 0; i < zones.length; i++) { var z = zones[i]; if (z.closest && z.closest('.ecs, .ecs-md')) continue; if (/\bbalance\b/i.test(z.textContent || '')) return true; }
     var els = document.body ? document.body.getElementsByTagName('*') : [];
-    for (var i = 0; i < els.length; i++) { var e = els[i]; if (e.closest && e.closest('.ecs, .ecs-md, script, style')) continue;
+    for (var j = 0; j < els.length; j++) { var e = els[j]; if (e.closest && e.closest('.ecs, .ecs-md, script, style')) continue;
       var t = ''; for (var c = e.firstChild; c; c = c.nextSibling) if (c.nodeType === 3) t += c.nodeValue;
-      if (/^[\s\u00a0]*balance[\s\u00a0]*$/i.test(t) || (e.children.length === 0 && /^\W*balance\W*$/i.test(e.textContent || ''))) return true; }
+      if (/^\W*balance\W*$/i.test(t.trim())) return true; }
     return false; }
+  function diag() {   // adresse de l'appli + #scen : petit bandeau de contrôle
+    if (!/scen/i.test(location.hash) || document.getElementById('ecs-diag')) return;
+    var d = document.createElement('div'); d.id = 'ecs-diag'; d.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:2147483600;background:#23355f;color:#fff;padding:10px;border-radius:10px;font:14px system-ui,sans-serif';
+    d.textContent = 'Comparatif ' + VERSION + ' chargé · onglet Balance trouvé : ' + (autorise() ? 'oui' : 'non') + ' · bouton : ' + (document.querySelector('.ecs-fab') ? 'oui' : 'non');
+    d.onclick = function () { d.remove(); }; document.body.appendChild(d); }
   function fab() {
     if (!document.body) return; var b = document.querySelector('.ecs-fab');
     if (!b) { b = document.createElement('button'); b.className = 'ecs-fab'; b.textContent = '⚖️'; b.title = 'Comparatif scénarios'; b.onclick = function () { ouvrirModule(); }; b.style.display = 'none'; document.body.appendChild(b); }
@@ -419,6 +426,6 @@
   }
 
   window.EvoludScen = { open: ouvrirModule, close: fermer, version: VERSION, _test: { venduDe: venduDe, score: score, rue: rue, isMapUG: isMapUG, fromParts: fromParts, search: search } };
-  function go() { var start = function () { fab(); setInterval(fab, 1500); }; if (window.EVX_READY && window.EVX_READY.then) window.EVX_READY.then(start, start); else start(); }
+  function go() { fab(); setInterval(function () { fab(); diag(); }, 1500); }   // v1.2 : n'attend plus la fin du chargement de l'appli
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
