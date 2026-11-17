@@ -215,17 +215,29 @@ function run() {
     // v5.28 : réserves MOE des logements passés en VTS (relues si VTS récente, réserve encore ouverte ou contrôle tournant)
     var KR = 'evolud_res_cache_v1', rc = {}; try { rc = JSON.parse(localStorage.getItem(KR) || '{}') || {}; } catch (e) { rc = {}; }
     var vtsD = function (o) { return (o.vts || []).filter(function (d) { return d && d <= TODAY; }).sort().pop() || ''; };
-    var candR = Object.keys(L).filter(function (ug) { return L[ug].id && vtsD(L[ug]); });
+    // v5.28.1 : aussi les logements dont l'étape « Réception » est faite dans Gamma (VTS du jour pas toujours dans le planning)
+    var recOk = function (o) { var p = (o.ph || [])[3]; return !!(p && /^ok$/i.test(String(p[0] || '').trim())); };
+    var candR = Object.keys(L).filter(function (ug) { return L[ug].id && (vtsD(L[ug]) || recOk(L[ug])); });
+    // v5.28.1 : VTS faite dans Gamma (étape Réception) mais absente du planning → on lit sa date sur la page Dossier
+    var needRec = candR.filter(function (ug) { return recOk(L[ug]) && !vtsD(L[ug]) && !(rc[ug] && rc[ug].rec); });
+    var setRec = function (ug, d) { if (!d) return; var o = L[ug]; o.vts = (o.vts || []).concat([d]); if (!o.vtsRdv || o.vtsRdv.slice(0, 10) < d) o.vtsRdv = d + 'T00:00'; stats.vts++; };
+    candR.forEach(function (ug) { if (recOk(L[ug]) && !vtsD(L[ug]) && rc[ug] && rc[ug].rec) setRec(ug, rc[ug].rec); });
+    var recP = !needRec.length ? Promise.resolve({}) : pool(needRec, 3, function (ug) {
+      return getDoc(BASE + '?module=dossier&id_ug=' + L[ug].id).then(function (doc) { var m = txt(doc.body).match(/R[ée]ception\s+effectu[ée]e\s+le\s+(\d{2})\/(\d{2})\/(\d{4})/i); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }).catch(function () { return ''; });
+    }, function (d, n) { msg('3/4 – VTS faites dans Gamma : <b>' + d + ' / ' + n + '</b>', 74); });
+    return recP.then(function (RD) {
+    Object.keys(RD).forEach(function (ug) { if (RD[ug]) { rc[ug] = Object.assign(rc[ug] || {}, { rec: RD[ug] }); setRec(ug, RD[ug]); } });
     var lim = new Date(MIDNIGHT - 45 * 864e5).toISOString().slice(0, 10), oldR = [];
-    var todoR = candR.filter(function (ug) { var c = rc[ug], v = vtsD(L[ug]); if (!c || c.vts !== v) return true;
+    var todoR = candR.filter(function (ug) { var c = rc[ug], v = vtsD(L[ug]) || (c && c.vts) || TODAY; if (!c || (c.vts !== v && vtsD(L[ug]))) return true;
       if ((c.r || []).some(function (r) { return !r[2]; }) && (Date.now() - (c.at || 0)) > 20 * 3600e3) return true;
       if (v >= lim && (Date.now() - (c.at || 0)) > 20 * 3600e3) return true; oldR.push(ug); return false; });
     oldR.sort(function (a, b) { return (rc[a].at || 0) - (rc[b].at || 0); }); todoR = todoR.concat(oldR.slice(0, 25));
-    candR.forEach(function (ug) { if (rc[ug] && todoR.indexOf(ug) < 0) { L[ug].res = rc[ug].r || []; L[ug].resVts = rc[ug].vts; } });
-    if (!todoR.length) return B;
+    candR.forEach(function (ug) { if (rc[ug] && rc[ug].r && todoR.indexOf(ug) < 0) { L[ug].res = rc[ug].r || []; L[ug].resVts = rc[ug].vts; } });
+    if (!todoR.length) { try { localStorage.setItem(KR, JSON.stringify(rc)); } catch (e) { } return B; }
     return pool(todoR, 3, function (ug) { return readReserves(L[ug].id); }, function (d, n) { msg('3/4 – Réserves MOE (logements en VTS) : <b>' + d + ' / ' + n + '</b>', 76 + 6 * d / n); })
-      .then(function (R) { Object.keys(R).forEach(function (ug) { if (!R[ug]) return; var v = vtsD(L[ug]); rc[ug] = { r: R[ug], vts: v, at: Date.now() }; L[ug].res = R[ug]; L[ug].resVts = v; });
+      .then(function (R) { Object.keys(R).forEach(function (ug) { if (!R[ug]) return; var v = vtsD(L[ug]) || (rc[ug] && rc[ug].vts) || TODAY; rc[ug] = Object.assign(rc[ug] || {}, { r: R[ug], vts: v, at: Date.now() }); L[ug].res = R[ug]; L[ug].resVts = v; });
         try { localStorage.setItem(KR, JSON.stringify(rc)); } catch (e) { } return B; });
+    });
   }).then(function (B) {
     stats.res = 0; stats.resO = 0; Object.keys(L).forEach(function (ug) { (L[ug].res || []).forEach(function (r) { stats.res++; if (!r[2]) stats.resO++; }); });
     Object.keys(L).forEach(function (ug) { if (L[ug].bdc) stats.bdc++; });
