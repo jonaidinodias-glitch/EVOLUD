@@ -550,7 +550,7 @@
 (function () {
   'use strict';
   if (window.EvoludScen) return;
-  var VERSION = 'scen-1.4';
+  var VERSION = 'scen-1.5';
   var KEY = 'evolud_comparatif_scenarios_v1', KEYS = 'evolud_forfaits_scenarios_v1', KEYG = 'evolud_scen_gamma_import_v1';
 
   /* ---------- outils ---------- */
@@ -772,10 +772,10 @@
       '<div id="ecs-l"></div><div class="ecs-sg">Comparatif scénarios — conçu et développé par Saïd OUFQIR</div></div>' +
       '<div class="ecs-m" id="ecs-p2" style="display:none">' +
       '<div class="ecs-k">' + kp('mA', 'À envoyer', 'mAs', '', 'neg') + kp('mR', 'En retard d\'envoi', 'mRs', '', 'neg') + kp('mE', 'Envoyées au fabricant', 'mEs', '', 'pos') + kp('mL', 'Livrées', 'mLs') + '</div>' +
-      '<div class="ecs-c"><h2>🛠️ Actions</h2><div class="ecs-tl"><button class="ecs-b" data-m="sel">📤 Nouvel envoi</button><button class="ecs-b sec" data-m="paste">📋 Coller les UG envoyés</button><button class="ecs-b sec" data-m="reste">📝 Ce qu\'il reste</button><button class="ecs-b sec" data-m="csv">⬇️ Export</button><button class="ecs-b sec" data-m="add">＋ Logement</button></div>' +
+      '<div class="ecs-c"><h2>🛠️ Actions</h2><div class="ecs-tl"><button class="ecs-b" data-m="sel">📤 Envoyer au fabricant</button><button class="ecs-b sec" data-m="paste">📋 Déjà envoyés (coller les UG)</button><button class="ecs-b sec" data-m="reste">📝 Ce qu\'il reste</button><button class="ecs-b sec" data-m="csv">⬇️ Export</button><button class="ecs-b sec" data-m="add">＋ Logement</button></div>' +
       '<p class="ecs-hp">Délai : démarrage contractuel à VTE + <input id="mx-del" inputmode="numeric" style="width:60px;padding:4px 6px;font-size:14px"> j, fabrication <input id="mx-fab" inputmode="numeric" style="width:60px;padding:4px 6px;font-size:14px"> j ➜ « envoyer avant » = date VTE + délai − fabrication.</p>' +
       '<div class="ecs-f"><input id="mx-q" placeholder="🔎 UG, adresse, cité, lot…"><select id="mx-fs"><option value="a">À envoyer</option><option value="e">Envoyées (pas livrées)</option><option value="l">Livrées</option><option value="">Toutes</option></select></div></div>' +
-      '<div class="ecs-c" id="mx-bar" style="display:none;position:sticky;top:64px;z-index:4;border:2px solid #2a4b9b"><b id="mx-nsel">0 sélectionné</b><div class="ecs-tl" style="margin-top:8px"><button class="ecs-b sec sm" data-m="tout">Tout cocher</button><button class="ecs-b sec sm" data-m="aucun">Décocher</button><button class="ecs-b sm" data-m="go">✅ Marquer comme envoyés</button><button class="ecs-b red sm" data-m="stop">Annuler</button></div></div>' +
+      '<div class="ecs-c" id="mx-bar" style="display:none;position:sticky;top:64px;z-index:4;border:2px solid #2a4b9b"><b id="mx-nsel">0 sélectionné</b><div class="ecs-tl" style="margin-top:8px"><button class="ecs-b sec sm" data-m="tout">Tout cocher</button><button class="ecs-b sec sm" data-m="aucun">Décocher</button><button class="ecs-b sm" data-m="go">📤 Créer l\'Excel et marquer envoyés</button><button class="ecs-b red sm" data-m="stop">Annuler</button></div></div>' +
       '<div id="mx-l"></div>' +
       '<div class="ecs-c"><h2>🗂️ Historique des envois</h2><div id="mx-h"></div></div>' +
       '<div class="ecs-sg">Suivi MEXT — conçu et développé par Saïd OUFQIR</div></div>' +
@@ -860,12 +860,12 @@
   }
   function mxAction(a) {
     var L = mxListe();
-    if (a === 'sel') { mxSel = {}; $('mx-fs').value = 'a'; mxRender(); toast('Coche les logements envoyés au fabricant'); }
+    if (a === 'sel') { mxSel = {}; $('mx-fs').value = 'a'; mxRender(); toast('Coche les logements à envoyer au fabricant'); }
     else if (a === 'stop') { mxSel = null; mxRender(); }
     else if (a === 'tout') { L.forEach(function (r) { if (r.st === 'a') mxSel[r.ug] = 1; }); mxRender(); }
     else if (a === 'aucun') { mxSel = {}; mxRender(); }
-    else if (a === 'go') { var us = Object.keys(mxSel || {}); if (!us.length) { toast('Aucun logement coché'); return; } $('mx-ed').value = today(); $('mx-el').value = ''; $('mx-eu').value = us.join(' '); openM('mxenv'); }
-    else if (a === 'paste') { $('mx-ed').value = today(); $('mx-el').value = ''; $('mx-eu').value = ''; openM('mxenv'); }
+    else if (a === 'go') { var us = Object.keys(mxSel || {}); if (!us.length) { toast('Aucun logement coché'); return; } mxMode = 'xl'; $('mx-et').textContent = '📤 Envoi au fabricant : ' + us.length + ' logement(s)'; $('mx-eok').textContent = '📤 Créer l\'Excel et marquer envoyés'; $('mx-ed').value = today(); $('mx-el').value = lotSuivant(); $('mx-eu').value = us.join(' '); openM('mxenv'); }
+    else if (a === 'paste') { mxMode = ''; $('mx-et').textContent = '📋 MEXT déjà envoyées (sans Excel)'; $('mx-eok').textContent = 'Valider'; $('mx-ed').value = today(); $('mx-el').value = ''; $('mx-eu').value = ''; openM('mxenv'); }
     else if (a === 'reste') mxReste('');
     else if (a === 'csv') mxCsv(L);
     else if (a === 'add') mxFiche(null);
@@ -876,6 +876,7 @@
     var inconnus = [], deja = [];
     us.forEach(function (u) { var r = L.filter(function (x) { return x.ug === u; })[0]; if (!r) { inconnus.push(u); MX.man[u] = { ug: u }; } else if (r.e) deja.push(u); MX.env[u] = { d: d, lot: lot, n: r ? r.n : NaN, ad: r ? r.ad : '' }; });
     mxSave(); mxSel = null; closeM('mxenv'); mxRender();
+    if (mxMode === 'xl') mxExcel(us, d, lot, L);
     mxReste('✅ ' + us.length + ' logement(s) marqué(s) envoyé(s) le ' + fr(d) + (lot ? ' (' + lot + ')' : '') + '.' + (deja.length ? ' Déjà envoyés avant (date mise à jour) : ' + deja.join(', ') + '.' : '') + (inconnus.length ? ' Hors liste Gamma (ajoutés) : ' + inconnus.join(', ') + '.' : '') + '\n\n');
   }
   function mxReste(entete) {
@@ -903,8 +904,60 @@
     lines.push('', '"Suivi MEXT — conçu et développé par Saïd OUFQIR"');
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = 'Suivi_MEXT_' + today() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); toast('Export téléchargé');
   }
+  var mxMode = '';
+  function lotSuivant() { var n = 0; Object.keys(MX.env).forEach(function (u) { var m = /(\d+)\s*$/.exec(MX.env[u].lot || ''); if (m) n = Math.max(n, +m[1]); }); return 'Lot ' + (n + 1); }
+  function mextLignes(g) {   // lignes menuiseries ext. du bon de commande Gamma d'un logement
+    var out = [], vus = {}; if (!g || !g.bdc) return out; var L = (g.bdc.l || []).slice(); (g.bdc.sec || []).forEach(function (s) { (s && s[3] || []).forEach(function (l) { L.push(l); }); });
+    var P = POSTES.filter(function (p) { return p[0] === 'mext'; })[0];
+    L.forEach(function (l) { if (!l || !l[0]) return; var k = l.join('|'); if (vus[k]) return; vus[k] = 1; var d = norm(l[0]), q = num(l[1]);
+      for (var i = 0; i < POSTES.length; i++) if (POSTES[i][3](d)) { if (POSTES[i] === P && q > 0) out.push([l[0], q, l[2] || 'u']); break; } });
+    return out;
+  }
+  /* ---- petit générateur .xlsx (sans bibliothèque) ---- */
+  var CRC = null;
+  function crc32(u) { if (!CRC) { CRC = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; CRC[n] = c >>> 0; } } var x = 0xFFFFFFFF; for (var i = 0; i < u.length; i++) x = CRC[(x ^ u[i]) & 255] ^ (x >>> 8); return (x ^ 0xFFFFFFFF) >>> 0; }
+  function zip(files) {   // files : [[nom, texte]] ; archive non compressée
+    var enc = new TextEncoder(), parts = [], cd = [], off = 0;
+    function le(n, b) { var a = []; for (var i = 0; i < b; i++) a.push((n >>> (8 * i)) & 255); return a; }
+    files.forEach(function (f) { var nm = enc.encode(f[0]), dt = enc.encode(f[1]), c = crc32(dt);
+      var h = [].concat(le(0x04034b50, 4), le(20, 2), le(0x0800, 2), le(0, 2), le(0, 2), le(0x21, 2), le(c, 4), le(dt.length, 4), le(dt.length, 4), le(nm.length, 2), le(0, 2));
+      parts.push(new Uint8Array(h), nm, dt);
+      cd.push(new Uint8Array([].concat(le(0x02014b50, 4), le(20, 2), le(20, 2), le(0x0800, 2), le(0, 2), le(0, 2), le(0x21, 2), le(c, 4), le(dt.length, 4), le(dt.length, 4), le(nm.length, 2), le(0, 2), le(0, 2), le(0, 2), le(0, 2), le(0, 4), le(off, 4))), nm);
+      off += h.length + nm.length + dt.length; });
+    var cdl = cd.reduce(function (t, a) { return t + a.length; }, 0);
+    return new Blob(parts.concat(cd, [new Uint8Array([].concat(le(0x06054b50, 4), le(0, 2), le(0, 2), le(files.length, 2), le(files.length, 2), le(cdl, 4), le(off, 4), le(0, 2)))]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  function xesc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ''); }
+  function col(i) { var s = ''; i++; while (i) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; } return s; }
+  function sheetXml(rows, widths) {   // rows : [[valeurs]] ; ligne 1 = titre, ligne 3 = en-têtes (gras)
+    var x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>' + widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join('') + '</cols><sheetData>';
+    rows.forEach(function (r, ri) { x += '<row r="' + (ri + 1) + '">'; r.forEach(function (v, ci) { if (v === '' || v == null) return; var st = ri === 0 ? ' s="2"' : ri === 2 ? ' s="1"' : '', ref = col(ci) + (ri + 1);
+      x += typeof v === 'number' && isFinite(v) ? '<c r="' + ref + '"' + st + '><v>' + v + '</v></c>' : '<c r="' + ref + '" t="inlineStr"' + st + '><is><t xml:space="preserve">' + xesc(v) + '</t></is></c>'; }); x += '</row>'; });
+    return x + '</sheetData><pageSetup orientation="landscape"/></worksheet>';
+  }
+  function xlsx(sheets) {   // sheets : [[nom, rows, widths]]
+    var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + sheets.map(function (s, i) { return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join('') + '</Types>';
+    var wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + sheets.map(function (s, i) { return '<sheet name="' + xesc(s[0]) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join('') + '</sheets></workbook>';
+    var wbr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sheets.map(function (s, i) { return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join('') + '<Relationship Id="rIdS" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+    var sty = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF23355F"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF23355F"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    var rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+    return zip([['[Content_Types].xml', ct], ['_rels/.rels', rels], ['xl/workbook.xml', wb], ['xl/_rels/workbook.xml.rels', wbr], ['xl/styles.xml', sty]].concat(sheets.map(function (s, i) { return ['xl/worksheets/sheet' + (i + 1) + '.xml', sheetXml(s[1], s[2])]; })));
+  }
+  function mxExcel(us, d, lot, L) {
+    var titre = 'Commande menuiseries extérieures – Évolu\'D – ' + (lot ? lot + ' – ' : '') + fr(d), det = [[titre], [], ['Lot', 'Date envoi', 'UG', 'Adresse', 'Ville', 'Cité', 'Année constr.', 'Désignation (bon de commande Gamma)', 'Quantité', 'Unité']], rec = [[titre], [], ['UG', 'Adresse', 'Ville', 'Cité', 'Année constr.', 'Nb menuiseries', 'Date VTE', 'Commentaire']], tot = 0;
+    us.forEach(function (u) { var g = G && G[u], r = L.filter(function (x) { return x.ug === u; })[0] || { ug: u }, an = g ? String(g.an || '') : '', li = mextLignes(g);
+      if (li.length) li.forEach(function (l) { det.push([lot, fr(d), u, r.ad || '', r.ville || '', r.cite || '', an, l[0], l[1], l[2]]); });
+      else det.push([lot, fr(d), u, r.ad || '', r.ville || '', r.cite || '', an, '(détail non trouvé dans Gamma – voir prise de cotes)', isFinite(r.n) ? r.n : '', 'u']);
+      tot += v0(r.n); rec.push([u, r.ad || '', r.ville || '', r.cite || '', an, isFinite(r.n) ? r.n : '', fr(r.vte), '']); });
+    rec.push([], ['TOTAL', us.length + ' logement(s)', '', '', '', tot]); det.push([], ['Fait par Saïd OUFQIR – Bouygues Bâtiment Nord-Est']); rec.push([], ['Fait par Saïd OUFQIR – Bouygues Bâtiment Nord-Est']);
+    var blob = xlsx([['Récap logements', rec, [12, 34, 22, 20, 12, 15, 12, 30]], ['Détail menuiseries', det, [10, 12, 10, 34, 22, 20, 12, 60, 10, 8]]]);
+    var nom = 'Commande_MEXT_' + (lot ? lot.replace(/[^\w-]+/g, '_') + '_' : '') + d + '.xlsx';
+    var dl = function () { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nom; document.body.appendChild(a); a.click(); a.remove(); toast('Excel téléchargé : ' + nom); };
+    try { var f = new File([blob], nom, { type: blob.type }); if (navigator.canShare && navigator.canShare({ files: [f] }) && /iphone|ipad|android/i.test(navigator.userAgent)) { navigator.share({ files: [f], title: nom }).catch(function () { }); return; } } catch (e) { }
+    dl();
+  }
   function mxBuild() {
-    modal('mxenv', '<h3>📤 Envoi au fabricant</h3><div class="ecs-g2"><div><label>Date d\'envoi</label><input id="mx-ed" type="date"></div><div><label>N° de lot / commande (facultatif)</label><input id="mx-el" placeholder="ex. Lot 12"></div></div><label>UG envoyés (un par ligne, ou collés depuis Excel / le mail)</label><textarea id="mx-eu"></textarea><div class="ecs-ft"><span></span><span class="ecs-tl"><button class="ecs-b sec" data-close="mxenv">Annuler</button><button class="ecs-b" id="mx-eok">Valider l\'envoi</button></span></div>');
+    modal('mxenv', '<h3 id="mx-et">📤 Envoi au fabricant</h3><div class="ecs-g2"><div><label>Date d\'envoi</label><input id="mx-ed" type="date"></div><div><label>N° de lot / commande (facultatif)</label><input id="mx-el" placeholder="ex. Lot 12"></div></div><label>UG envoyés (un par ligne, ou collés depuis Excel / le mail)</label><textarea id="mx-eu"></textarea><div class="ecs-ft"><span></span><span class="ecs-tl"><button class="ecs-b sec" data-close="mxenv">Annuler</button><button class="ecs-b" id="mx-eok">Valider l\'envoi</button></span></div>');
     modal('mxres', '<h3>📝 MEXT restant à envoyer</h3><textarea id="mx-rt" style="min-height:320px"></textarea><div class="ecs-ft"><span></span><span class="ecs-tl"><button class="ecs-b sec" data-close="mxres">Fermer</button><button class="ecs-b" id="mx-rc">Copier</button></span></div>');
     modal('mxf', '<h3 id="mx-ft">MEXT</h3><div class="ecs-g2"><div><label>UG</label><input id="mx-fu" inputmode="numeric"></div><div><label>Nb de menuiseries</label><input id="mx-fn" inputmode="numeric"></div></div><label>Adresse</label><input id="mx-fa"><label>Date VTE</label><input id="mx-fv" type="date">' +
       '<label class="ecs-ck"><input type="checkbox" id="mx-fe"> Envoyée au fabricant</label><div class="ecs-g2"><div><label>Date d\'envoi</label><input id="mx-fd" type="date"></div><div><label>Lot / commande</label><input id="mx-fl"></div></div><label>Date de livraison (si livrée)</label><input id="mx-fli" type="date">' +
