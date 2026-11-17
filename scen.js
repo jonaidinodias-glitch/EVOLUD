@@ -10,7 +10,7 @@
 (function () {
   'use strict';
   if (window.EvoludScen) return;
-  var VERSION = 'scen-1.0';
+  var VERSION = 'scen-1.1';
   var KEY = 'evolud_comparatif_scenarios_v1', KEYS = 'evolud_forfaits_scenarios_v1', KEYG = 'evolud_scen_gamma_import_v1';
 
   /* ---------- outils ---------- */
@@ -406,7 +406,12 @@
     chargeGamma().then(function () { render(); if (ug) ouvrir(String(ug)); }); }
   function fermer() { root.classList.remove('open'); document.documentElement.style.overflow = ''; }
   // bouton visible seulement pour les comptes qui voient l'onglet « Balance » (conducteur / direction), jamais pour les équipes
-  function autorise() { var els = document.querySelectorAll('nav *, footer *, [class*="nav"] *, [class*="tab"] *, button, a'); for (var i = 0; i < els.length; i++) { var e = els[i]; if (e.closest && e.closest('.ecs, .ecs-md')) continue; if (e.children.length === 0 && /^\s*balance\s*$/i.test(e.textContent || '')) return true; } return false; }
+  function autorise() {   // texte propre de l'élément (sans celui de ses enfants) = « Balance »
+    var els = document.body ? document.body.getElementsByTagName('*') : [];
+    for (var i = 0; i < els.length; i++) { var e = els[i]; if (e.closest && e.closest('.ecs, .ecs-md, script, style')) continue;
+      var t = ''; for (var c = e.firstChild; c; c = c.nextSibling) if (c.nodeType === 3) t += c.nodeValue;
+      if (/^[\s\u00a0]*balance[\s\u00a0]*$/i.test(t) || (e.children.length === 0 && /^\W*balance\W*$/i.test(e.textContent || ''))) return true; }
+    return false; }
   function fab() {
     if (!document.body) return; var b = document.querySelector('.ecs-fab');
     if (!b) { b = document.createElement('button'); b.className = 'ecs-fab'; b.textContent = '⚖️'; b.title = 'Comparatif scénarios'; b.onclick = function () { ouvrirModule(); }; b.style.display = 'none'; document.body.appendChild(b); }
