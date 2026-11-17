@@ -5,12 +5,13 @@
    - Quantités réelles par poste, comparées aux quantités vendues du bon de commande Gamma
    - Pré-remplissage des quantités d'après les logements similaires (rue, cité, ville, année, type, surface)
    Données Gamma : lues dans l'appli (mise à jour quotidienne « Gamma → Évolud »), ou importées depuis le fichier evolud_gamma_AAAA-MM-JJ.json
-   API : window.EvoludScen.open(), .open('132140')
+   - v1.3 : suivi des MEXT (menuiseries ext.) envoyées au fabricant : envois par lot, date, et ce qu'il reste à envoyer
+   API : window.EvoludScen.open(), .open('132140'), .mext()
 */
 (function () {
   'use strict';
   if (window.EvoludScen) return;
-  var VERSION = 'scen-1.2';
+  var VERSION = 'scen-1.4';
   var KEY = 'evolud_comparatif_scenarios_v1', KEYS = 'evolud_forfaits_scenarios_v1', KEYG = 'evolud_scen_gamma_import_v1';
 
   /* ---------- outils ---------- */
@@ -197,7 +198,11 @@
     '.ecs-hp{font-size:12px;color:#6b7385;line-height:1.4}.ecs textarea,.ecs-sh textarea{min-height:130px;font-size:14px}',
     '.ecs-sg{text-align:center;font-size:12px;color:#6b7385;margin-top:22px}',
     '.ecs-ts{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#23355f;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:2147483300}',
-    '.ecs-sc{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}'
+    '.ecs-sc{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}',
+    '.ecs-tabs{display:flex;gap:6px;padding:8px 12px 0;max-width:1100px;margin:0 auto}.ecs-tabs button{flex:1;border:0;border-radius:10px 10px 0 0;padding:10px;font-weight:800;font-size:14px;background:#dfe5f0;color:#23355f}.ecs-tabs button.on{background:#2a4b9b;color:#fff}',
+    '.mx-r{display:flex;gap:10px;align-items:center}.mx-r input[type=checkbox]{width:26px;height:26px;flex:none}.mx-r .x{flex:1;min-width:0}',
+    '.mx-st{font-size:12px;border-radius:20px;padding:3px 9px;font-weight:700;white-space:nowrap}.mx-st.a{background:#fbe5e5;color:#c62828}.mx-st.e{background:#e3ebfb;color:#2a4b9b}.mx-st.l{background:#e3f3e5;color:#2e7d32}',
+    '.mx-hl{border-top:1px solid #e2e6ee;padding:8px 0;font-size:14px}.mx-hl summary{cursor:pointer;font-weight:700}.mx-hl p{margin:6px 0 0;font-size:13px;color:#6b7385}'
   ].join('\n');
 
   /* ---------- interface ---------- */
@@ -206,12 +211,14 @@
   function toast(t) { var e = $('ecs-ts'); e.textContent = t; e.style.display = 'block'; clearTimeout(e._t); e._t = setTimeout(function () { e.style.display = 'none'; }, 2400); }
   var MOTIFS = ['Refus du locataire', 'Menuiseries en bon état / récentes', 'Décision MOE / MOA en VTE', 'Erreur de programmation client (infos commande fausses)', 'Diag amiante / double plafond', 'Logement déjà rénové', 'Ajout de travaux en VTE', 'Imputable BBNE', 'À préciser'];
 
+  function styles() { if (document.getElementById('ecs-css')) return; var st = document.createElement('style'); st.id = 'ecs-css'; st.textContent = CSS; (document.head || document.documentElement).appendChild(st); }
   function build() {
-    var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
+    styles();
     root = document.createElement('div'); root.className = 'ecs'; root.id = 'ecs';
     root.innerHTML =
-      '<div class="ecs-h"><button class="ecs-back" id="ecs-x">‹ Retour</button><b>⚖️ Comparatif scénarios<small id="ecs-src">Commandé ➜ retenu en VTE</small></b></div>' +
-      '<div class="ecs-m">' +
+      '<div class="ecs-h"><button class="ecs-back" id="ecs-x">‹ Retour</button><b>⚖️ Scénarios &amp; MEXT<small id="ecs-src">Commandé ➜ retenu en VTE</small></b></div>' +
+      '<div class="ecs-tabs"><button class="on" data-tab="1">⚖️ Scénarios</button><button data-tab="2">🪟 MEXT envoyées</button></div>' +
+      '<div class="ecs-m" id="ecs-p1">' +
       '<div class="ecs-k">' +
       kp('kN', 'Logements comparés', 'kNs') + kp('kC', 'Commandé (forfaits)', '', 'Scénarios des commandes') + kp('kV', 'Retenu après VTE', '', 'Bons de commande Gamma') + kp('kE', 'Écart net', 'kEs') +
       kp('kG', 'Gains', 'kGs', '', 'pos') + kp('kP', 'Pertes', 'kPs', '', 'neg') + kp('kF', 'Frais engagés', '', 'VTE, cotes, commandes…') + kp('kR', 'Réclamable au client', '', 'Frais sur pertes non imputables') +
@@ -224,6 +231,15 @@
       '</div><div class="ecs-f"><input id="ecs-q" placeholder="🔎 UG, adresse, cité, ville…"><select id="ecs-fr"><option value="">Gains et pertes</option><option value="perte">Pertes</option><option value="gain">Gains</option><option value="eq">Sans écart</option><option value="motif">Motif à préciser</option></select>' +
       '<select id="ecs-fv"><option value="">Toutes les villes</option></select><select id="ecs-ft"><option value="ecart">Tri : plus grosse perte</option><option value="gain">Tri : plus gros gain</option><option value="date">Tri : VTE récente</option><option value="ug">Tri : UG</option></select></div></div>' +
       '<div id="ecs-l"></div><div class="ecs-sg">Comparatif scénarios — conçu et développé par Saïd OUFQIR</div></div>' +
+      '<div class="ecs-m" id="ecs-p2" style="display:none">' +
+      '<div class="ecs-k">' + kp('mA', 'À envoyer', 'mAs', '', 'neg') + kp('mR', 'En retard d\'envoi', 'mRs', '', 'neg') + kp('mE', 'Envoyées au fabricant', 'mEs', '', 'pos') + kp('mL', 'Livrées', 'mLs') + '</div>' +
+      '<div class="ecs-c"><h2>🛠️ Actions</h2><div class="ecs-tl"><button class="ecs-b" data-m="sel">📤 Nouvel envoi</button><button class="ecs-b sec" data-m="paste">📋 Coller les UG envoyés</button><button class="ecs-b sec" data-m="reste">📝 Ce qu\'il reste</button><button class="ecs-b sec" data-m="csv">⬇️ Export</button><button class="ecs-b sec" data-m="add">＋ Logement</button></div>' +
+      '<p class="ecs-hp">Délai : démarrage contractuel à VTE + <input id="mx-del" inputmode="numeric" style="width:60px;padding:4px 6px;font-size:14px"> j, fabrication <input id="mx-fab" inputmode="numeric" style="width:60px;padding:4px 6px;font-size:14px"> j ➜ « envoyer avant » = date VTE + délai − fabrication.</p>' +
+      '<div class="ecs-f"><input id="mx-q" placeholder="🔎 UG, adresse, cité, lot…"><select id="mx-fs"><option value="a">À envoyer</option><option value="e">Envoyées (pas livrées)</option><option value="l">Livrées</option><option value="">Toutes</option></select></div></div>' +
+      '<div class="ecs-c" id="mx-bar" style="display:none;position:sticky;top:64px;z-index:4;border:2px solid #2a4b9b"><b id="mx-nsel">0 sélectionné</b><div class="ecs-tl" style="margin-top:8px"><button class="ecs-b sec sm" data-m="tout">Tout cocher</button><button class="ecs-b sec sm" data-m="aucun">Décocher</button><button class="ecs-b sm" data-m="go">✅ Marquer comme envoyés</button><button class="ecs-b red sm" data-m="stop">Annuler</button></div></div>' +
+      '<div id="mx-l"></div>' +
+      '<div class="ecs-c"><h2>🗂️ Historique des envois</h2><div id="mx-h"></div></div>' +
+      '<div class="ecs-sg">Suivi MEXT — conçu et développé par Saïd OUFQIR</div></div>' +
       '<div class="ecs-ts" id="ecs-ts"></div>';
     document.body.appendChild(root);
     modal('form', '<h3 id="ecs-ftit">Logement</h3>' +
@@ -250,13 +266,114 @@
     modal('res', '<h3>✉️ Courrier de réserve</h3><p class="ecs-hp">Généré à partir des logements en perte non imputables à BBNE (filtres actuels). À relire et faire valider avant envoi.</p><textarea id="ecs-rt" style="min-height:300px"></textarea><div class="ecs-ft"><span></span><span class="ecs-tl"><button class="ecs-b sec" data-close="res">Fermer</button><button class="ecs-b" id="ecs-rc">Copier</button></span></div>');
     modal('imp', '<h3>📥 Données Gamma</h3><p class="ecs-hp" id="ecs-it"></p><p class="ecs-hp">Si l\'appli ne trouve pas les données : dans Gamma, lance le bouton « 🔄 Gamma → Évolud », touche « ⬇️ Télécharger le fichier », puis choisis ce fichier ici.</p><input type="file" id="ecs-if" accept=".json,application/json"><div class="ecs-ft"><button class="ecs-b sec" id="ecs-ire">🔄 Relire l\'appli</button><button class="ecs-b sec" data-close="imp">Fermer</button></div>');
 
-    root.addEventListener('click', function (e) { var a = e.target.closest('[data-a]'); if (a) action(a.getAttribute('data-a')); var r = e.target.closest('[data-ug]'); if (r) ouvrir(r.getAttribute('data-ug')); });
+    root.addEventListener('click', function (e) { var tb = e.target.closest('[data-tab]'); if (tb) { onglet(tb.getAttribute('data-tab')); return; } var mm = e.target.closest('[data-m]'); if (mm) { mxAction(mm.getAttribute('data-m')); return; } if (e.target.closest('#ecs-p2')) { mxClic(e); return; } var a = e.target.closest('[data-a]'); if (a) action(a.getAttribute('data-a')); var r = e.target.closest('[data-ug]'); if (r) ouvrir(r.getAttribute('data-ug')); });
     $('ecs-x').onclick = fermer;
     ['ecs-q', 'ecs-fr', 'ecs-fv', 'ecs-ft'].forEach(function (i) { $(i).addEventListener(i === 'ecs-q' ? 'input' : 'change', render); });
     $('e-ok').onclick = enregistrer; $('e-del').onclick = effacer; $('e-pre').onclick = function () { prefill(true); };
     ['e-ad', 'e-cite', 'e-ville', 'e-type', 'e-surf', 'e-niv', 'e-annee'].forEach(function (i) { $(i).addEventListener('change', function () { prefill(false); }); });
     $('ecs-pok').onclick = coller; $('ecs-sok').onclick = saveScen; $('ecs-rc').onclick = copierRes;
+    mxBuild();
     $('ecs-if').onchange = importFichier; $('ecs-ire').onclick = function () { chargeGamma().then(function () { infoImp(); render(); }); };
+  }
+
+  /* ---------- v1.3 : suivi des MEXT envoyées au fabricant ---------- */
+  var KEYM = 'evolud_mext_envois_v1', MX = load(KEYM, {}), mxSel = null;
+  MX.env = MX.env || {}; MX.man = MX.man || {}; MX.del = MX.del || 60; MX.fab = MX.fab || 42;
+  function mxSave() { store(KEYM, MX); }
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function fr(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('fr-FR') : ''; }
+  function addJ(d, n) { var x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); }
+  function mxListe() {   // logements avec menuiseries ext. au bon de commande Gamma + logements ajoutés à la main
+    var out = {}, k;
+    if (G) for (k in G) { var g = G[k], n = v0(venduDe(g).mext); if (n > 0) out[k] = { ug: k, ad: g.a || '', ville: g.v || '', cite: g.cite || '', n: n, vte: (g.vte && g.vte.length ? g.vte[g.vte.length - 1].d : '') }; }
+    for (k in MX.man) { var m = MX.man[k]; out[k] = Object.assign(out[k] || { ug: k }, m); }
+    for (k in MX.env) if (!out[k]) out[k] = { ug: k, ad: MX.env[k].ad || '', n: MX.env[k].n || NaN };
+    return Object.keys(out).map(function (u) { var r = out[u], e = MX.env[u] || null; r.e = e; r.st = e ? (e.liv ? 'l' : 'e') : 'a'; r.avant = r.vte ? addJ(r.vte, MX.del - MX.fab) : ''; r.retard = r.st === 'a' && r.avant && r.avant < today(); return r; });
+  }
+  function onglet(n) { [].forEach.call(root.querySelectorAll('[data-tab]'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === n); }); $('ecs-p1').style.display = n === '1' ? '' : 'none'; $('ecs-p2').style.display = n === '2' ? '' : 'none'; if (n === '2') mxRender(); root.scrollTop = 0; }
+  function mxRender() {
+    $('mx-del').value = MX.del; $('mx-fab').value = MX.fab;
+    var L = mxListe(), q = norm($('mx-q').value.trim()), fs = mxSel ? 'a' : $('mx-fs').value, c = { a: [0, 0], e: [0, 0], l: [0, 0], r: [0, 0] };
+    L.forEach(function (r) { c[r.st][0]++; c[r.st][1] += v0(r.n); if (r.retard) { c.r[0]++; c.r[1] += v0(r.n); } });
+    $('ecs-mA').textContent = c.a[0] + ' logt'; $('ecs-mAs').textContent = c.a[1] + ' menuiserie(s)'; $('ecs-mR').textContent = c.r[0] + ' logt'; $('ecs-mRs').textContent = 'date « envoyer avant » dépassée';
+    $('ecs-mE').textContent = c.e[0] + ' logt'; $('ecs-mEs').textContent = c.e[1] + ' menuiserie(s) en fabrication'; $('ecs-mL').textContent = c.l[0] + ' logt'; $('ecs-mLs').textContent = c.l[1] + ' menuiserie(s)';
+    var l = L.filter(function (r) { return (!fs || r.st === fs) && (!q || norm([r.ug, r.ad, r.ville, r.cite, r.e && r.e.lot].join(' ')).indexOf(q) >= 0); })
+      .sort(function (a, b) { if (a.st === 'a' && b.st === 'a') return String(a.avant || '9').localeCompare(String(b.avant || '9')); return String((b.e && b.e.d) || '').localeCompare(String((a.e && a.e.d) || '')) || String(a.ug).localeCompare(String(b.ug)); });
+    $('mx-bar').style.display = mxSel ? '' : 'none'; if (mxSel) $('mx-nsel').textContent = Object.keys(mxSel).length + ' logement(s) sélectionné(s) · ' + Object.keys(mxSel).reduce(function (t, u) { var r = L.filter(function (x) { return x.ug === u; })[0]; return t + v0(r && r.n); }, 0) + ' menuiserie(s)';
+    var lbl = { a: 'À envoyer', e: 'Envoyée', l: 'Livrée' };
+    $('mx-l').innerHTML = l.length ? l.map(function (r) {
+      return '<div class="ecs-r ' + (r.st === 'a' ? 'perte' : 'gain') + '" data-mug="' + esc(r.ug) + '"><div class="mx-r">' + (mxSel ? '<input type="checkbox" data-ck="' + esc(r.ug) + '"' + (mxSel[r.ug] ? ' checked' : '') + '>' : '') +
+        '<div class="x"><div class="top"><div><div class="ug">' + esc(r.ug) + '</div><div class="ad">' + esc(r.ad) + (r.ville ? ' · ' + esc(r.ville) : '') + (r.cite ? ' · ' + esc(r.cite) : '') + '</div></div><span class="mx-st ' + r.st + '">' + lbl[r.st] + '</span></div>' +
+        '<div class="ecs-mt"><span class="ecs-ch">🪟 ' + (isFinite(r.n) ? r.n : '?') + ' menuiserie(s)</span>' + (r.vte ? '<span class="ecs-ch">VTE ' + fr(r.vte) + '</span>' : '') +
+        (r.st === 'a' && r.avant ? '<span class="ecs-ch' + (r.retard ? ' w' : '') + '">' + (r.retard ? '⚠️ ' : '') + 'Envoyer avant le ' + fr(r.avant) + '</span>' : '') +
+        (r.e ? '<span class="ecs-ch">📤 ' + fr(r.e.d) + (r.e.lot ? ' · ' + esc(r.e.lot) : '') + '</span>' : '') + (r.e && r.e.liv ? '<span class="ecs-ch">🚚 ' + fr(r.e.liv) + '</span>' : '') + '</div></div></div></div>'; }).join('')
+      : '<div class="ecs-c ecs-e">' + (fs === 'a' ? '✅ Plus aucune MEXT à envoyer.' : 'Aucun logement.') + (G ? '' : '<br>Données Gamma non trouvées : utilise 📥 Fichier Gamma (onglet Scénarios) ou ＋ Logement.') + '</div>';
+    // historique par envoi (date + lot)
+    var H = {}; Object.keys(MX.env).forEach(function (u) { var e = MX.env[u], k = e.d + '|' + (e.lot || ''); (H[k] = H[k] || []).push(u); });
+    var nOf = function (u) { var r = L.filter(function (x) { return x.ug === u; })[0]; return v0(r && r.n); };
+    $('mx-h').innerHTML = Object.keys(H).sort().reverse().map(function (k) { var p = k.split('|'), us = H[k].sort(); return '<details class="mx-hl"><summary>📤 ' + fr(p[0]) + (p[1] ? ' · ' + esc(p[1]) : '') + ' — ' + us.length + ' logement(s), ' + us.reduce(function (t, u) { return t + nOf(u); }, 0) + ' menuiserie(s)</summary><p>' + us.map(esc).join(', ') + '</p></details>'; }).join('') || '<div class="ecs-hp">Aucun envoi enregistré.</div>';
+  }
+  function mxClic(e) {
+    var ck = e.target.closest('[data-ck]'); if (ck) { var u = ck.getAttribute('data-ck'); if (ck.checked) mxSel[u] = 1; else delete mxSel[u]; mxRender(); return; }
+    var r = e.target.closest('[data-mug]'); if (!r) return; var u2 = r.getAttribute('data-mug');
+    if (mxSel) { if (mxSel[u2]) delete mxSel[u2]; else mxSel[u2] = 1; mxRender(); return; }
+    mxFiche(u2);
+  }
+  function mxAction(a) {
+    var L = mxListe();
+    if (a === 'sel') { mxSel = {}; $('mx-fs').value = 'a'; mxRender(); toast('Coche les logements envoyés au fabricant'); }
+    else if (a === 'stop') { mxSel = null; mxRender(); }
+    else if (a === 'tout') { L.forEach(function (r) { if (r.st === 'a') mxSel[r.ug] = 1; }); mxRender(); }
+    else if (a === 'aucun') { mxSel = {}; mxRender(); }
+    else if (a === 'go') { var us = Object.keys(mxSel || {}); if (!us.length) { toast('Aucun logement coché'); return; } $('mx-ed').value = today(); $('mx-el').value = ''; $('mx-eu').value = us.join(' '); openM('mxenv'); }
+    else if (a === 'paste') { $('mx-ed').value = today(); $('mx-el').value = ''; $('mx-eu').value = ''; openM('mxenv'); }
+    else if (a === 'reste') mxReste('');
+    else if (a === 'csv') mxCsv(L);
+    else if (a === 'add') mxFiche(null);
+  }
+  function mxEnvoyer() {
+    var d = $('mx-ed').value || today(), lot = $('mx-el').value.trim(), L = mxListe(), us = ($('mx-eu').value.match(/\d{5,7}/g) || []).filter(function (u, i, t) { return t.indexOf(u) === i; });
+    if (!us.length) { toast('Aucun UG reconnu'); return; }
+    var inconnus = [], deja = [];
+    us.forEach(function (u) { var r = L.filter(function (x) { return x.ug === u; })[0]; if (!r) { inconnus.push(u); MX.man[u] = { ug: u }; } else if (r.e) deja.push(u); MX.env[u] = { d: d, lot: lot, n: r ? r.n : NaN, ad: r ? r.ad : '' }; });
+    mxSave(); mxSel = null; closeM('mxenv'); mxRender();
+    mxReste('✅ ' + us.length + ' logement(s) marqué(s) envoyé(s) le ' + fr(d) + (lot ? ' (' + lot + ')' : '') + '.' + (deja.length ? ' Déjà envoyés avant (date mise à jour) : ' + deja.join(', ') + '.' : '') + (inconnus.length ? ' Hors liste Gamma (ajoutés) : ' + inconnus.join(', ') + '.' : '') + '\n\n');
+  }
+  function mxReste(entete) {
+    var L = mxListe(), a = L.filter(function (r) { return r.st === 'a'; }).sort(function (x, y) { return String(x.avant || '9').localeCompare(String(y.avant || '9')); }), n = a.reduce(function (t, r) { return t + v0(r.n); }, 0), ret = a.filter(function (r) { return r.retard; });
+    var t = (entete || '') + '🪟 MEXT RESTANT À ENVOYER AU FABRICANT au ' + fr(today()) + ' : ' + a.length + ' logement(s), ' + n + ' menuiserie(s)' + (ret.length ? ', dont ' + ret.length + ' en retard' : '') + '\n\n' +
+      (a.length ? a.map(function (r) { return '- ' + r.ug + ' ' + (r.ad || '') + (r.ville ? ', ' + r.ville : '') + ' : ' + (isFinite(r.n) ? r.n : '?') + ' menuiserie(s)' + (r.avant ? ' · à envoyer avant le ' + fr(r.avant) + (r.retard ? ' ⚠️ EN RETARD' : '') : ''); }).join('\n') : 'Plus rien à envoyer ✅') + '\n\nSuivi MEXT Évolud — Saïd OUFQIR';
+    $('mx-rt').value = t; openM('mxres');
+  }
+  function mxFiche(ug) {
+    var r = ug ? mxListe().filter(function (x) { return x.ug === ug; })[0] : null; r = r || { ug: '' };
+    $('mx-fu').value = r.ug || ''; $('mx-fu').readOnly = !!ug; $('mx-fa').value = r.ad || ''; $('mx-fn').value = isFinite(r.n) ? r.n : ''; $('mx-fv').value = r.vte || '';
+    $('mx-fe').checked = !!r.e; $('mx-fd').value = r.e ? r.e.d : today(); $('mx-fl').value = r.e ? r.e.lot || '' : ''; $('mx-fli').value = r.e && r.e.liv ? r.e.liv : '';
+    $('mx-ft').textContent = ug ? 'MEXT · logement ' + ug : 'Ajouter un logement (MEXT)'; openM('mxf');
+  }
+  function mxFicheOk() {
+    var u = $('mx-fu').value.trim(); if (!/^\d{4,7}$/.test(u)) { toast('UG invalide'); return; }
+    var g = G && G[u], n = num($('mx-fn').value), m = MX.man[u] || {};
+    if (!g || !(v0(venduDe(g).mext) === n)) m.n = n; m.ug = u; if ($('mx-fa').value.trim() && (!g || $('mx-fa').value.trim() !== g.a)) m.ad = $('mx-fa').value.trim(); if ($('mx-fv').value) m.vte = $('mx-fv').value; MX.man[u] = m;
+    if ($('mx-fe').checked) MX.env[u] = { d: $('mx-fd').value || today(), lot: $('mx-fl').value.trim(), liv: $('mx-fli').value || '', n: n, ad: m.ad || (g && g.a) || '' }; else delete MX.env[u];
+    mxSave(); closeM('mxf'); mxRender(); toast('Enregistré');
+  }
+  function mxCsv(L) {
+    var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; }, lbl = { a: 'À envoyer', e: 'Envoyée', l: 'Livrée' };
+    var lines = ['UG;Adresse;Ville;Cité;Menuiseries;Date VTE;Envoyer avant;Statut;Date envoi;Lot;Date livraison'].concat(L.sort(function (a, b) { return a.st.localeCompare(b.st) || String(a.ug).localeCompare(String(b.ug)); }).map(function (r) { return [q(r.ug), q(r.ad), q(r.ville), q(r.cite), isFinite(r.n) ? r.n : '', fr(r.vte), fr(r.avant), lbl[r.st] + (r.retard ? ' (en retard)' : ''), r.e ? fr(r.e.d) : '', q(r.e ? r.e.lot : ''), r.e && r.e.liv ? fr(r.e.liv) : ''].join(';'); }));
+    lines.push('', '"Suivi MEXT — conçu et développé par Saïd OUFQIR"');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = 'Suivi_MEXT_' + today() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); toast('Export téléchargé');
+  }
+  function mxBuild() {
+    modal('mxenv', '<h3>📤 Envoi au fabricant</h3><div class="ecs-g2"><div><label>Date d\'envoi</label><input id="mx-ed" type="date"></div><div><label>N° de lot / commande (facultatif)</label><input id="mx-el" placeholder="ex. Lot 12"></div></div><label>UG envoyés (un par ligne, ou collés depuis Excel / le mail)</label><textarea id="mx-eu"></textarea><div class="ecs-ft"><span></span><span class="ecs-tl"><button class="ecs-b sec" data-close="mxenv">Annuler</button><button class="ecs-b" id="mx-eok">Valider l\'envoi</button></span></div>');
+    modal('mxres', '<h3>📝 MEXT restant à envoyer</h3><textarea id="mx-rt" style="min-height:320px"></textarea><div class="ecs-ft"><span></span><span class="ecs-tl"><button class="ecs-b sec" data-close="mxres">Fermer</button><button class="ecs-b" id="mx-rc">Copier</button></span></div>');
+    modal('mxf', '<h3 id="mx-ft">MEXT</h3><div class="ecs-g2"><div><label>UG</label><input id="mx-fu" inputmode="numeric"></div><div><label>Nb de menuiseries</label><input id="mx-fn" inputmode="numeric"></div></div><label>Adresse</label><input id="mx-fa"><label>Date VTE</label><input id="mx-fv" type="date">' +
+      '<label class="ecs-ck"><input type="checkbox" id="mx-fe"> Envoyée au fabricant</label><div class="ecs-g2"><div><label>Date d\'envoi</label><input id="mx-fd" type="date"></div><div><label>Lot / commande</label><input id="mx-fl"></div></div><label>Date de livraison (si livrée)</label><input id="mx-fli" type="date">' +
+      '<div class="ecs-ft"><span></span><span class="ecs-tl"><button class="ecs-b sec" data-close="mxf">Annuler</button><button class="ecs-b" id="mx-fok">Enregistrer</button></span></div>');
+    $('mx-eok').onclick = mxEnvoyer; $('mx-fok').onclick = mxFicheOk;
+    $('mx-rc').onclick = function () { var t = $('mx-rt'); t.select(); try { navigator.clipboard.writeText(t.value).then(function () { toast('Copié'); }, function () { document.execCommand('copy'); toast('Copié'); }); } catch (x) { document.execCommand('copy'); toast('Copié'); } };
+    $('mx-q').addEventListener('input', mxRender); $('mx-fs').addEventListener('change', mxRender);
+    ['mx-del', 'mx-fab'].forEach(function (i) { $(i).addEventListener('change', function () { var v = parseInt($(i).value, 10); if (v >= 0) { MX[i === 'mx-del' ? 'del' : 'fab'] = v; mxSave(); mxRender(); } }); });
   }
   function kp(id, l, sid, s, cls) { return '<div class="ecs-kp"><div class="l">' + l + '</div><div class="v ' + (cls || '') + '" id="ecs-' + id + '">—</div><div class="s"' + (sid ? ' id="ecs-' + sid + '"' : '') + '>' + (s || '') + '</div></div>'; }
   function modal(id, html) { var m = document.createElement('div'); m.className = 'ecs-md'; m.id = 'ecs-m-' + id; m.innerHTML = '<div class="ecs-sh">' + html + '</div>'; m.addEventListener('click', function (e) { if (e.target === m || e.target.getAttribute('data-close')) m.classList.remove('open'); }); document.body.appendChild(m); md[id] = m; }
@@ -403,7 +520,7 @@
   /* ---------- ouverture ---------- */
   function ouvrirModule(ug) { if (!autorise()) return; if (!root) build(); root.classList.add('open'); document.documentElement.style.overflow = 'hidden';
     $('ecs-l').innerHTML = '<div class="ecs-c ecs-e">Lecture des données Gamma…</div>';
-    chargeGamma().then(function () { render(); if (ug) ouvrir(String(ug)); }); }
+    chargeGamma().then(function () { render(); if ($('ecs-p2').style.display !== 'none') mxRender(); if (ug === 'mext') onglet('2'); else if (ug) ouvrir(String(ug)); }); }
   function fermer() { root.classList.remove('open'); document.documentElement.style.overflow = ''; }
   // bouton visible seulement pour les comptes qui voient l'onglet « Balance » (conducteur / direction), jamais pour les équipes
   function autorise() {   // l'onglet « Balance » est visible (conducteur / direction) ; jamais pour les équipes
@@ -417,15 +534,15 @@
   function diag() {   // adresse de l'appli + #scen : petit bandeau de contrôle
     if (!/scen/i.test(location.hash) || document.getElementById('ecs-diag')) return;
     var d = document.createElement('div'); d.id = 'ecs-diag'; d.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:2147483600;background:#23355f;color:#fff;padding:10px;border-radius:10px;font:14px system-ui,sans-serif';
-    d.textContent = 'Comparatif ' + VERSION + ' chargé · onglet Balance trouvé : ' + (autorise() ? 'oui' : 'non') + ' · bouton : ' + (document.querySelector('.ecs-fab') ? 'oui' : 'non');
+    d.style.pointerEvents = 'auto'; d.textContent = 'Comparatif ' + VERSION + ' chargé · onglet Balance trouvé : ' + (autorise() ? 'oui' : 'non') + ' · bouton : ' + (document.querySelector('.ecs-fab') ? 'oui' : 'non');
     d.onclick = function () { d.remove(); }; document.body.appendChild(d); }
   function fab() {
-    if (!document.body) return; var b = document.querySelector('.ecs-fab');
-    if (!b) { b = document.createElement('button'); b.className = 'ecs-fab'; b.textContent = '⚖️'; b.title = 'Comparatif scénarios'; b.onclick = function () { ouvrirModule(); }; b.style.display = 'none'; document.body.appendChild(b); }
+    if (!document.body) return; styles(); var b = document.querySelector('.ecs-fab');
+    if (!b) { b = document.createElement('button'); b.className = 'ecs-fab'; b.textContent = '⚖️'; b.title = 'Scénarios & MEXT'; b.onclick = function () { ouvrirModule(); }; b.style.display = 'none'; document.body.appendChild(b); }
     var ok = autorise(); b.style.display = ok ? '' : 'none'; if (!ok && root && root.classList.contains('open')) fermer();
   }
 
-  window.EvoludScen = { open: ouvrirModule, close: fermer, version: VERSION, _test: { venduDe: venduDe, score: score, rue: rue, isMapUG: isMapUG, fromParts: fromParts, search: search } };
+  window.EvoludScen = { open: ouvrirModule, mext: function () { ouvrirModule('mext'); }, close: fermer, version: VERSION, _test: { venduDe: venduDe, score: score, rue: rue, isMapUG: isMapUG, fromParts: fromParts, search: search } };
   function go() { fab(); setInterval(function () { fab(); diag(); }, 1500); }   // v1.2 : n'attend plus la fin du chargement de l'appli
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
