@@ -1,7 +1,8 @@
 /* Évolud – mise à jour quotidienne Gamma → Évolud Chantier (lancé par le favori « 🔄 Gamma → Évolud »)
  * Conçu et développé par Saïd OUFQIR
  * Lit dans Gamma (session de la personne connectée) : liste des logements (étapes, scénario),
- * planning (dates de travaux, RDV VTE / VTS), bons de commande des VTE – et envoie tout au serveur Évolud.
+ * planning (dates de travaux, RDV VTE / VTS), bons de commande des VTE, locataires et (v5.28) réserves MOE des logements
+ * passés en VTS – et envoie tout au serveur Évolud. UN SEUL bouton pour toute la mise à jour Gamma du chantier.
  * Une seule mise à jour par jour suffit pour toute l'équipe.
  */
 (function () {
@@ -128,6 +129,25 @@ function readVTE(id) {
   }).catch(function () { return null; });
 }
 
+/* v5.28 : réserves MOE (page « Réserves » du logement) – reprise du favori « Gamma du jour v5 », étape 3 */
+function readReserves(id) {
+  return fetch(BASE + '?module=reserve&id_ug=' + id, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error('Gamma ' + r.status); return r.text(); }).then(function (h) {
+    var d = parser.parseFromString(h, 'text/html'), R = [], cur = null, n;
+    var cl = function (t) { return String(t || '').replace(/\s+/g, ' ').trim(); }, dt = function (m) { return m[3] + '-' + m[2] + '-' + m[1]; };
+    var w = d.createTreeWalker(d.body || d.documentElement, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    while ((n = w.nextNode())) {
+      if (n.nodeType === 1) { if (n.tagName === 'TEXTAREA') { var desc = cl(n.textContent || n.value || ''); if (desc) { cur = [desc.replace(/[;\r\n]+/g, ' ').slice(0, 400), '', '', '']; R.push(cur); } else cur = null; } continue; }
+      if (!cur || (n.parentElement && n.parentElement.tagName === 'TEXTAREA')) continue;
+      var t = cl(n.textContent); if (!t) continue;
+      var m = t.match(/Ajout[ée]+e?\s+le\s+(\d{2})[-\/](\d{2})[-\/](\d{4})/i); if (m && !cur[1]) cur[1] = dt(m);
+      m = t.match(/valid[ée]*e?\s+le\s+(\d{2})[-\/](\d{2})[-\/](\d{4})/i);
+      if (m && !cur[2]) { cur[2] = dt(m); var p = t.match(/par\s+([A-Za-zÀ-ÿ' -]{2,40}?)(?:\s+Retour|$)/i); cur[3] = p ? cl(p[1]) : ''; }
+      else if (cur[2] && !cur[3]) { var p2 = t.match(/^par\s+([A-Za-zÀ-ÿ' -]{2,40}?)(?:\s+Retour|$)/i); if (p2) cur[3] = cl(p2[1]); }
+    }
+    return R;
+  });
+}
+
 function pool(items, n, fn, onStep) {
   var i = 0, done = 0, out = {};
   return new Promise(function (ok) {
@@ -192,6 +212,22 @@ function run() {
     return pool(todoL, 4, function (ug) { return readDossier(L[ug].id); }, function (d, n) { msg('3/4 – Locataires (page Dossier) : <b>' + d + ' / ' + n + '</b>', 76 + 6 * d / n); })
       .then(function (R) { Object.keys(R).forEach(function (ug) { lc[ug] = { v: R[ug] || null, at: Date.now() }; if (R[ug]) L[ug].loc = R[ug]; }); try { localStorage.setItem(KL, JSON.stringify(lc)); } catch (e) { } stats.loc = Object.keys(L).filter(function (u) { return L[u].loc; }).length; stats.nom = Object.keys(L).filter(function (u) { return L[u].loc && L[u].loc[0]; }).length; return B; });
   }).then(function (B) {
+    // v5.28 : réserves MOE des logements passés en VTS (relues si VTS récente, réserve encore ouverte ou contrôle tournant)
+    var KR = 'evolud_res_cache_v1', rc = {}; try { rc = JSON.parse(localStorage.getItem(KR) || '{}') || {}; } catch (e) { rc = {}; }
+    var vtsD = function (o) { return (o.vts || []).filter(function (d) { return d && d <= TODAY; }).sort().pop() || ''; };
+    var candR = Object.keys(L).filter(function (ug) { return L[ug].id && vtsD(L[ug]); });
+    var lim = new Date(MIDNIGHT - 45 * 864e5).toISOString().slice(0, 10), oldR = [];
+    var todoR = candR.filter(function (ug) { var c = rc[ug], v = vtsD(L[ug]); if (!c || c.vts !== v) return true;
+      if ((c.r || []).some(function (r) { return !r[2]; }) && (Date.now() - (c.at || 0)) > 20 * 3600e3) return true;
+      if (v >= lim && (Date.now() - (c.at || 0)) > 20 * 3600e3) return true; oldR.push(ug); return false; });
+    oldR.sort(function (a, b) { return (rc[a].at || 0) - (rc[b].at || 0); }); todoR = todoR.concat(oldR.slice(0, 25));
+    candR.forEach(function (ug) { if (rc[ug] && todoR.indexOf(ug) < 0) { L[ug].res = rc[ug].r || []; L[ug].resVts = rc[ug].vts; } });
+    if (!todoR.length) return B;
+    return pool(todoR, 3, function (ug) { return readReserves(L[ug].id); }, function (d, n) { msg('3/4 – Réserves MOE (logements en VTS) : <b>' + d + ' / ' + n + '</b>', 76 + 6 * d / n); })
+      .then(function (R) { Object.keys(R).forEach(function (ug) { if (!R[ug]) return; var v = vtsD(L[ug]); rc[ug] = { r: R[ug], vts: v, at: Date.now() }; L[ug].res = R[ug]; L[ug].resVts = v; });
+        try { localStorage.setItem(KR, JSON.stringify(rc)); } catch (e) { } return B; });
+  }).then(function (B) {
+    stats.res = 0; stats.resO = 0; Object.keys(L).forEach(function (ug) { (L[ug].res || []).forEach(function (r) { stats.res++; if (!r[2]) stats.resO++; }); });
     Object.keys(L).forEach(function (ug) { if (L[ug].bdc) stats.bdc++; });
     msg('4/4 – Envoi vers Évolud…', 82);
     var s = JSON.stringify(L), parts = [], SZ = 30000;
@@ -206,7 +242,7 @@ function run() {
     return seq.then(function () { return api({ action: 'sync', since: now, records: [{ c: 'params', id: 'gammaMaj', updatedAt: Date.now(), data: { id: 'gammaMaj', v: meta, updatedAt: Date.now(), by: by } }] }); }).then(function () { return stats; })
       .catch(function (e) { e.data = s; e.meta = meta; throw e; });
   }).then(function (st) {
-    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
+    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.res ? ' · ' + st.res + ' réserves (' + st.resO + ' non validées)' : '') + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
     btn('Fermer', close, true);
   }).catch(function (e) {
     if (e.message === 'LOGIN') { msg('⚠️ Tu n\'es pas connecté à Gamma. Connecte-toi puis touche à nouveau le bouton.', 100); btn('Fermer', close, true); return; }
