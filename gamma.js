@@ -91,18 +91,21 @@ function fieldAfter(doc, re) {   // v5.24.4 : la page Dossier répète les champ
   }
   return '';
 }
-function readDossier(id) {
-  return getDoc(BASE + '?module=dossier&id_ug=' + id).then(function (doc) {
-    var n = fieldAfter(doc, /^\s*Nom\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i) || fieldAfter(doc, /^\s*Locataire\s*\*?\s*:?\s*$/i), t = fieldAfter(doc, /^\s*T[ée]l[ée]phone\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i).replace(/[^\d+]/g, '');
-    if (!n) { try {   // v5.24.3 : 2 autres façons de lire le nom (valeur dans le code HTML, ou texte entre les deux libellés)
-      var h = doc.body.innerHTML, k = h.search(/Nom\s*(du\s*)?locataire/i);
-      if (k >= 0) { var seg = h.slice(k, k + 900).split(/T[ée]l[ée]phone/i)[0], mv = seg.match(/(?:value|placeholder|data-value)\s*=\s*["']([^"']{2,80})["']/i) || seg.replace(/<[^>]+>/g, '\n').replace(/Nom\s*(du\s*)?locataire\s*\*?\s*:?/i, '').match(/([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' .-]{1,60})/);
-        if (mv) n = mv[1].trim(); if (!n) localStorage.setItem('evolud_dbg_nom', h.slice(k, k + 600)); }
-    } catch (e) { } }
-    if (/^[\d\s.+]{8,}$/.test(n) && !t) { t = n.replace(/[^\d+]/g, ''); n = ''; }   // sécurité : un numéro lu à la place du nom
-    if (/^[\d\s.+]{8,}$/.test(n)) n = '';
+function readDossier(id) {   // v5.28.3 : champs lus par leur nom (nom_locataire, telephone_locataire…) – l'étiquette est APRÈS la case dans Gamma
+  return fetch(BASE + '?module=dossier&id_ug=' + id, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error('Gamma ' + r.status); return r.text(); }).then(function (raw) {
+    var doc = parser.parseFromString(raw, 'text/html');
+    var val = function (nm) { var E = doc.querySelectorAll('[name="' + nm + '"],#' + nm); for (var k = 0; k < E.length; k++) { var v = String(E[k].getAttribute('value') || E[k].value || '').trim(); if (v) return v; } return ''; };
+    var n = val('nom_locataire'), t = val('telephone_locataire').replace(/[^\d+]/g, ''), m = val('mail_locataire');
+    if (!n) n = fieldAfter(doc, /^\s*Nom\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i);
+    if (!t) t = fieldAfter(doc, /^\s*T[ée]l[ée]phone\s+(du\s+)?locataire\s*\*?\s*:?\s*$/i).replace(/[^\d+]/g, '');
+    if (/^[\d\s.+]{8,}$/.test(n)) { if (!t) t = n.replace(/[^\d+]/g, ''); n = ''; }
     if (t === '0' || /^0+$/.test(t)) t = '';
-    return (n || t) ? [n.slice(0, 60), t.slice(0, 20)] : null;
+    // dossier : montants, scénario cible, dates de travaux, documents (diags amiante / plomb avec présence Oui/Non)
+    var docs = [], re = /<td>\s*([^<]{2,60}?)\s*<\/td>\s*<td>\s*<a href="\.?\/?(fichiers\/[^"]+)"[^>]*>[^<]*<\/a>\s*<\/td>\s*<td>\s*(?:<span[^>]*>\s*(Oui|Non)\s*<\/span>)?\s*<\/td>/gi, mm;
+    while ((mm = re.exec(raw)) && docs.length < 40) docs.push([mm[1].trim(), mm[2], mm[3] || '']);
+    var D = { mi: num(val('montant_travaux')), mc: num(val('montant_commande')), sc: val('scenario_cible'), deb: val('date_rdv_travaux'), fin: val('date_fin_travaux'), docs: docs,
+      am: /Pr[ée]sence amiante ou plomb dans l'UG/i.test(raw) };
+    return (n || t || docs.length) ? [n.slice(0, 60), t.slice(0, 20), m.slice(0, 80), D] : null;
   }).catch(function () { return null; });
 }
 function readVTE(id) {
@@ -205,12 +208,12 @@ function run() {
     // v5.24 : coordonnées des locataires (page Dossier) – lues une fois puis gardées en mémoire, contrôle tous les 30 jours
     var KL = 'evolud_loc_cache_v4', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
     var cand = Object.keys(L).filter(function (ug) { var o = L[ug]; return o.id && (o.bdc || o.deb || o.vteRdv); });
-    var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5 || (c.v && !c.v[0]); }).slice(0, 400);   // v5.24.3 : on relit les dossiers où le nom manque
-    cand.forEach(function (ug) { if (lc[ug] && lc[ug].v) L[ug].loc = lc[ug].v; });
+    var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5 || (c.v && (!c.v[0] || !c.v[3])); }).slice(0, 450);   // v5.28.3 : relecture des noms manquants et des dossiers sans documents   // v5.24.3 : on relit les dossiers où le nom manque
+    cand.forEach(function (ug) { if (lc[ug] && lc[ug].v) { L[ug].loc = lc[ug].v.slice(0, 3); if (lc[ug].v[3]) L[ug].dos = lc[ug].v[3]; } });
     stats.loc = cand.filter(function (u) { return L[u].loc; }).length; stats.nom = cand.filter(function (u) { return L[u].loc && L[u].loc[0]; }).length;
     if (!todoL.length) return B;
     return pool(todoL, 4, function (ug) { return readDossier(L[ug].id); }, function (d, n) { msg('3/4 – Locataires (page Dossier) : <b>' + d + ' / ' + n + '</b>', 76 + 6 * d / n); })
-      .then(function (R) { Object.keys(R).forEach(function (ug) { lc[ug] = { v: R[ug] || null, at: Date.now() }; if (R[ug]) L[ug].loc = R[ug]; }); try { localStorage.setItem(KL, JSON.stringify(lc)); } catch (e) { } stats.loc = Object.keys(L).filter(function (u) { return L[u].loc; }).length; stats.nom = Object.keys(L).filter(function (u) { return L[u].loc && L[u].loc[0]; }).length; return B; });
+      .then(function (R) { Object.keys(R).forEach(function (ug) { lc[ug] = { v: R[ug] || null, at: Date.now() }; if (R[ug]) { L[ug].loc = R[ug].slice(0, 3); if (R[ug][3]) L[ug].dos = R[ug][3]; } }); try { localStorage.setItem(KL, JSON.stringify(lc)); } catch (e) { } stats.loc = Object.keys(L).filter(function (u) { return L[u].loc; }).length; stats.nom = Object.keys(L).filter(function (u) { return L[u].loc && L[u].loc[0]; }).length; return B; });
   }).then(function (B) {
     // v5.28 : réserves MOE des logements passés en VTS (relues si VTS récente, réserve encore ouverte ou contrôle tournant)
     var KR = 'evolud_res_cache_v1', rc = {}; try { rc = JSON.parse(localStorage.getItem(KR) || '{}') || {}; } catch (e) { rc = {}; }
@@ -256,7 +259,7 @@ function run() {
     return seq.then(function () { return api({ action: 'sync', since: now, records: [{ c: 'params', id: 'gammaMaj', updatedAt: Date.now(), data: { id: 'gammaMaj', v: meta, updatedAt: Date.now(), by: by } }] }); }).then(function () { return stats; })
       .catch(function (e) { e.data = s; e.meta = meta; throw e; });
   }).then(function (st) {
-    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.res ? ' · ' + st.res + ' réserves (' + st.resO + ' non validées)' : '') + '<div style="font-size:11px;color:#888;margin-top:4px">v5.28.2 · ' + (st.rec || 0) + ' logements réceptionnés dans Gamma' + (!st.rec && st.ph3 ? ' – étapes réception lues : ' + Object.keys(st.ph3).slice(0, 6).join(' / ').replace(/[<>]/g, '') : '') + '</div>' + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
+    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.res ? ' · ' + st.res + ' réserves (' + st.resO + ' non validées)' : '') + '<div style="font-size:11px;color:#888;margin-top:4px">v5.28.3 · ' + (st.rec || 0) + ' logements réceptionnés dans Gamma' + (!st.rec && st.ph3 ? ' – étapes réception lues : ' + Object.keys(st.ph3).slice(0, 6).join(' / ').replace(/[<>]/g, '') : '') + '</div>' + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
     btn('Fermer', close, true);
   }).catch(function (e) {
     if (e.message === 'LOGIN') { msg('⚠️ Tu n\'es pas connecté à Gamma. Connecte-toi puis touche à nouveau le bouton.', 100); btn('Fermer', close, true); return; }
