@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2a44">
+<title>EVOLUD · Logistique & Kitting</title>
+<style>
+:root{--navy:#0f2a44;--navy2:#173a5e;--bg:#f3f5f8;--card:#fff;--ink:#1b2430;--mut:#5d6b7a;--line:#dfe4ea;
+--ok:#1f8a4c;--warn:#d98b00;--ko:#c62f2f;--info:#2563a8;--acc:#f07c1b;--wait:#7a5bb5}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+header{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:10px 14px calc(10px);display:flex;align-items:center;gap:10px}
+header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px}
+header small{display:block;font-weight:400;opacity:.75;font-size:11px}
+header a.back{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:5px 9px;font-size:12px;white-space:nowrap}
+header .sp{flex:1}
+main{padding:12px 12px 90px;max-width:1200px;margin:0 auto}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;border:0;background:none;padding:7px 2px 8px;font-size:10.5px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+nav.tabs button b{font-size:18px;line-height:1}
+nav.tabs button.on{color:var(--navy);font-weight:700}
+nav.tabs button .bdg{background:var(--ko);color:#fff;border-radius:9px;padding:0 5px;font-size:10px;margin-left:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 8px}
+.card h3{font-size:13px;margin:10px 0 6px;color:var(--navy2)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.kpi .v{font-size:20px;font-weight:700}
+.kpi .l{font-size:11px;color:var(--mut)}
+.pill{display:inline-block;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.p-ok{background:#e3f4ea;color:var(--ok)}.p-warn{background:#fff3dc;color:#9a6300}.p-ko{background:#fbe5e5;color:var(--ko)}
+.p-info{background:#e3eefa;color:var(--info)}.p-wait{background:#efe9f8;color:var(--wait)}.p-mut{background:#eef1f4;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:#f7f9fb;font-weight:600;color:var(--mut);font-size:11.5px;position:sticky;top:0}
+.tw{overflow:auto;max-height:65vh;border:1px solid var(--line);border-radius:8px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.btn{border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:8px;padding:7px 11px;font-size:13px;cursor:pointer}
+.btn.sec{background:#fff;color:var(--navy)}
+.btn.sm{padding:4px 8px;font-size:12px}
+.btn.acc{background:var(--acc);border-color:var(--acc)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{font:inherit;border:1px solid var(--line);border-radius:7px;padding:5px 7px;background:#fff;max-width:100%}
+input[type=number]{width:90px}
+label.f{display:flex;flex-direction:column;font-size:11.5px;color:var(--mut);gap:3px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.mut{color:var(--mut)}.small{font-size:11.5px}
+.al{border-left:4px solid var(--warn);padding:8px 10px;background:#fff;border-radius:8px;margin-bottom:8px;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.al.ko{border-left-color:var(--ko)}.al.info{border-left-color:var(--info)}
+.al b{display:block;font-size:13px}
+#map{width:100%;aspect-ratio:4/3;height:auto;max-height:62vh;min-height:300px;background:#eaf0f5;border-radius:10px;border:1px solid var(--line);touch-action:none;cursor:grab;display:block}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.just{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12.5px}
+.just p{margin:4px 0}
+.verdict{font-weight:700;font-size:14px}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin:1px;font-size:11px;background:#fafbfc}
+footer{text-align:center;color:var(--mut);font-size:11px;padding:8px 0 20px}
+.hide{display:none!important}
+details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
+#toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1b2430;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:50;opacity:0;transition:opacity .25s;pointer-events:none}
+#toast.on{opacity:1}
+@media print{header,nav.tabs,.noprint,footer{display:none!important}main{padding:0}.card{border:0;break-inside:avoid}#printzone{display:block!important}.screen{display:none!important}}
+#printzone{display:none}
+.fk{page-break-after:always;font-size:12px}
+.fk h2{font-size:16px;margin:0 0 4px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>EVOLUD · Logistique & Kitting <small>Kits logements · Tournées · Zones tampons · Base Bruay-la-Buissière</small></h1></div>
+  <div class="sp"></div>
+  <a class="back" href="./index.html">← Appli EVOLUD</a>
+</header>
+
+<main class="screen">
+  <section id="v-carte"></section>
+  <section id="v-kits" class="hide"></section>
+  <section id="v-liv" class="hide"></section>
+  <section id="v-tampon" class="hide"></section>
+  <section id="v-alertes" class="hide"></section>
+  <section id="v-donnees" class="hide"></section>
+  <footer>Module Logistique EVOLUD · v1.0 · Conçu et développé par Saïd OUFQIR</footer>
+</main>
+<div id="printzone"></div>
+<div id="toast"></div>
+
+<nav class="tabs">
+  <button data-v="carte" class="on"><b>🗺️</b>Carte</button>
+  <button data-v="kits"><b>📦</b>Kits</button>
+  <button data-v="liv"><b>🚚</b>Livraisons</button>
+  <button data-v="tampon"><b>📍</b>Tampons</button>
+  <button data-v="alertes"><b>⚠️</b>Alertes<span id="nbAl"></span></button>
+  <button data-v="donnees"><b>⚙️</b>Données</button>
+</nav>
+
+<script>
+"use strict";
+/* =====================================================================
+   MODULE LOGISTIQUE EVOLUD — v1.0
+   Conçu et développé par Saïd OUFQIR
+   Aucune dépendance externe : fonctionne hors ligne et sur PC filtré.
+   Données propres au module uniquement (stock, commandes, kits préparés,
+   zones tampons activées). Les logements, dates et prestations restent
+   ceux d'EVOLUD / Planning_EVOLUD : ils sont relus à chaque import
+   (cache remplacé, jamais ressaisi).
+   ===================================================================== */
+const LS_KEY = 'evolud_logistique_v1';
+
+/* ---------- Référentiel communes (coordonnées approchées du centre-ville, modifiables) ---------- */
+const COMMUNES = [
+ ['Bruay-la-Buissière',50.4833,2.5500],['Houdain',50.4500,2.5333],['Annequin',50.5050,2.7200],
+ ['Béthune',50.5303,2.6408],['Barlin',50.4567,2.6178],['Haillicourt',50.4747,2.5853],['Divion',50.4697,2.5050],
+ ['Calonne-Ricouart',50.4867,2.4817],['Marles-les-Mines',50.5036,2.5050],['Auchel',50.5083,2.4736],
+ ['Lillers',50.5617,2.4833],['Isbergues',50.6230,2.4580],['Noeux-les-Mines',50.4778,2.6650],
+ ['Labourse',50.4980,2.6800],['Beuvry',50.5180,2.6800],['Cambrin',50.5117,2.7417],['Cuinchy',50.5183,2.7472],
+ ['Auchy-les-Mines',50.5133,2.7833],['Douvrin',50.5078,2.8317],['Vermelles',50.4889,2.7472],
+ ['Mazingarbe',50.4708,2.7183],['Grenay',50.4500,2.7444],['Bully-les-Mines',50.4433,2.7258],
+ ['Loos-en-Gohelle',50.4572,2.7925],['Liévin',50.4228,2.7781],['Lens',50.4322,2.8333],['Avion',50.4097,2.8333],
+ ['Wingles',50.4936,2.8536],['Sallaumines',50.4175,2.8608],['Méricourt',50.4017,2.8664],['Harnes',50.4458,2.9058],
+ ['Billy-Montigny',50.4172,2.9031],['Courrières',50.4581,2.9475],['Hénin-Beaumont',50.4214,2.9508],
+ ['Carvin',50.4925,2.9572],['Oignies',50.4686,2.9933],['Libercourt',50.4833,3.0167],['Douai',50.3700,3.0794],
+ ['Arras',50.2910,2.7775],['Saint-Pol-sur-Ternoise',50.3811,2.3361],['Hersin-Coupigny',50.4472,2.6497],
+ ['Ruitz',50.4667,2.5900],['Maisnil-lès-Ruitz',50.4580,2.5850],['Lapugnoy',50.5180,2.5340],['Gosnay',50.5120,2.5880],
+ ['Hesdigneul-lès-Béthune',50.4960,2.5960],['Fouquières-lès-Béthune',50.5150,2.6100],['Vendin-le-Vieil',50.4740,2.8650],
+ ['Sains-en-Gohelle',50.4450,2.6830],['Aix-Noulette',50.4250,2.7150],['Annezin',50.5330,2.6170],['Chocques',50.5400,2.5700]
+];
+const norm = s => String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const COMM_IDX = {}; COMMUNES.forEach(c=>COMM_IDX[norm(c[0])]=c);
+function findCommune(txt){
+  const n=' '+norm(txt)+' ';
+  if(!n.trim()) return null;
+  if(COMM_IDX[n.trim()]) return COMM_IDX[n.trim()];
+  let best=null; // nom le plus long contenu dans le texte (évite "Lens" dans "Valenciennes")
+  for(const c of COMMUNES){const k=' '+norm(c[0])+' '; if(n.includes(k) && (!best||k.length>norm(best[0]).length+2)) best=c;}
+  if(!best && /\bbruay\b/.test(n)) best=COMM_IDX['bruay la buissiere'];
+  return best;
+}
+
+/* ---------- Catalogue des prestations → kits (valeurs par défaut À AJUSTER) ---------- */
+// mode : kit = préparé à la base BBNE ; surmesure = fabriqué sur cotes (commande + délai) ; plateforme = livré par la plateforme logistique ;
+//        cotraitant = fourniture et livraison par l'entreprise (hors kit, à synchroniser)
+const DEF_CATALOGUE = [
+ {code:'MEXT',lib:'Menuiseries extérieures',ent:'GROSFILEX',lot:'Menuiseries',mode:'plateforme',delai:42,kw:['mext','menuiserie ext','menuiseries ext','fenetre','fenetres','chassis'],
+  art:[{id:'MEXT-LOT',des:'Lot menuiseries du logement (sur cotes)',q:1,u:'lot',v:1.6,kg:190}]},
+ {code:'PF',lib:'Porte-fenêtre',ent:'BBNE',lot:'Menuiseries',mode:'surmesure',delai:42,kw:['porte fenetre','pf'],
+  art:[{id:'PF-BLOC',des:'Porte-fenêtre (sur cotes)',q:1,u:'u',v:0.45,kg:55},{id:'MEN-CONSO',des:'Kit pose menuiserie (mousse, mastic, vis)',q:1,u:'kit',v:0.02,kg:3}]},
+ {code:'PE',lib:"Porte d'entrée",ent:'BBNE',lot:'Menuiseries',mode:'surmesure',delai:42,kw:['porte d entree','porte entree','pe','porte palier'],
+  art:[{id:'PE-BLOC',des:"Bloc-porte d'entrée (Belleforière / Condé St Pierre)",q:1,u:'u',v:0.35,kg:65},{id:'PE-EBR',des:'Ébrasements PVC + listels',q:1,u:'kit',v:0.04,kg:4},{id:'MEN-CONSO',des:'Kit pose menuiserie (mousse, mastic, vis)',q:1,u:'kit',v:0.02,kg:3}]},
+ {code:'PBS',lib:'Porte BS',ent:'BBNE',lot:'Menuiseries',mode:'surmesure',delai:42,kw:['porte bs','porte de bs','porte arriere','porte bs '],
+  art:[{id:'PBS-BLOC',des:'Bloc-porte BS feuilleté anti-effraction',q:1,u:'u',v:0.30,kg:55},{id:'MEN-CONSO',des:'Kit pose menuiserie (mousse, mastic, vis)',q:1,u:'kit',v:0.02,kg:3}]},
+ {code:'TBP',lib:'Trappe BP',ent:'BBNE',lot:'Plâtrerie',mode:'kit',delai:7,kw:['trappe bp','trappes bp','trappe bat principal','trappe'],
+  art:[{id:'TRAPPE',des:"Trappe d'accès isolée 60×60",q:1,u:'u',v:0.05,kg:7},{id:'TRAPPE-FIX',des:'Kit fixation trappe (tasseaux, vis, joint)',q:1,u:'kit',v:0.01,kg:1.5}]},
+ {code:'TBS',lib:'Trappe BS',ent:'BBNE',lot:'Plâtrerie',mode:'kit',delai:7,kw:['trappe bs','trappes bs'],
+  art:[{id:'TRAPPE',des:"Trappe d'accès isolée 60×60",q:1,u:'u',v:0.05,kg:7},{id:'TRAPPE-FIX',des:'Kit fixation trappe (tasseaux, vis, joint)',q:1,u:'kit',v:0.01,kg:1.5}]},
+ {code:'RAMP',lib:'Rampants escalier / comble',ent:'BBNE',lot:'Plâtrerie',mode:'kit',delai:7,kw:['rampant','rampants'],
+  art:[{id:'BA13',des:'Plaque BA13 2,50×1,20',q:6,u:'u',v:0.0375,kg:25},{id:'FOURR',des:'Fourrure F530 3 m',q:10,u:'u',v:0.003,kg:1.4},{id:'LV100',des:'Laine de verre 100 mm (rouleau)',q:2,u:'rlx',v:0.25,kg:9},{id:'PLAT-CONSO',des:'Kit plâtrerie (vis, bande, enduit)',q:1,u:'kit',v:0.02,kg:12}]},
+ {code:'GC',lib:'Garde-corps',ent:'BBNE',lot:'Serrurerie',mode:'kit',delai:14,kw:['garde corps','gc'],
+  art:[{id:'GC-U',des:'Garde-corps métallique + fixations',q:1,u:'u',v:0.12,kg:22}]},
+ {code:'DETAL',lib:'Détalonnage portes',ent:'BBNE',lot:'Menuiseries int.',mode:'kit',delai:3,kw:['detalonnage','detalonage'],
+  art:[{id:'DETAL-CONSO',des:'Consommables détalonnage (lames, protections)',q:1,u:'kit',v:0.005,kg:0.5}]},
+ {code:'PSDB',lib:'Plafond SDB',ent:'BBNE',lot:'Plâtrerie',mode:'kit',delai:7,kw:['plafond sdb','plafond salle de bain'],
+  art:[{id:'BA13H',des:'Plaque BA13 hydro 2,50×1,20',q:2,u:'u',v:0.0375,kg:26},{id:'FOURR',des:'Fourrure F530 3 m',q:6,u:'u',v:0.003,kg:1.4},{id:'PLAT-CONSO',des:'Kit plâtrerie (vis, bande, enduit)',q:1,u:'kit',v:0.02,kg:12}]},
+ {code:'PDBS',lib:'Plafond droit BS',ent:'BBNE',lot:'Plâtrerie',mode:'kit',delai:7,kw:['plafond droit','plafond bs'],
+  art:[{id:'BA13',des:'Plaque BA13 2,50×1,20',q:3,u:'u',v:0.0375,kg:25},{id:'FOURR',des:'Fourrure F530 3 m',q:8,u:'u',v:0.003,kg:1.4},{id:'PLAT-CONSO',des:'Kit plâtrerie (vis, bande, enduit)',q:1,u:'kit',v:0.02,kg:12}]},
+ {code:'MF',lib:'Murs froids',ent:'BBNE',lot:'Plâtrerie',mode:'kit',delai:7,kw:['murs froids','mur froid'],
+  art:[{id:'DOUBL',des:'Complexe de doublage 10+80',q:4,u:'u',v:0.27,kg:28},{id:'MAP',des:'Mortier adhésif (sac 25 kg)',q:2,u:'sac',v:0.018,kg:25}]},
+ {code:'BV',lib:'Bouchement ventilation maçonnerie',ent:'BBNE',lot:'Maçonnerie',mode:'kit',delai:3,kw:['bouchement','ventilation maconnerie','bouchement ventil'],
+  art:[{id:'MORT',des:'Mortier (sac 25 kg)',q:2,u:'sac',v:0.018,kg:25},{id:'BRIQ',des:'Briques / parpaings',q:4,u:'u',v:0.01,kg:5}]},
+ {code:'PLAN',lib:'Réfection plancher',ent:'BBNE',lot:'Menuiseries int.',mode:'kit',delai:7,kw:['plancher','refection plancher'],
+  art:[{id:'OSB',des:'Panneau OSB 18 mm 2,50×0,675',q:3,u:'u',v:0.03,kg:20},{id:'VIS-PL',des:'Vis plancher (boîte)',q:1,u:'bte',v:0.002,kg:1.5}]},
+ {code:'DEB',lib:'Débarras des combles',ent:'BBNE',lot:'Préparation',mode:'kit',delai:3,kw:['debarras','debarras combles'],
+  art:[{id:'BIGBAG',des:'Big bag 1 m³',q:3,u:'u',v:0.01,kg:1.2}]},
+ {code:'DEG',lib:'Dégagement',ent:'BBNE',lot:'Préparation',mode:'kit',delai:3,kw:['degagement'],
+  art:[{id:'PROT',des:'Kit protections (polyane, bâche, adhésif)',q:1,u:'kit',v:0.02,kg:3}]},
+ {code:'SOUF',lib:'Soufflage BP/BS',ent:'ISOWECK',lot:'Isolation',mode:'cotraitant',delai:0,kw:['soufflage'],art:[]},
+ {code:'VMC',lib:'VMC (création / remplacement)',ent:'GDS',lot:'Ventilation',mode:'cotraitant',delai:0,kw:['vmc'],art:[]},
+ {code:'VMR',lib:'VMR',ent:'GDS',lot:'Ventilation',mode:'cotraitant',delai:0,kw:['vmr'],art:[]},
+ {code:'VELUX',lib:'Velux',ent:'ATS',lot:'Couverture',mode:'cotraitant',delai:0,kw:['velux','fenetre de toit'],art:[]}
+];
+
+const DEF_PARAMS = {
+  base:{nom:'Base logistique BBNE – Bruay-la-Buissière',lat:50.4833,lon:2.5500},
+  facteurRoute:1.30,   // distance routière ≈ vol d'oiseau × 1,30 (réseau secondaire, valeur usuelle)
+  vitesse:42,          // km/h moyenne utilitaire en zone urbaine / périurbaine
+  coutKmVL:0.42,       // € / km utilitaire 12 m³ (carburant + usure + entretien)
+  capVL:10,            // m³ utiles par tournée utilitaire
+  coutKmPL:1.05,       // € / km porteur 19 t pour la navette tampon
+  capPL:30,            // m³ utiles porteur
+  coutHeure:38,        // € / h chargé chauffeur-manutentionnaire
+  tArret:15,           // min de déchargement par arrêt (logement / chantier)
+  tChargeBase:20,      // min de chargement au départ
+  manutKit:12,         // min de manutention supplémentaire par kit en zone tampon (dépose + reprise)
+  coutStockMois:220,   // € / mois d'un conteneur 20' sécurisé loué (0 si base-vie existante)
+  seuilKm:12,          // distance routière minimale pour étudier une zone tampon
+  seuilGain:15,        // % de gain minimal exigé pour recommander une zone tampon
+  rayonCluster:6,      // km : communes regroupées dans un même secteur
+  jPrep:1,             // livraison J-1 ouvré avant démarrage
+  horizon:6,           // semaines analysées
+  cadenceDefaut:3,     // logements démarrés / jour ouvré par chantier (si pas de dates)
+  volDefaut:1.2        // m³ / logement hors menuiseries si prestations inconnues
+};
+
+const DEF_CHANTIERS = [
+  {id:'E1-BRUAY',nom:'Évolud 1 – Bruay-la-Buissière',commune:'Bruay-la-Buissière',prog:'Évolud 1',statut:'actif',nb:null,debut:'',fin:'',baseVie:true},
+  {id:'E1-HOUDAIN',nom:'Évolud 1 – Houdain',commune:'Houdain',prog:'Évolud 1',statut:'actif',nb:null,debut:'',fin:'',baseVie:false},
+  {id:'E2-BRUAY',nom:'Évolud 2 – Bruay-la-Buissière',commune:'Bruay-la-Buissière',prog:'Évolud 2',statut:'futur',nb:88,debut:'2027-01-11',fin:'',baseVie:true},
+  {id:'E2-ANNEQUIN',nom:'Évolud 2 – Annequin',commune:'Annequin',prog:'Évolud 2',statut:'futur',nb:78,debut:'2027-01-11',fin:'',baseVie:false}
+];
+
+/* ---------- État ---------- */
+let S = load();
+function load(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+  s = s||{};
+  s.params = Object.assign({}, structuredClone(DEF_PARAMS), s.params||{});
+  s.params.base = Object.assign({}, DEF_PARAMS.base, (s.params&&s.params.base)||{});
+  s.catalogue = s.catalogue || structuredClone(DEF_CATALOGUE);
+  s.chantiers = s.chantiers || structuredClone(DEF_CHANTIERS);
+  s.logements = s.logements || [];       // cache d'import (remplacé à chaque import)
+  s.source = s.source || null;           // {fichier, feuille, date, nb}
+  s.stock = s.stock || {};               // {articleId: qte en stock base}
+  s.commandes = s.commandes || {};       // {ug: {CODE: 'AAAA-MM-JJ'}} commandes sur-mesure
+  s.prepares = s.prepares || {};         // {ug: 'AAAA-MM-JJ'} kit préparé / contrôlé
+  s.livres = s.livres || {};             // {ug: 'AAAA-MM-JJ'} kit livré
+  s.tampons = s.tampons || {};           // {clusterKey: {actif:true, lieu, date}}
+  s.mapping = s.mapping || null;
+  return s;
+}
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){ toast('⚠️ Stockage local indisponible : données non conservées'); } }
+
+/* ---------- Utilitaires ---------- */
+const $ = (s,el=document)=>el.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (n,d=0)=> (n==null||isNaN(n))?'–':Number(n).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const eur = n => fmt(n,0)+' €';
+const todayISO = ()=> { const d=new Date(); d.setHours(12,0,0,0); return d.toISOString().slice(0,10); };
+const toD = iso => { if(!iso) return null; const d=new Date(iso+'T12:00:00'); return isNaN(d)?null:d; };
+const iso = d => d.toISOString().slice(0,10);
+const addDays = (isoS,n)=>{ const d=toD(isoS); d.setDate(d.getDate()+n); return iso(d); };
+const diffDays = (a,b)=> Math.round((toD(a)-toD(b))/86400000);
+const frDate = s => s? toD(s).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'}) : '–';
+function isWork(d){ const w=d.getDay(); return w>=1 && w<=5; }
+function prevWorkDay(isoS,n){ let d=toD(isoS); let k=0; while(k<n){ d.setDate(d.getDate()-1); if(isWork(d)) k++; } return iso(d); }
+function addWorkDays(isoS,n){ let d=toD(isoS); while(!isWork(d)) d.setDate(d.getDate()+1); let k=0; while(k<n){ d.setDate(d.getDate()+1); if(isWork(d)) k++; } return iso(d); }
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2600); }
+function hav(a,b){ const R=6371, r=x=>x*Math.PI/180; const dLa=r(b.lat-a.lat), dLo=r(b.lon-a.lon);
+  const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+const P = ()=>S.params;
+function road(a,b){ return hav(a,b)*P().facteurRoute; }
+function minutes(km){ return km/P().vitesse*60; }
+function coordsOf(ch){
+  if(ch.lat!=null && ch.lon!=null && ch.lat!=='' && ch.lon!=='') return {lat:+ch.lat,lon:+ch.lon};
+  const c=findCommune(ch.commune); return c?{lat:c[1],lon:c[2]}:null;
+}
+
+/* ---------- Lecteur XLSX / CSV sans dépendance ---------- */
+async function inflateRaw(u8){
+  const ds=new DecompressionStream('deflate-raw'); const w=ds.writable.getWriter(); w.write(u8); w.close();
+  return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+}
+async function unzip(buf){
+  const u8=new Uint8Array(buf), dv=new DataView(buf); let eocd=-1;
+  for(let i=u8.length-22;i>=Math.max(0,u8.length-66000);i--){ if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;} }
+  if(eocd<0) throw new Error('Fichier Excel illisible (zip)');
+  const n=dv.getUint16(eocd+10,true); let p=dv.getUint32(eocd+16,true); const files={}; const td=new TextDecoder();
+  for(let i=0;i<n;i++){
+    const meth=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), el=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), off=dv.getUint32(p+42,true);
+    const name=td.decode(u8.subarray(p+46,p+46+nl));
+    const lnl=dv.getUint16(off+26,true), lel=dv.getUint16(off+28,true); const start=off+30+lnl+lel;
+    const data=u8.subarray(start,start+csize);
+    files[name]={meth,data}; p+=46+nl+el+cl;
+  }
+  return { async text(name){ const f=files[name]; if(!f) return null; const raw=f.meth===8?await inflateRaw(f.data):f.data; return new TextDecoder().decode(raw);} , names:Object.keys(files)};
+}
+function colIdx(ref){ const m=/^([A-Z]+)/.exec(ref); let n=0; for(const ch of m[1]) n=n*26+ch.charCodeAt(0)-64; return n-1; }
+async function readXlsx(buf){
+  const z=await unzip(buf); const dp=new DOMParser();
+  const ssX=await z.text('xl/sharedStrings.xml'); const ss=[];
+  if(ssX){ const d=dp.parseFromString(ssX,'application/xml'); for(const si of d.getElementsByTagName('si')){ let t=''; for(const x of si.getElementsByTagName('t')) t+=x.textContent; ss.push(t);} }
+  const wb=dp.parseFromString(await z.text('xl/workbook.xml'),'application/xml');
+  const rels=dp.parseFromString(await z.text('xl/_rels/workbook.xml.rels'),'application/xml'); const rmap={};
+  for(const r of rels.getElementsByTagName('Relationship')) rmap[r.getAttribute('Id')]=r.getAttribute('Target');
+  // styles → formats de date
+  const dateStyles=new Set(); const stX=await z.text('xl/styles.xml');
+  if(stX){ const sd=dp.parseFromString(stX,'application/xml'); const custom={};
+    for(const nf of sd.getElementsByTagName('numFmt')) custom[nf.getAttribute('numFmtId')]=nf.getAttribute('formatCode')||'';
+    const xfs=sd.getElementsByTagName('cellXfs')[0]; if(xfs){ [...xfs.getElementsByTagName('xf')].forEach((xf,i)=>{ const id=+xf.getAttribute('numFmtId');
+      if((id>=14&&id<=22)||(id>=45&&id<=47)||(custom[id]&&/[dy]/i.test(custom[id].replace(/\[[^\]]*\]/g,'').replace(/"[^"]*"/g,'')))) dateStyles.add(i); }); } }
+  const sheets=[];
+  for(const sh of wb.getElementsByTagName('sheet')){
+    const rid=sh.getAttribute('r:id')||sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
+    let tgt=rmap[rid]||''; tgt=tgt.replace(/^\/?xl\//,''); const x=await z.text('xl/'+tgt); if(!x) continue;
+    const d=dp.parseFromString(x,'application/xml'); const rows=[];
+    for(const r of d.getElementsByTagName('row')){ const ri=+r.getAttribute('r')-1; const row=[];
+      for(const c of r.getElementsByTagName('c')){ const t=c.getAttribute('t'), s=+c.getAttribute('s'), v=c.getElementsByTagName('v')[0], is=c.getElementsByTagName('is')[0];
+        let val=null; if(t==='s'&&v) val=ss[+v.textContent]; else if(t==='inlineStr'&&is) val=is.textContent; else if(t==='b'&&v) val=v.textContent==='1'; else if(v){ val=v.textContent; if(t!=='str'&&t!=='e'){ const n=+val; if(!isNaN(n)){ val = dateStyles.has(s)&&n>20000&&n<80000 ? excelDate(n) : n; } } }
+        row[colIdx(c.getAttribute('r'))]=val; }
+      rows[ri]=row; }
+    sheets.push({name:sh.getAttribute('name'),rows:Array.from(rows,r=>r||[])});
+  }
+  return sheets;
+}
+function excelDate(n){ const d=new Date(Date.UTC(1899,11,30)+Math.round(n*86400000)); return d.toISOString().slice(0,10); }
+function readCsv(text){
+  const first=text.split(/\r?\n/)[0]||''; const sep=(first.split(';').length>=first.split(',').length)?';':',';
+  const rows=[]; let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=ch; }
+    else if(ch==='"') q=true; else if(ch===sep){row.push(cell);cell='';} else if(ch==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell='';} else cell+=ch; }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  return [{name:'CSV',rows}];
+}
+function parseDateAny(v){
+  if(v==null||v==='') return '';
+  if(typeof v==='number' && v>20000 && v<80000) return excelDate(v);
+  const s=String(v).trim(); let m;
+  if((m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s))) return `${m[1]}-${m[2]}-${m[3]}`;
+  if((m=/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/.exec(s))){ const y=m[3].length===2?'20'+m[3]:m[3]; return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+  return '';
+}
+
+/* ---------- Correspondance des colonnes ---------- */
+const FIELDS = [
+  {k:'ug',lib:'N° logement / UG',kw:['ug','n ug','numero ug','logement','n logement','code logement','reference','ref logement','id logement']},
+  {k:'adresse',lib:'Adresse',kw:['adresse','rue','voie']},
+  {k:'commune',lib:'Commune / ville',kw:['commune','ville','localite','cite']},
+  {k:'prog',lib:'Programme (Évolud 1 / 2)',kw:['programme','chantier','operation','lot commande','evolud']},
+  {k:'scenario',lib:'Scénario',kw:['scenario','scenar','scn']},
+  {k:'debut',lib:'Date de démarrage travaux',kw:['date debut','debut travaux','demarrage','date demarrage','date intervention','date travaux','debut','date prevue','date de debut']},
+  {k:'vte',lib:'Date VTE',kw:['date vte','vte','visite technique']},
+  {k:'diag',lib:'Diag amiante (statut)',kw:['diag','amiante','diagnostic']}
+];
+function detectMapping(headers){
+  const H=headers.map(h=>norm(h)); const map={fields:{},presta:{}}; const used=new Set();
+  for(const f of FIELDS){ let best=-1,bs=0;
+    H.forEach((h,i)=>{ if(used.has(i)||!h) return; for(const k of f.kw){ const sc = h===k?3 : (h.startsWith(k+' ')||h.endsWith(' '+k))?2 : (h.includes(k)&&k.length>3)?1:0; if(sc>bs){bs=sc;best=i;} } });
+    if(best>=0){ map.fields[f.k]=best; used.add(best); } }
+  for(const p of S.catalogue){ let best=-1,bs=0;
+    H.forEach((h,i)=>{ if(used.has(i)||!h) return; for(const k of p.kw){ const sc = h===k?3 : (h.includes(k)&&k.length>2)?(k.length>6?2:1):0; if(sc>bs){bs=sc;best=i;} } });
+    if(best>=0){ map.presta[p.code]=best; used.add(best); } }
+  return map;
+}
+function findHeaderRow(rows){
+  let best=0,bs=-1;
+  for(let i=0;i<Math.min(rows.length,15);i++){ const r=rows[i]||[]; const m=detectMapping(r.map(x=>x==null?'':String(x)));
+    const sc=Object.keys(m.fields).length*2+Object.keys(m.presta).length; if(sc>bs){bs=sc;best=i;} }
+  return best;
+}
+function prestaValue(v){
+  const n=norm(v);
+  if(!n) return '';
+  if(n==='dp'||n.includes('double plafond')||n.includes('attente diag')) return 'DP';
+  if(n==='oui'||n==='fait'||n==='ok'||n==='x fait') return 'fait';
+  if(n.includes('rdv')) return 'afaire';
+  if(n==='non'||n==='a faire'||n==='x'||n==='1'||/^\d+([.,]\d+)?$/.test(n)&&+n.replace(',','.')>0) return 'afaire';
+  if(n==='0'||n==='sans objet'||n==='so'||n==='na'||n==='n a'||n==='-') return '';
+  return 'afaire';
+}
+let IMPORT_TMP=null;
+async function handleFile(file){
+  try{
+    const buf=await file.arrayBuffer();
+    const sheets=/\.csv$/i.test(file.name)? readCsv(new TextDecoder('utf-8').decode(buf)) : await readXlsx(buf);
+    // feuille la plus riche en colonnes reconnues
+    let best=null,bs=-1;
+    for(const sh of sheets){ if(!sh.rows.length) continue; const hr=findHeaderRow(sh.rows); const m=detectMapping((sh.rows[hr]||[]).map(x=>x==null?'':String(x)));
+      const sc=(m.fields.ug!=null?10:0)+Object.keys(m.fields).length*2+Object.keys(m.presta).length; if(sc>bs){bs=sc;best={sh,hr,m};} }
+    if(!best) throw new Error('Aucune feuille exploitable');
+    IMPORT_TMP={file:file.name,sheets,cur:best};
+    renderDonnees();
+    toast('Fichier lu : vérifiez les colonnes puis validez');
+  }catch(e){ console.error(e); alert('Import impossible : '+e.message); }
+}
+function selectImportSheet(name){
+  const sh=IMPORT_TMP.sheets.find(s=>s.name===name); const hr=findHeaderRow(sh.rows);
+  IMPORT_TMP.cur={sh,hr,m:detectMapping((sh.rows[hr]||[]).map(x=>x==null?'':String(x)))}; renderDonnees();
+}
+function applyImport(){
+  const {sh,hr,m}=IMPORT_TMP.cur;
+  // relire les choix de l'utilisateur
+  document.querySelectorAll('[data-mapf]').forEach(s=>{ const v=s.value; if(v==='') delete m.fields[s.dataset.mapf]; else m.fields[s.dataset.mapf]=+v; });
+  document.querySelectorAll('[data-mapp]').forEach(s=>{ const v=s.value; if(v==='') delete m.presta[s.dataset.mapp]; else m.presta[s.dataset.mapp]=+v; });
+  if(m.fields.ug==null){ alert('Indiquez la colonne du n° de logement / UG.'); return; }
+  const out=[]; const seen=new Set();
+  for(let i=hr+1;i<sh.rows.length;i++){ const r=sh.rows[i]||[]; const ug=String(r[m.fields.ug]??'').trim(); if(!ug||seen.has(ug)) continue; seen.add(ug);
+    const g=k=> m.fields[k]!=null? r[m.fields[k]] : '';
+    const adr=String(g('adresse')??'').trim(); let com=String(g('commune')??'').trim();
+    const fc=findCommune(com)||findCommune(adr); if(fc) com=fc[0];
+    const pr={}; for(const code in m.presta){ const v=prestaValue(r[m.presta[code]]); if(v) pr[code]=v; }
+    const progTxt=norm(g('prog')); const prog = /2/.test(progTxt)?'Évolud 2': /1/.test(progTxt)?'Évolud 1':'';
+    out.push({ug,adresse:adr,commune:com,prog,scenario:String(g('scenario')??'').trim(),debut:parseDateAny(g('debut')),vte:parseDateAny(g('vte')),diag:String(g('diag')??'').trim(),pr});
+  }
+  S.logements=out; S.mapping={fields:m.fields,presta:m.presta,sheet:sh.name,hr};
+  S.source={fichier:IMPORT_TMP.file,feuille:sh.name,date:new Date().toLocaleString('fr-FR'),nb:out.length};
+  // rattacher les logements aux chantiers (créés si commune inconnue)
+  for(const l of out){ l.ch = chantierFor(l); }
+  IMPORT_TMP=null; save(); recompute(); toast(out.length+' logements importés'); show('kits');
+}
+function chantierFor(l){
+  const prog=l.prog||'';
+  let ch=S.chantiers.find(c=>norm(c.commune)===norm(l.commune) && (!prog||c.prog===prog));
+  if(!ch && l.commune){ ch={id:'CH-'+norm(l.commune).replace(/ /g,'-').toUpperCase()+(prog?'-'+norm(prog).replace(/ /g,''):''),nom:(prog?prog+' – ':'')+l.commune,commune:l.commune,prog:prog||'—',statut:'actif',nb:null,debut:'',fin:'',baseVie:false}; S.chantiers.push(ch); }
+  return ch?ch.id:null;
+}
+
+/* ---------- MOTEUR LOGISTIQUE ---------- */
+let R = {}; // résultats calculés
+function catByCode(c){ return S.catalogue.find(x=>x.code===c); }
+function kitOf(l){
+  // besoins du logement = prestations "à faire" en mode kit / sur-mesure / plateforme
+  const lines=[]; const cot=[]; let vol=0,kg=0;
+  for(const code in l.pr){ if(l.pr[code]!=='afaire') continue; const c=catByCode(code); if(!c) continue;
+    if(c.mode==='cotraitant'){ cot.push(c); continue; }
+    for(const a of c.art){ lines.push({code,mode:c.mode,lot:c.lot,ent:c.ent,id:a.id,des:a.des,q:a.q,u:a.u,v:a.v*a.q,kg:a.kg*a.q,delai:c.delai}); vol+=a.v*a.q; kg+=a.kg*a.q; } }
+  return {lines,cot,vol,kg};
+}
+function recompute(){
+  const p=P(), today=todayISO(), horizonEnd=addDays(today,p.horizon*7);
+  const base={lat:p.base.lat,lon:p.base.lon};
+  // 1. chantiers : coordonnées, distances, volumes
+  const chs=S.chantiers.map(c=>{ const co=coordsOf(c); const logs=S.logements.filter(l=>l.ch===c.id);
+    const nb = logs.length || (+c.nb||0);
+    const km = co? road(base,co):null;
+    return Object.assign({},c,{co,logs,nbEff:nb,km,min:km!=null?minutes(km):null}); });
+  // 2. kits par logement + allocation stock (ordre chronologique)
+  const stockLeft=Object.assign({},S.stock); const kits=[];
+  const logsSorted=[...S.logements].sort((a,b)=>(a.debut||'9999').localeCompare(b.debut||'9999'));
+  for(const l of logsSorted){
+    const k=kitOf(l); const miss=[]; const sm=[]; let wait=[];
+    if(Object.values(l.pr).includes('DP')) wait.push('Double plafond : attente diag complémentaire');
+    if(!l.debut) wait.push('Pas de date de démarrage planifiée');
+    if(/sans|non|absent|manquant|attente/i.test(l.diag||'')) wait.push('Diag amiante : '+l.diag);
+    const agg={}; for(const ln of k.lines){ if(ln.mode!=='kit') continue; agg[ln.id]=(agg[ln.id]||0)+ln.q; }
+    // sur-mesure / plateforme : commande + délai
+    const codesSM=[...new Set(k.lines.filter(x=>x.mode!=='kit').map(x=>x.code))];
+    for(const code of codesSM){ const c=catByCode(code); const cmd=(S.commandes[l.ug]||{})[code];
+      const arr= cmd? addDays(cmd,c.delai): null; const limite = l.debut? addDays(l.debut,-c.delai): null;
+      sm.push({code,lib:c.lib,mode:c.mode,cmd,arr,limite,ok: !!(arr && l.debut && arr<=l.debut), late: !cmd && limite && limite<today, risk: arr && l.debut && arr>l.debut}); }
+    let status;
+    const prepared=S.prepares[l.ug], delivered=S.livres[l.ug];
+    if(!wait.length && l.debut){ for(const id in agg){ const have=stockLeft[id]||0; if(have>=agg[id]) stockLeft[id]=have-agg[id]; else { miss.push({id,need:agg[id],have:Math.max(0,have)}); stockLeft[id]=0; } } }
+    const doneAll = Object.keys(l.pr).length>0 && Object.values(l.pr).every(v=>v==='fait');
+    if(doneAll) status='termine';
+    else if(delivered) status='livre';
+    else if(wait.length) status='attente';
+    else if(miss.length || sm.some(x=>x.late||x.risk||(!x.cmd&&x.limite&&x.limite<=todayISO()))) status='incomplet';
+    else if(prepared) status='pret';
+    else status='apreparer';
+    kits.push({l,k,miss,sm,wait,status,inHorizon: l.debut && l.debut>=today && l.debut<=horizonEnd});
+  }
+  // 3. besoins / ruptures / surplus par article (horizon + total)
+  const art={}; S.catalogue.forEach(c=>c.art.forEach(a=>{ if(c.mode==='kit') art[a.id]=art[a.id]||{id:a.id,des:a.des,u:a.u,v:a.v,delai:c.delai,besH:0,besT:0,first:null}; }));
+  for(const kt of kits){ if(kt.status==='termine'||kt.status==='livre') continue; for(const ln of kt.k.lines){ if(ln.mode!=='kit') continue; const a=art[ln.id]; if(!a) continue;
+    a.besT+=ln.q; if(kt.inHorizon){ a.besH+=ln.q; if(!a.first||kt.l.debut<a.first) a.first=kt.l.debut; } } }
+  const artList=Object.values(art).map(a=>{ const st=+S.stock[a.id]||0; const manqueH=Math.max(0,a.besH-st); const surplus=Math.max(0,st-a.besT);
+    const cmdAvant = a.first? prevWorkDay(a.first, Math.max(1,Math.ceil(a.delai*5/7))+1): null;
+    const semaines=p.horizon; return Object.assign(a,{st,manqueH,surplus,parSem:a.besH/semaines,cmdAvant,volSem:a.besH/semaines*a.v}); });
+  // 4. secteurs géographiques (regroupement des chantiers proches)
+  const pts=chs.filter(c=>c.co && c.nbEff>0);
+  const clusters=[]; for(const c of pts){ let cl=clusters.find(k=>k.items.some(x=>hav(x.co,c.co)*p.facteurRoute<=p.rayonCluster)); if(cl) cl.items.push(c); else clusters.push({items:[c]}); }
+  // fusion transitive
+  let merged=true; while(merged){ merged=false; outer: for(let i=0;i<clusters.length;i++) for(let j=i+1;j<clusters.length;j++){ if(clusters[i].items.some(a=>clusters[j].items.some(b=>hav(a.co,b.co)*p.facteurRoute<=p.rayonCluster))){ clusters[i].items.push(...clusters[j].items); clusters.splice(j,1); merged=true; break outer; } } }
+  clusters.forEach(cl=>{ cl.key=cl.items.map(x=>norm(x.commune)).sort().filter((v,i,a)=>a.indexOf(v)===i).join('+');
+    cl.nom=[...new Set(cl.items.map(x=>x.commune))].join(' / ');
+    const w=cl.items.reduce((s,x)=>s+x.nbEff,0); cl.nb=w;
+    cl.bary={lat:cl.items.reduce((s,x)=>s+x.co.lat*x.nbEff,0)/w, lon:cl.items.reduce((s,x)=>s+x.co.lon*x.nbEff,0)/w};
+    cl.km=road(base,cl.bary); cl.min=minutes(cl.km); });
+  // 5. plan de livraisons sur l'horizon
+  const tampActifs=new Set(Object.keys(S.tampons).filter(k=>S.tampons[k].actif));
+  const clOf=chId=>clusters.find(cl=>cl.items.some(x=>x.id===chId));
+  const byDay={}; const plateforme=[]; const cotra=[];
+  for(const kt of kits){ if(!kt.inHorizon||kt.status==='attente'||kt.status==='termine'||kt.status==='livre') continue;
+    const dl=prevWorkDay(kt.l.debut,p.jPrep); const ch=chs.find(c=>c.id===kt.l.ch);
+    const volKit=kt.k.lines.filter(x=>x.mode!=='plateforme').reduce((s,x)=>s+x.v,0);
+    if(kt.k.lines.some(x=>x.mode==='plateforme')) plateforme.push({date:kt.l.debut,ug:kt.l.ug,adresse:kt.l.adresse,commune:kt.l.commune});
+    kt.k.cot.forEach(c=>cotra.push({date:kt.l.debut,ug:kt.l.ug,commune:kt.l.commune,ent:c.ent,lib:c.lib}));
+    if(volKit<=0) continue;
+    (byDay[dl]=byDay[dl]||[]).push({kt,ch,vol:volKit,cl:ch?clOf(ch.id):null,dl}); }
+  const tournees=[];
+  for(const d of Object.keys(byDay).sort()){
+    const items=byDay[d]; const direct=items.filter(x=>!(x.cl&&tampActifs.has(x.cl.key)));
+    const viaT=items.filter(x=>x.cl&&tampActifs.has(x.cl.key));
+    if(direct.length){ const stops=groupStops(direct); const vol=direct.reduce((s,x)=>s+x.vol,0); const trips=Math.max(1,Math.ceil(vol/p.capVL));
+      const route=bestRoute(base,stops); const km=route.km*trips; const h=(minutes(route.km)*trips + p.tChargeBase*trips + p.tArret*direct.length)/60;
+      tournees.push({date:d,type:'direct',items:direct,stops:route.order,vol,trips,km,h,cout:km*p.coutKmVL+h*p.coutHeure}); }
+    if(viaT.length){ const byCl={}; viaT.forEach(x=>(byCl[x.cl.key]=byCl[x.cl.key]||[]).push(x));
+      for(const k in byCl){ const t=S.tampons[k]; const its=byCl[k]; const vol=its.reduce((s,x)=>s+x.vol,0);
+        const tp={lat:t.lat,lon:t.lon}; const route=bestRoute(tp,groupStops(its)); const h=(minutes(route.km)+p.tArret*its.length+p.manutKit*its.length)/60;
+        tournees.push({date:d,type:'tampon',tampon:t.lieu,key:k,items:its,stops:route.order,vol,trips:Math.max(1,Math.ceil(vol/p.capVL)),km:route.km,h,cout:route.km*p.coutKmVL+h*p.coutHeure}); } }
+  }
+  // navettes hebdomadaires vers tampons actifs
+  const navettes=[];
+  for(const k of tampActifs){ const t=S.tampons[k]; const its=tournees.filter(x=>x.key===k); if(!its.length) continue;
+    const weeks={}; its.forEach(x=>{ const wk=weekKey(x.date); (weeks[wk]=weeks[wk]||{vol:0,first:x.date}); weeks[wk].vol+=x.vol; if(x.date<weeks[wk].first) weeks[wk].first=x.date; });
+    for(const wk in weeks){ const km=2*road(base,{lat:t.lat,lon:t.lon}); const trips=Math.max(1,Math.ceil(weeks[wk].vol/p.capPL)); const h=(minutes(km)+p.tChargeBase+20)*trips/60;
+      navettes.push({date:prevWorkDay(weeks[wk].first,1),tampon:t.lieu,key:k,vol:weeks[wk].vol,trips,km:km*trips,h,cout:km*trips*p.coutKmPL+h*p.coutHeure}); } }
+  // 6. analyse zones tampons (économique + géographique + opérationnelle)
+  const analyses=clusters.map(cl=>analyseTampon(cl,kits,base));
+  // 7. alertes
+  const alertes=buildAlertes(chs,kits,artList,tournees,analyses);
+  R={chs,kits,artList,clusters,tournees,navettes,plateforme,cotra,analyses,alertes,base,today,horizonEnd};
+  const nb=alertes.filter(a=>a.niv==='ko').length; $('#nbAl').innerHTML= nb?`<span class="bdg">${nb}</span>`:'';
+  renderCurrent();
+}
+function weekKey(isoS){ const d=toD(isoS); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return iso(d); }
+function groupStops(items){ const m={}; for(const x of items){ const co=x.ch&&x.ch.co; const key=x.ch?x.ch.id:'?'; if(!co) continue; (m[key]=m[key]||{id:key,nom:x.ch.commune,co,n:0,vol:0}); m[key].n++; m[key].vol+=x.vol; } return Object.values(m); }
+function bestRoute(start,stops){
+  if(!stops.length) return {order:[],km:0};
+  const dist=(a,b)=>road(a,b);
+  const tour=o=>{ let km=0,cur=start; for(const s of o){ km+=dist(cur,s.co); cur=s.co; } return km+dist(cur,start); };
+  if(stops.length<=7){ let best=null,bk=1e9; const perm=(arr,l=0)=>{ if(l===arr.length){ const k=tour(arr); if(k<bk){bk=k;best=[...arr];} return; } for(let i=l;i<arr.length;i++){ [arr[l],arr[i]]=[arr[i],arr[l]]; perm(arr,l+1); [arr[l],arr[i]]=[arr[i],arr[l]]; } }; perm([...stops]); return {order:best,km:bk}; }
+  // plus proche voisin + 2-opt
+  let rest=[...stops], o=[], cur=start; while(rest.length){ rest.sort((a,b)=>dist(cur,a.co)-dist(cur,b.co)); const n=rest.shift(); o.push(n); cur=n.co; }
+  let imp=true; while(imp){ imp=false; for(let i=0;i<o.length-1;i++) for(let j=i+1;j<o.length;j++){ const n=[...o.slice(0,i),...o.slice(i,j+1).reverse(),...o.slice(j+1)]; if(tour(n)<tour(o)-0.01){o=n;imp=true;} } }
+  return {order:o,km:tour(o)};
+}
+function analyseTampon(cl,kits,base){
+  const p=P(); const ids=new Set(cl.items.map(x=>x.id));
+  // volumes et logements de ce secteur : logements importés à dates connues, sinon effectif × hypothèse
+  const ks=kits.filter(k=>ids.has(k.l.ch) && k.status!=='termine');
+  let nbLog, vol, jours, src;
+  if(ks.length){
+    nbLog=ks.length; vol=ks.reduce((s,k)=>s+k.k.lines.filter(x=>x.mode!=='plateforme').reduce((a,b)=>a+b.v,0),0);
+    const dates=new Set(ks.filter(k=>k.l.debut).map(k=>k.l.debut)); jours=Math.max(dates.size, Math.ceil(nbLog/(p.cadenceDefaut*cl.items.length)));
+    src='logements importés ('+nbLog+')';
+  } else { nbLog=cl.nb; vol=nbLog*p.volDefaut; jours=Math.ceil(nbLog/(p.cadenceDefaut*Math.max(1,cl.items.length))); src='effectif déclaré × '+fmt(p.volDefaut,1)+' m³/logt (hypothèse)'; }
+  const semaines=Math.max(1,Math.ceil(jours/5)); const mois=Math.max(1,semaines/4.33);
+  const stopsPerDay=Math.min(cl.items.length, cl.items.length); // un arrêt par chantier livré dans la journée
+  const intra = cl.items.length>1 ? bestRoute(cl.bary,cl.items.map(x=>({co:x.co}))).km : 0;
+  const kmRT = 2*cl.km + intra;
+  const kitsParJour = nbLog/Math.max(1,jours);
+  // DIRECT : une tournée VL par jour de démarrage depuis Bruay
+  const tripsDay=Math.max(1,Math.ceil(vol/jours/p.capVL));
+  const dKm=kmRT*tripsDay*jours; const dH=((minutes(kmRT)+p.tChargeBase)*tripsDay + p.tArret*kitsParJour)*jours/60;
+  const direct={km:dKm,h:dH,cout:dKm*p.coutKmVL+dH*p.coutHeure};
+  // RELAIS : navette porteur hebdo + derniers km depuis le tampon + manutention + stockage
+  const hasBV=cl.items.some(x=>x.baseVie);
+  const tLieu = hasBV? cl.items.filter(x=>x.baseVie).sort((a,b)=>b.nbEff-a.nbEff)[0] : [...cl.items].sort((a,b)=>b.nbEff-a.nbEff)[0];
+  const tco=tLieu.co; const kmBT=2*road(base,tco);
+  const navTrips=Math.max(semaines, Math.ceil(vol/p.capPL));
+  const nKm=kmBT*navTrips; const nH=(minutes(kmBT)+p.tChargeBase+20)*navTrips/60;
+  const lastKm=(cl.items.length>1? bestRoute(tco,cl.items.map(x=>({co:x.co}))).km : 2)*jours;
+  const lastH=(minutes(lastKm/jours)*jours + p.tArret*nbLog)/60;
+  const manH=p.manutKit*nbLog/60;
+  const stock= hasBV? 0 : p.coutStockMois*Math.ceil(mois);
+  const relais={km:nKm+lastKm,h:nH+lastH+manH,stock,cout:nKm*p.coutKmPL+lastKm*p.coutKmVL+(nH+lastH+manH)*p.coutHeure+stock};
+  const gain=direct.cout-relais.cout; const gainPct= direct.cout>0? gain/direct.cout*100 : 0;
+  const crit={geo: cl.km>=p.seuilKm, eco: gainPct>=p.seuilGain, ops: kitsParJour>=1 && semaines>=2};
+  const reco = crit.geo && crit.eco && crit.ops;
+  const enBase = cl.km<3;
+  return {cl,nbLog,vol,jours,semaines,mois,src,direct,relais,gain,gainPct,crit,reco,enBase,lieu:tLieu,hasBV,kitsParJour,tripsDay};
+}
+function buildAlertes(chs,kits,artList,tournees,analyses){
+  const A=[]; const p=P(); const t=todayISO();
+  if(!S.logements.length) A.push({niv:'info',t:'Aucun logement importé',d:"Importez l'export logements d'EVOLUD ou Planning_EVOLUD (onglet Données) pour générer les kits par logement."});
+  chs.forEach(c=>{ if(!c.co) A.push({niv:'ko',t:'Chantier non localisé : '+c.nom,d:'Commune « '+(c.commune||'?')+" » inconnue : saisissez latitude / longitude dans Données."});
+    if(!c.logs.length && !c.nb) A.push({niv:'info',t:'Effectif à renseigner : '+c.nom,d:'Nombre de logements inconnu : le chantier est exclu des calculs de transport.'}); });
+  artList.filter(a=>a.manqueH>0).forEach(a=>A.push({niv: a.cmdAvant&&a.cmdAvant<=t?'ko':'warn',t:'Rupture prévue : '+a.des,d:`Besoin ${fmt(a.besH)} ${a.u} sur ${p.horizon} sem., stock ${fmt(a.st)} → manque ${fmt(a.manqueH)}. Premier besoin ${frDate(a.first)} ; commander au plus tard ${frDate(a.cmdAvant)}.`}));
+  kits.forEach(k=>{ k.sm.forEach(s=>{ if(s.late) A.push({niv:'ko',g:`Commande ${s.code} en retard`,ug:k.l.ug,d:`démarrage ${frDate(k.l.debut)}, limite ${frDate(s.limite)}`});
+      else if(s.risk) A.push({niv:'ko',g:`Livraison ${s.code} après démarrage`,ug:k.l.ug,d:`arrivée ${frDate(s.arr)} > démarrage ${frDate(k.l.debut)}`}); });
+    if(k.inHorizon && k.status==='incomplet' && diffDays(k.l.debut,t)<=3) A.push({niv:'ko',g:'Kit incomplet à moins de 3 jours du démarrage',ug:k.l.ug,d:'J-'+diffDays(k.l.debut,t)+' '+(k.miss.length?'Manquants : '+k.miss.map(m=>m.id+' ('+fmt(m.need-m.have)+')').join(', '):'sur-mesure non arrivé ou non commandé')});
+    if(k.inHorizon && k.status==='attente' && k.l.debut) A.push({niv:'warn',g:'Démarrage planifié mais kit bloqué',ug:k.l.ug,d:k.wait.join(' · ')+' (démarrage '+frDate(k.l.debut)+')'}); });
+  tournees.forEach(x=>{ if(x.trips>1) A.push({niv:'warn',t:'Capacité dépassée le '+frDate(x.date),d:`${fmt(x.vol,1)} m³ à livrer pour ${fmt(p.capVL)} m³ par utilitaire : ${x.trips} rotations. Avancer une partie des kits la veille.`}); });
+  analyses.filter(a=>a.reco && !(S.tampons[a.cl.key]||{}).actif).forEach(a=>A.push({niv:'info',t:'Zone tampon recommandée : '+a.cl.nom,d:`Gain estimé ${eur(a.gain)} (${fmt(a.gainPct)} %) sur la période. Voir l'onglet Tampons.`}));
+  const G=[], idx={};
+  for(const a of A){ if(!a.g){ G.push(a); continue; } const k=a.niv+'|'+a.g; if(!idx[k]){ idx[k]={niv:a.niv,g:a.g,ugs:[],ds:[]}; G.push(idx[k]); } idx[k].ugs.push(a.ug); idx[k].ds.push(a.ug+' : '+a.d); }
+  G.forEach(x=>{ if(x.ugs){ x.t=x.g+' ('+x.ugs.length+' logement'+(x.ugs.length>1?'s':'')+')'; x.d=x.ds.slice(0,12).join(' · ')+(x.ds.length>12?' · … +'+(x.ds.length-12):''); } });
+  const ord={ko:0,warn:1,info:2}; return G.sort((a,b)=>ord[a.niv]-ord[b.niv]);
+}
+
+/* ---------- VUES ---------- */
+let CUR='carte';
+function show(v){ CUR=v; document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.querySelectorAll('main>section').forEach(s=>s.classList.toggle('hide',s.id!=='v-'+v)); renderCurrent(); window.scrollTo(0,0); }
+function renderCurrent(){ ({carte:renderCarte,kits:renderKits,liv:renderLiv,tampon:renderTampon,alertes:renderAlertes,donnees:renderDonnees})[CUR](); }
+const ST={termine:['Terminé','p-mut'],livre:['Livré','p-info'],pret:['Prêt','p-ok'],apreparer:['À préparer','p-info'],incomplet:['Incomplet','p-ko'],attente:['En attente','p-wait']};
+const pill=s=>`<span class="pill ${ST[s][1]}">${ST[s][0]}</span>`;
+
+function kpis(){
+  const k=R.kits; const c=s=>k.filter(x=>x.status===s).length;
+  const tCout=R.tournees.reduce((s,x)=>s+x.cout,0)+R.navettes.reduce((s,x)=>s+x.cout,0);
+  return `<div class="kpis">
+   <div class="kpi"><div class="v">${R.chs.filter(c=>c.nbEff>0).length}</div><div class="l">Chantiers suivis</div></div>
+   <div class="kpi"><div class="v" style="color:var(--ok)">${c('pret')}</div><div class="l">Kits prêts</div></div>
+   <div class="kpi"><div class="v" style="color:var(--info)">${c('apreparer')}</div><div class="l">Kits à préparer</div></div>
+   <div class="kpi"><div class="v" style="color:var(--ko)">${c('incomplet')}</div><div class="l">Kits incomplets</div></div>
+   <div class="kpi"><div class="v" style="color:var(--wait)">${c('attente')}</div><div class="l">Kits en attente</div></div>
+   <div class="kpi"><div class="v">${R.tournees.length}</div><div class="l">Tournées sur ${P().horizon} sem.</div></div>
+   <div class="kpi"><div class="v">${eur(tCout)}</div><div class="l">Coût transport prévu</div></div>
+   <div class="kpi"><div class="v" style="color:var(--ko)">${R.alertes.filter(a=>a.niv==='ko').length}</div><div class="l">Alertes critiques</div></div>
+  </div>`;
+}
+
+/* --- Carte interactive (SVG autonome, sans fond de carte externe) --- */
+let MAPV={x:0,y:0,k:1}, MAPSEL=null, MW=1000, MH=640;
+function renderCarte(){
+  const el=$('#v-carte'); const days=[...new Set(R.tournees.map(t=>t.date))].sort();
+  el.innerHTML = kpis()+`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Cartographie logistique</h2>
+    <div class="row noprint"><select id="daySel"><option value="">Toutes liaisons base → chantiers</option>${days.map(d=>`<option value="${d}" ${MAPSEL===d?'selected':''}>Tournée du ${frDate(d)}</option>`).join('')}</select>
+    <button class="btn sec sm" id="zIn">＋</button><button class="btn sec sm" id="zOut">－</button><button class="btn sec sm" id="zR">⟲</button></div></div>
+    <svg id="map"></svg>
+    <div class="legend"><span><i style="background:#0f2a44;border-radius:2px"></i>Base Bruay</span><span><i style="background:#1f8a4c"></i>Chantier actif</span><span><i style="background:#2563a8"></i>Chantier futur</span><span><i style="background:#f07c1b;border-radius:2px;transform:rotate(45deg)"></i>Zone tampon active</span><span><i style="background:none;border:2px dashed #f07c1b"></i>Tampon recommandé</span><span>Distances routières estimées (vol d'oiseau × ${fmt(P().facteurRoute,2)})</span></div>
+    <div id="mapInfo" class="just">Touchez un point pour le détail.</div></div>
+    <div class="card"><h2>Distances depuis la base</h2><div class="tw"><table><thead><tr><th>Chantier</th><th>Statut</th><th class="num">Logts</th><th class="num">km</th><th class="num">min</th><th class="num">Coût A/R VL</th><th>Secteur</th></tr></thead><tbody>
+    ${R.chs.map(c=>{ const cl=R.clusters.find(k=>k.items.some(x=>x.id===c.id)); return `<tr><td>${esc(c.nom)}</td><td>${c.statut==='actif'?'<span class="pill p-ok">Actif</span>':'<span class="pill p-info">Futur</span>'}</td><td class="num">${c.nbEff||'<span class="mut">?</span>'}</td><td class="num">${c.km!=null?fmt(c.km,1):'–'}</td><td class="num">${c.min!=null?fmt(c.min):'–'}</td><td class="num">${c.km!=null?eur(2*c.km*P().coutKmVL+2*c.min/60*P().coutHeure):'–'}</td><td>${cl?esc(cl.nom):'–'}</td></tr>`; }).join('')}
+    </tbody></table></div></div>`;
+  drawMap(); $('#daySel').onchange=e=>{MAPSEL=e.target.value||null; drawMap();};
+  $('#zIn').onclick=()=>{MAPV.k*=1.4;drawMap();}; $('#zOut').onclick=()=>{MAPV.k/=1.4;drawMap();}; $('#zR').onclick=()=>{MAPV={x:0,y:0,k:1};drawMap();};
+  panZoom($('#map'));
+}
+function proj(){
+  const pts=[R.base,...R.chs.filter(c=>c.co).map(c=>c.co),...Object.values(S.tampons).filter(t=>t.actif)];
+  const lat0=pts.reduce((s,p)=>s+p.lat,0)/pts.length; const cx=Math.cos(lat0*Math.PI/180);
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9; pts.forEach(p=>{const x=p.lon*cx,y=-p.lat; minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);});
+  const W=MW,H=MH; const k=Math.min((W-Math.min(240,W*.42))/Math.max(maxX-minX,0.02),(H-110)/Math.max(maxY-minY,0.02)); const ox=W/2-(minX+maxX)/2*k, oy=H/2-(minY+maxY)/2*k;
+  return p=>{ const x=(p.lon*cx*k+ox-W/2)*MAPV.k+W/2+MAPV.x, y=(-p.lat*k+oy-H/2)*MAPV.k+H/2+MAPV.y; return [x,y]; };
+}
+function drawMap(){
+  const svg=$('#map'); if(!svg) return; MW=svg.clientWidth||1000; MH=svg.clientHeight||640; svg.setAttribute('viewBox',`0 0 ${MW} ${MH}`); const pr=proj(); const p=P(); let h='';
+  // échelle 5 km
+  const a=pr(R.base), b=pr({lat:R.base.lat,lon:R.base.lon+5/(111.32*Math.cos(R.base.lat*Math.PI/180))}); const L=Math.abs(b[0]-a[0]);
+  h+=`<g><line x1="20" y1="${MH-20}" x2="${20+L}" y2="${MH-20}" stroke="#5d6b7a" stroke-width="3"/><text x="20" y="${MH-28}" font-size="12" fill="#5d6b7a">5 km</text></g>`;
+  // secteurs
+  R.clusters.forEach(cl=>{ if(cl.items.length<2) return; const c=pr(cl.bary); const r=Math.max(...cl.items.map(x=>Math.hypot(pr(x.co)[0]-c[0],pr(x.co)[1]-c[1])))+26;
+    h+=`<circle cx="${c[0]}" cy="${c[1]}" r="${r}" fill="rgba(37,99,168,.06)" stroke="rgba(37,99,168,.35)" stroke-dasharray="4 4"/>`; });
+  const tour = MAPSEL? R.tournees.filter(t=>t.date===MAPSEL):null;
+  if(!tour){ R.chs.filter(c=>c.co&&c.nbEff>0).forEach(c=>{ const s=pr(R.base), e=pr(c.co); h+=`<line x1="${s[0]}" y1="${s[1]}" x2="${e[0]}" y2="${e[1]}" stroke="#9fb3c8" stroke-width="1.5"/>`;
+      if(c.km>1) h+=`<text x="${(s[0]+e[0])/2}" y="${(s[1]+e[1])/2-4}" font-size="11" fill="#2b3a4a" text-anchor="middle" paint-order="stroke" stroke="#eaf0f5" stroke-width="3">${fmt(c.km,1)} km · ${fmt(c.min)} min</text>`; }); }
+  else { tour.forEach(t=>{ const start = t.type==='tampon'? S.tampons[t.key] : R.base; let cur=pr(start); const col=t.type==='tampon'?'#f07c1b':'#0f2a44';
+      t.stops.forEach((s,i)=>{ const n=pr(s.co); h+=`<line x1="${cur[0]}" y1="${cur[1]}" x2="${n[0]}" y2="${n[1]}" stroke="${col}" stroke-width="3" marker-end="url(#arr)"/><text x="${n[0]+10}" y="${n[1]+18}" font-size="12" font-weight="700" fill="${col}">${i+1}</text>`; cur=n; });
+      const s0=pr(start); h+=`<line x1="${cur[0]}" y1="${cur[1]}" x2="${s0[0]}" y2="${s0[1]}" stroke="${col}" stroke-width="2" stroke-dasharray="6 4"/>`; });
+    R.navettes.filter(n=>n.date===MAPSEL).forEach(n=>{ const s=pr(R.base), e=pr(S.tampons[n.key]); h+=`<line x1="${s[0]}" y1="${s[1]}" x2="${e[0]}" y2="${e[1]}" stroke="#f07c1b" stroke-width="5" opacity=".5"/>`; }); }
+  // tampons recommandés / actifs
+  R.analyses.forEach(an=>{ const act=(S.tampons[an.cl.key]||{}).actif; if(!an.reco&&!act) return; const q=pr(act?S.tampons[an.cl.key]:an.lieu.co);
+    h+=`<g data-t="${esc(an.cl.key)}" style="cursor:pointer"><rect x="${q[0]-11}" y="${q[1]-11}" width="22" height="22" transform="rotate(45 ${q[0]} ${q[1]})" fill="${act?'#f07c1b':'none'}" stroke="#f07c1b" stroke-width="2.5" ${act?'':'stroke-dasharray="4 3"'}/></g>`; });
+  // chantiers
+  R.chs.filter(c=>c.co).forEach(c=>{ const q=pr(c.co); const r=Math.max(7,Math.min(24,4+Math.sqrt(c.nbEff||1)*1.6)); const col=c.statut==='actif'?'#1f8a4c':'#2563a8';
+    const inc=c.logs.length? R.kits.filter(k=>k.l.ch===c.id&&k.status==='incomplet').length:0;
+    const off = (R.chs.filter(o=>o.co&&o.commune===c.commune).indexOf(c))*14;
+    h+=`<g data-c="${esc(c.id)}" style="cursor:pointer"><circle cx="${q[0]+off}" cy="${q[1]}" r="${r}" fill="${col}" fill-opacity=".85" stroke="#fff" stroke-width="2"/>
+      ${inc?`<circle cx="${q[0]+off+r-2}" cy="${q[1]-r+2}" r="7" fill="#c62f2f"/><text x="${q[0]+off+r-2}" y="${q[1]-r+6}" font-size="10" fill="#fff" text-anchor="middle">${inc}</text>`:''}
+      <text x="${q[0]+off}" y="${q[1]+r+13+off}" font-size="12" text-anchor="middle" fill="#1b2430" paint-order="stroke" stroke="#eaf0f5" stroke-width="3">${esc(c.prog&&c.prog!=='—'?c.prog.replace('Évolud ','É')+' · ':'')}${esc(c.commune)}${c.nbEff?' ('+c.nbEff+')':''}</text></g>`; });
+  const q=pr(R.base); h+=`<g data-b="1" style="cursor:pointer"><rect x="${q[0]-12}" y="${q[1]-12}" width="24" height="24" rx="4" fill="#0f2a44"/><text x="${q[0]}" y="${q[1]+5}" font-size="14" fill="#fff" text-anchor="middle">B</text><text x="${q[0]}" y="${q[1]-18}" font-size="12" font-weight="700" text-anchor="middle" fill="#0f2a44" paint-order="stroke" stroke="#eaf0f5" stroke-width="3">BASE BRUAY</text></g>`;
+  svg.innerHTML=`<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="#0f2a44"/></marker></defs>`+h;
+  svg.querySelectorAll('[data-c]').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation(); infoChantier(g.dataset.c);}));
+  svg.querySelectorAll('[data-t]').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation(); const an=R.analyses.find(a=>a.cl.key===g.dataset.t); $('#mapInfo').innerHTML=justif(an); bindAct($('#mapInfo'));}));
+  svg.querySelectorAll('[data-b]').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation(); $('#mapInfo').innerHTML=`<b>${esc(P().base.nom)}</b><p>Point de départ de toutes les tournées et de la préparation des kits. Stock suivi : ${Object.keys(S.stock).length} articles.</p>`;}));
+  if(MAPSEL){ const ts=R.tournees.filter(t=>t.date===MAPSEL); $('#mapInfo').innerHTML=ts.map(t=>`<p><b>${t.type==='tampon'?'Depuis tampon '+esc(t.tampon):'Depuis la base'}</b> · ${t.stops.map((s,i)=>(i+1)+'. '+esc(s.nom)+' ('+s.n+' kit'+(s.n>1?'s':'')+')').join(' → ')} · ${fmt(t.km,1)} km · ${fmt(t.h,1)} h · ${fmt(t.vol,1)} m³ · ${eur(t.cout)}</p>`).join('')||'Aucune tournée ce jour.'; }
+}
+function infoChantier(id){ const c=R.chs.find(x=>x.id===id); const ks=R.kits.filter(k=>k.l.ch===id); const cnt=s=>ks.filter(k=>k.status===s).length;
+  const next=R.tournees.filter(t=>t.items.some(i=>i.ch&&i.ch.id===id)).slice(0,3);
+  $('#mapInfo').innerHTML=`<b>${esc(c.nom)}</b><p>${c.nbEff||'?'} logements · ${c.km!=null?fmt(c.km,1)+' km / '+fmt(c.min)+' min de la base':'non localisé'} · ${c.baseVie?'base-vie sur place':'pas de base-vie déclarée'}</p>
+   <p>${ks.length? `Kits : ${cnt('pret')} prêts · ${cnt('apreparer')} à préparer · ${cnt('incomplet')} incomplets · ${cnt('attente')} en attente · ${cnt('livre')} livrés`:'Aucun logement importé pour ce chantier.'}</p>
+   ${next.length?'<p>Prochaines livraisons : '+next.map(t=>frDate(t.date)).join(', ')+'</p>':''}`; }
+function panZoom(svg){
+  let drag=null; const pts=new Map(); let pinch=null;
+  const sc=()=>1;
+  svg.addEventListener('pointerdown',e=>{ pts.set(e.pointerId,[e.clientX,e.clientY]); if(pts.size===1) drag={x:e.clientX,y:e.clientY,vx:MAPV.x,vy:MAPV.y}; if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),k:MAPV.k}; drag=null; } });
+  svg.addEventListener('pointermove',e=>{ if(!pts.has(e.pointerId)) return; pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pinch&&pts.size===2){ const [a,b]=[...pts.values()]; MAPV.k=Math.max(.4,Math.min(12,pinch.k*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch.d)); drawMap(); }
+    else if(drag){ const dx=(e.clientX-drag.x)*sc(), dy=(e.clientY-drag.y)*sc(); if(Math.abs(dx)+Math.abs(dy)>4){ MAPV.x=drag.vx+dx; MAPV.y=drag.vy+dy; drawMap(); } } });
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch=null; if(!pts.size) drag=null; };
+  svg.addEventListener('pointerup',up); svg.addEventListener('pointercancel',up); svg.addEventListener('pointerleave',up);
+  svg.addEventListener('wheel',e=>{ e.preventDefault(); MAPV.k=Math.max(.4,Math.min(12,MAPV.k*(e.deltaY<0?1.15:1/1.15))); drawMap(); },{passive:false});
+}
+
+/* --- Kits --- */
+let KF={q:'',st:'',ch:''};
+function renderKits(){
+  const el=$('#v-kits'); const ks=R.kits.filter(k=>(!KF.st||k.status===KF.st)&&(!KF.ch||k.l.ch===KF.ch)&&(!KF.q||norm(k.l.ug+' '+k.l.adresse+' '+k.l.commune).includes(norm(KF.q))));
+  // charge par lot et par semaine (coordination TCE)
+  const wk={}; R.kits.filter(k=>k.inHorizon&&k.status!=='termine').forEach(k=>{ const w=weekKey(k.l.debut); wk[w]=wk[w]||{}; Object.keys(k.l.pr).filter(c=>k.l.pr[c]==='afaire').forEach(c=>{ const cat=catByCode(c); if(!cat) return; const key=cat.lot+' · '+cat.ent; wk[w][key]=(wk[w][key]||0)+1; }); });
+  const weeks=Object.keys(wk).sort(); const lots=[...new Set(weeks.flatMap(w=>Object.keys(wk[w])))].sort();
+  el.innerHTML = kpis()+`<div class="card"><h2>Kits par logement</h2>
+   <div class="row noprint" style="margin-bottom:8px"><input id="kq" placeholder="UG, adresse, commune…" value="${esc(KF.q)}">
+   <select id="kst"><option value="">Tous statuts</option>${Object.keys(ST).map(s=>`<option value="${s}" ${KF.st===s?'selected':''}>${ST[s][0]}</option>`).join('')}</select>
+   <select id="kch"><option value="">Tous chantiers</option>${R.chs.map(c=>`<option value="${c.id}" ${KF.ch===c.id?'selected':''}>${esc(c.nom)}</option>`).join('')}</select>
+   <button class="btn sec sm" id="kbulk">📝 Déclarer commandé (filtre)</button><button class="btn sec sm" id="kprint">🖨️ Fiches kits (filtre)</button><button class="btn sec sm" id="kcsv">⬇️ Excel (CSV)</button></div>
+   ${S.logements.length?'':'<p class="mut">Aucun logement : importez vos données dans l\'onglet ⚙️ Données.</p>'}
+   <div class="tw"><table><thead><tr><th>Logement</th><th>Démarrage</th><th>Statut</th><th>Contenu du kit (lots)</th><th class="num">m³</th><th class="num">kg</th><th>Points bloquants</th><th class="noprint">Actions</th></tr></thead><tbody>
+   ${ks.slice(0,400).map(k=>{ const lots=[...new Set(k.k.lines.map(x=>x.lot))]; const blk=[...k.wait,...k.miss.map(m=>'Manque '+m.id+' ×'+fmt(m.need-m.have)),...k.sm.filter(s=>!s.ok).map(s=>s.code+(s.cmd?' arrivée '+frDate(s.arr):' à commander avant '+frDate(s.limite)))];
+     return `<tr><td><b>${esc(k.l.ug)}</b><div class="small mut">${esc(k.l.adresse||'')} ${esc(k.l.commune||'')}</div></td><td>${frDate(k.l.debut)}</td><td>${pill(k.status)}</td>
+     <td>${lots.map(l=>`<span class="chip">${esc(l)}</span>`).join('')}${k.k.cot.map(c=>`<span class="chip" title="Fourniture cotraitant">${esc(c.ent)}</span>`).join('')}</td>
+     <td class="num">${fmt(k.k.vol,2)}</td><td class="num">${fmt(k.k.kg)}</td><td class="small">${blk.map(esc).join('<br>')}</td>
+     <td class="noprint"><div class="row">${k.sm.filter(s=>!s.cmd).map(s=>`<button class="btn sec sm" data-cmd="${esc(k.l.ug)}|${s.code}">Commandé ${s.code}</button>`).join('')}
+      ${k.status==='apreparer'?`<button class="btn sm" data-prep="${esc(k.l.ug)}">✓ Préparé</button>`:''}${k.status==='pret'?`<button class="btn sm acc" data-liv="${esc(k.l.ug)}">🚚 Livré</button>`:''}
+      ${(S.prepares[k.l.ug]||S.livres[k.l.ug])?`<button class="btn sec sm" data-raz="${esc(k.l.ug)}">↺</button>`:''}<button class="btn sec sm" data-fiche="${esc(k.l.ug)}">Fiche</button></div></td></tr>`; }).join('')}
+   </tbody></table></div>${ks.length>400?'<p class="small mut">400 premiers affichés : affinez le filtre.</p>':''}</div>
+   <div class="card"><h2>Charge par corps d'état (démarrages / semaine)</h2>${weeks.length?`<div class="tw"><table><thead><tr><th>Lot · entreprise</th>${weeks.map(w=>`<th class="num">S. ${frDate(w)}</th>`).join('')}</tr></thead><tbody>${lots.map(l=>`<tr><td>${esc(l)}</td>${weeks.map(w=>`<td class="num">${wk[w][l]||''}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="small mut">Sert à synchroniser équipes BBNE, sous-traitants et cotraitants (GDS, ISOWECK, ATS) avec les approvisionnements.</p>`:'<p class="mut">Aucun démarrage daté sur l\'horizon.</p>'}</div>
+   <div class="card"><h2>Approvisionnements, ruptures et surplus (stock base Bruay)</h2>
+   <div class="tw"><table><thead><tr><th>Article</th><th class="num">Stock</th><th class="num">Besoin ${P().horizon} sem.</th><th class="num">/ semaine</th><th class="num">m³ / sem.</th><th class="num">Manque</th><th class="num">Surplus</th><th>Commander avant</th></tr></thead><tbody>
+   ${R.artList.filter(a=>a.besT>0||a.st>0).map(a=>`<tr><td>${esc(a.des)}<div class="small mut">${a.id}</div></td><td class="num"><input type="number" min="0" data-stock="${a.id}" value="${S.stock[a.id]??''}" style="width:70px"></td><td class="num">${fmt(a.besH)} ${a.u}</td><td class="num">${fmt(a.parSem,1)}</td><td class="num">${fmt(a.volSem,2)}</td><td class="num">${a.manqueH?`<span class="pill p-ko">${fmt(a.manqueH)}</span>`:'<span class="pill p-ok">0</span>'}</td><td class="num">${a.surplus?`<span class="pill p-warn">${fmt(a.surplus)}</span>`:''}</td><td>${a.manqueH?frDate(a.cmdAvant):''}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">Aucun besoin calculé.</td></tr>'}
+   </tbody></table></div><p class="small mut">Surplus = stock au-delà de tous les besoins connus (à réaffecter ou retourner). « Commander avant » tient compte du délai fournisseur de l'article.</p></div>`;
+  $('#kq').oninput=e=>{KF.q=e.target.value; clearTimeout(renderKits._t); renderKits._t=setTimeout(()=>{renderKits(); const i=$('#kq'); i.focus(); i.setSelectionRange(i.value.length,i.value.length);},300);};
+  $('#kst').onchange=e=>{KF.st=e.target.value;renderKits();}; $('#kch').onchange=e=>{KF.ch=e.target.value;renderKits();};
+  el.querySelectorAll('[data-stock]').forEach(i=>i.onchange=()=>{ const v=i.value===''?undefined:Math.max(0,+i.value); if(v==null) delete S.stock[i.dataset.stock]; else S.stock[i.dataset.stock]=v; save(); recompute(); });
+  el.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=()=>{ const [ug,code]=b.dataset.cmd.split('|'); const d=prompt('Date de commande '+code+' pour '+ug+' (JJ/MM/AAAA) :',new Date().toLocaleDateString('fr-FR')); const v=parseDateAny(d); if(!v) return; (S.commandes[ug]=S.commandes[ug]||{})[code]=v; save(); recompute(); });
+  el.querySelectorAll('[data-prep]').forEach(b=>b.onclick=()=>{ S.prepares[b.dataset.prep]=todayISO(); save(); recompute(); toast('Kit '+b.dataset.prep+' marqué prêt'); });
+  el.querySelectorAll('[data-liv]').forEach(b=>b.onclick=()=>{ S.livres[b.dataset.liv]=todayISO(); save(); recompute(); toast('Kit '+b.dataset.liv+' livré'); });
+  el.querySelectorAll('[data-raz]').forEach(b=>b.onclick=()=>{ if(!confirm('Annuler les statuts préparé / livré de '+b.dataset.raz+' ?')) return; delete S.prepares[b.dataset.raz]; delete S.livres[b.dataset.raz]; save(); recompute(); });
+  el.querySelectorAll('[data-fiche]').forEach(b=>b.onclick=()=>printFiches(R.kits.filter(k=>k.l.ug===b.dataset.fiche)));
+  $('#kbulk').onclick=()=>{ const codes=[...new Set(ks.flatMap(k=>k.sm.filter(s=>!s.cmd).map(s=>s.code)))]; if(!codes.length){ toast('Rien à déclarer'); return; }
+    const code=(prompt('Prestation sur-mesure déjà commandée ('+codes.join(', ')+') :',codes[0])||'').trim().toUpperCase(); if(!codes.includes(code)) return;
+    const v=parseDateAny(prompt('Date de commande (JJ/MM/AAAA) :',new Date().toLocaleDateString('fr-FR'))); if(!v) return;
+    let n=0; ks.forEach(k=>{ if(k.sm.some(s=>s.code===code&&!s.cmd)){ (S.commandes[k.l.ug]=S.commandes[k.l.ug]||{})[code]=v; n++; } }); save(); recompute(); toast(code+' déclaré commandé pour '+n+' logement(s)'); };
+  $('#kprint').onclick=()=>printFiches(ks.filter(k=>k.status!=='termine'));
+  $('#kcsv').onclick=()=>exportCsv('kits_logements', ['UG','Adresse','Commune','Démarrage','Statut','Code','Désignation','Qté','Unité','Mode','Entreprise','m3','kg'],
+     ks.flatMap(k=>k.k.lines.map(x=>[k.l.ug,k.l.adresse,k.l.commune,k.l.debut,ST[k.status][0],x.code,x.des,x.q,x.u,x.mode,x.ent,x.v.toFixed(3),x.kg.toFixed(1)]))) ;
+}
+function printFiches(list){
+  if(!list.length){ toast('Aucun kit'); return; }
+  $('#printzone').innerHTML=list.map(k=>{ const byLot={}; k.k.lines.forEach(x=>(byLot[x.lot+' — '+x.ent]=byLot[x.lot+' — '+x.ent]||[]).push(x));
+    const dl=k.l.debut?prevWorkDay(k.l.debut,P().jPrep):'';
+    return `<div class="fk"><h2>FICHE KIT · ${esc(k.l.ug)}</h2><div>${esc(k.l.adresse||'')} ${esc(k.l.commune||'')} · Scénario ${esc(k.l.scenario||'–')}</div>
+     <div>Démarrage : <b>${frDate(k.l.debut)}</b> · Livraison : <b>${frDate(dl)}</b> · Statut : ${ST[k.status][0]} · ${fmt(k.k.vol,2)} m³ · ${fmt(k.k.kg)} kg</div>
+     ${Object.keys(byLot).map(l=>`<h3>${esc(l)}</h3><table><thead><tr><th>☐</th><th>Article</th><th>Désignation</th><th class="num">Qté</th><th>Mode</th></tr></thead><tbody>${byLot[l].map(x=>`<tr><td>☐</td><td>${x.id}</td><td>${esc(x.des)}</td><td class="num">${x.q} ${x.u}</td><td>${x.mode==='kit'?'Kit base':x.mode==='plateforme'?'Plateforme logistique':'Sur-mesure'}</td></tr>`).join('')}</tbody></table>`).join('')}
+     ${k.k.cot.length?`<h3>Cotraitants à synchroniser (hors kit)</h3><p>${k.k.cot.map(c=>esc(c.ent+' – '+c.lib)).join(' · ')}</p>`:''}
+     ${[...k.wait,...k.miss.map(m=>'Manque '+m.id)].length?`<h3>Points bloquants</h3><p>${[...k.wait,...k.miss.map(m=>'Manque '+m.id+' ×'+fmt(m.need-m.have))].map(esc).join('<br>')}</p>`:''}
+     <p style="margin-top:14px">Préparé par : ____________ le ___/___ · Contrôlé par : ____________ · Réceptionné sur site par : ____________</p>
+     <p class="small">EVOLUD · Module Logistique — conçu et développé par Saïd OUFQIR</p></div>`; }).join('');
+  window.print();
+}
+function exportCsv(name,head,rows){
+  const s=v=>{ v=v==null?'':String(v); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  const txt='﻿'+[head,...rows].map(r=>r.map(s).join(';')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'})); a.download=name+'_'+todayISO()+'.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
+/* --- Livraisons --- */
+function renderLiv(){
+  const el=$('#v-liv'); const p=P(); const all=[...R.tournees.map(t=>Object.assign({k:'t'},t)),...R.navettes.map(n=>Object.assign({k:'n'},n))].sort((a,b)=>a.date.localeCompare(b.date));
+  const tot=all.reduce((s,x)=>s+x.cout,0), km=all.reduce((s,x)=>s+x.km,0);
+  el.innerHTML = kpis()+`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Livraisons programmées (${p.horizon} semaines)</h2><button class="btn sec sm noprint" id="lcsv">⬇️ Excel (CSV)</button></div>
+   <p class="small mut">Kits livrés J-${p.jPrep} ouvré avant démarrage · tournées optimisées (ordre de passage le plus court) · ${fmt(km)} km · ${eur(tot)}</p>
+   ${all.length?all.map(x=> x.k==='n'
+     ? `<div class="al info"><b>🚛 ${frDate(x.date)} · Navette porteur Base → tampon ${esc(x.tampon)}</b>${fmt(x.vol,1)} m³ · ${x.trips} rotation(s) · ${fmt(x.km,1)} km · ${fmt(x.h,1)} h · ${eur(x.cout)}</div>`
+     : `<div class="al ${x.trips>1?'':'info'}" style="border-left-color:${x.type==='tampon'?'var(--acc)':'var(--navy)'}"><b>🚚 ${frDate(x.date)} · ${x.type==='tampon'?'Depuis tampon '+esc(x.tampon):'Depuis la base Bruay'} · ${x.items.length} kit(s)</b>
+        Itinéraire : ${x.type==='tampon'?'Tampon':'Base'} → ${x.stops.map(s=>esc(s.nom)+' ('+s.n+')').join(' → ')} → retour · ${fmt(x.km,1)} km · ${fmt(x.h,1)} h · ${fmt(x.vol,1)} m³${x.trips>1?' · <b style="display:inline;color:var(--ko)">'+x.trips+' rotations</b>':''} · ${eur(x.cout)}
+        <div class="small mut">${x.items.map(i=>esc(i.kt.l.ug)).join(', ')}</div></div>`).join(''):'<p class="mut">Aucune livraison sur l\'horizon (dates de démarrage manquantes ou kits en attente).</p>'}
+   </div>
+   <div class="card"><h2>Menuiseries – plateforme logistique</h2><p class="small mut">Livrées devant le logement par le chauffeur de la plateforme (hors tournées BBNE). À rapprocher de la cadence MEXT.</p>
+   ${R.plateforme.length?`<div class="tw"><table><thead><tr><th>Date</th><th>Logement</th><th>Commune</th></tr></thead><tbody>${R.plateforme.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<tr><td>${frDate(x.date)}</td><td>${esc(x.ug)}</td><td>${esc(x.commune)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="mut">Aucune.</p>'}</div>
+   <div class="card"><h2>Cotraitants à prévenir (fourniture propre)</h2>
+   ${R.cotra.length?`<div class="tw"><table><thead><tr><th>Date</th><th>Entreprise</th><th>Prestation</th><th>Logement</th><th>Commune</th></tr></thead><tbody>${R.cotra.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<tr><td>${frDate(x.date)}</td><td>${esc(x.ent)}</td><td>${esc(x.lib)}</td><td>${esc(x.ug)}</td><td>${esc(x.commune)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="mut">Aucun.</p>'}</div>`;
+  $('#lcsv').onclick=()=>exportCsv('livraisons',['Date','Type','Départ','Itinéraire','Logements','m3','km','heures','Coût €'],
+    all.map(x=>x.k==='n'?[x.date,'Navette','Base Bruay','Tampon '+x.tampon,'',x.vol.toFixed(2),x.km.toFixed(1),x.h.toFixed(2),Math.round(x.cout)]:[x.date,x.type,x.type==='tampon'?'Tampon '+x.tampon:'Base Bruay',x.stops.map(s=>s.nom).join(' > '),x.items.map(i=>i.kt.l.ug).join(' '),x.vol.toFixed(2),x.km.toFixed(1),x.h.toFixed(2),Math.round(x.cout)]));
+}
+
+/* --- Zones tampons --- */
+function justif(an){
+  if(!an) return ''; const p=P(); const act=(S.tampons[an.cl.key]||{}).actif;
+  const ok=v=>v?'<span class="pill p-ok">✓</span>':'<span class="pill p-ko">✗</span>';
+  const verdict = an.enBase? 'Secteur de la base : livraison directe depuis Bruay, aucune zone tampon utile.'
+    : an.reco? `ZONE TAMPON RECOMMANDÉE à ${esc(an.lieu.commune)}${an.hasBV?' (base-vie existante)':' (conteneur à installer)'}`
+    : 'Pas de zone tampon : la livraison directe depuis Bruay reste la meilleure option.';
+  return `<div class="verdict" style="color:${an.reco?'var(--acc)':'var(--ok)'}">${verdict}</div>
+   <p class="small mut">Secteur ${esc(an.cl.nom)} · base de calcul : ${esc(an.src)} · ${an.jours} jours de livraison sur ~${an.semaines} semaines · ${fmt(an.kitsParJour,1)} kit/jour · ${fmt(an.vol,1)} m³</p>
+   <p>${ok(an.crit.geo)} <b>Géographique</b> : ${fmt(an.cl.km,1)} km / ${fmt(an.cl.min)} min de Bruay (seuil ${p.seuilKm} km).</p>
+   <p>${ok(an.crit.eco)} <b>Économique</b> : direct ${eur(an.direct.cout)} (${fmt(an.direct.km)} km, ${fmt(an.direct.h)} h) contre plateforme relais ${eur(an.relais.cout)} (navettes + derniers km ${fmt(an.relais.km)} km, ${fmt(an.relais.h)} h dont manutention, stockage ${eur(an.relais.stock)}). Écart ${an.gain>=0?'gain':'surcoût'} ${eur(Math.abs(an.gain))} soit ${fmt(an.gainPct)} % (seuil ${p.seuilGain} %).</p>
+   <p>${ok(an.crit.ops)} <b>Opérationnel</b> : ${fmt(an.kitsParJour,1)} kit(s)/jour pendant ~${an.semaines} semaine(s) ${an.crit.ops?'→ flux régulier qui justifie un stock avancé (moins de rupture, équipes servies dès 7 h).':'→ flux trop faible ou trop court pour immobiliser un stock.'}</p>
+   ${!an.enBase&&an.reco?`<div class="row noprint" style="margin-top:6px"><button class="btn ${act?'sec':'acc'} sm" data-act="${esc(an.cl.key)}">${act?'Désactiver la zone tampon':'Activer cette zone tampon'}</button></div>`:''}
+   ${!an.enBase&&!an.reco&&act?`<div class="row noprint"><button class="btn sec sm" data-act="${esc(an.cl.key)}">Désactiver (non justifiée)</button></div>`:''}`;
+}
+function renderTampon(){
+  const el=$('#v-tampon'); const p=P();
+  const list=[...R.analyses].sort((a,b)=>b.cl.km-a.cl.km);
+  el.innerHTML = `<div class="card"><h2>Zones tampons stratégiques</h2>
+   <p class="small">Méthode : les chantiers à moins de ${p.rayonCluster} km les uns des autres forment un secteur. Pour chaque secteur, deux organisations sont chiffrées sur la même période : <b>livraison directe</b> quotidienne depuis Bruay en utilitaire, et <b>plateforme relais</b> (navette porteur hebdomadaire vers un stock avancé + derniers kilomètres + double manutention + location du stockage, nulle si une base-vie existe). Une zone tampon n'est proposée que si les <b>trois critères</b> sont remplis : éloignement ≥ ${p.seuilKm} km, gain ≥ ${p.seuilGain} %, flux régulier.</p></div>
+   ${list.map(an=>`<div class="card"><h2>${esc(an.cl.nom)} <span class="pill ${an.reco?'p-warn':'p-ok'}">${an.enBase?'Base':an.reco?'Tampon recommandé':'Direct'}</span></h2>${justif(an)}</div>`).join('')||'<div class="card mut">Aucun chantier localisé avec effectif.</div>'}
+   <div class="card"><h2>Comparatif</h2><div class="tw"><table><thead><tr><th>Secteur</th><th class="num">km base</th><th class="num">Logts</th><th class="num">Direct</th><th class="num">Relais</th><th class="num">Écart</th><th>Décision</th></tr></thead><tbody>
+   ${list.map(an=>`<tr><td>${esc(an.cl.nom)}</td><td class="num">${fmt(an.cl.km,1)}</td><td class="num">${an.nbLog}</td><td class="num">${eur(an.direct.cout)}</td><td class="num">${eur(an.relais.cout)}</td><td class="num" style="color:${an.gain>0?'var(--ok)':'var(--ko)'}">${an.gain>0?'+':''}${eur(an.gain)}</td><td>${an.enBase?'Base':an.reco?'<b>Tampon</b>':'Direct'}</td></tr>`).join('')}
+   </tbody></table></div><p class="small mut">Hypothèses de coûts modifiables dans ⚙️ Données (€/km, €/h, capacités, location conteneur, seuils). Les distances sont estimées : corrigez le facteur routier si vous constatez un écart avec vos trajets réels.</p></div>`;
+  bindAct(el);
+}
+function bindAct(el){ el.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{ const k=b.dataset.act; const an=R.analyses.find(a=>a.cl.key===k); const cur=S.tampons[k];
+  if(cur&&cur.actif){ cur.actif=false; } else { S.tampons[k]={actif:true,lieu:an.lieu.commune+(an.hasBV?' (base-vie)':''),lat:an.lieu.co.lat,lon:an.lieu.co.lon,date:todayISO()}; }
+  save(); recompute(); toast(S.tampons[k].actif?'Zone tampon activée : tournées recalculées':'Zone tampon désactivée'); }); }
+
+/* --- Alertes --- */
+function renderAlertes(){
+  const el=$('#v-alertes'); const A=R.alertes;
+  el.innerHTML=`<div class="card"><h2>Alertes logistiques (${A.length})</h2>${A.map(a=>`<div class="al ${a.niv==='ko'?'ko':a.niv==='info'?'info':''}"><b>${a.niv==='ko'?'🔴':a.niv==='warn'?'🟠':'🔵'} ${esc(a.t)}</b><span class="small">${esc(a.d)}</span></div>`).join('')||'<p class="mut">Aucune alerte.</p>'}</div>`;
+}
+
+/* --- Données & paramètres --- */
+function renderDonnees(){
+  const el=$('#v-donnees'); const p=P();
+  let imp='';
+  if(IMPORT_TMP){ const {sh,hr,m}=IMPORT_TMP.cur; const heads=(sh.rows[hr]||[]).map(x=>x==null?'':String(x));
+    const opt=sel=>`<option value="">—</option>`+heads.map((h,i)=>h?`<option value="${i}" ${sel===i?'selected':''}>${esc(h)}</option>`:'').join('');
+    imp=`<div class="card" style="border-color:var(--acc)"><h2>Vérification de l'import : ${esc(IMPORT_TMP.file)}</h2>
+     <div class="row"><label class="f">Feuille<select id="isheet">${IMPORT_TMP.sheets.map(s=>`<option ${s.name===sh.name?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label><span class="small mut">Ligne d'en-tête détectée : ${hr+1} · ${Math.max(0,sh.rows.length-hr-1)} lignes</span></div>
+     <h3>Champs logement</h3><div class="grid2">${FIELDS.map(f=>`<label class="f">${f.lib}<select data-mapf="${f.k}">${opt(m.fields[f.k])}</select></label>`).join('')}</div>
+     <h3>Prestations (« non » = à faire · « oui » = fait · « DP » = attente diag)</h3><div class="grid2">${S.catalogue.map(c=>`<label class="f">${c.code} – ${esc(c.lib)}<select data-mapp="${c.code}">${opt(m.presta[c.code])}</select></label>`).join('')}</div>
+     <div class="row" style="margin-top:10px"><button class="btn acc" id="iok">Valider l'import</button><button class="btn sec" id="icancel">Annuler</button></div>
+     <p class="small mut">Les noms des locataires ne sont pas importés : seuls UG, adresse, commune, scénario, dates, diag et prestations sont lus.</p></div>`; }
+  el.innerHTML = imp+`<div class="card"><h2>Source des logements</h2>
+   <p class="small">Le module ne ressaisit rien : il relit l'export EVOLUD / Planning_EVOLUD (onglet Infos Dossiers) ou Chantier_evolud_2 (infos logt). Un nouvel import remplace entièrement le précédent ; stocks, commandes, kits préparés et zones tampons sont conservés (rattachés au n° UG).</p>
+   <p>${S.source?`Dernier import : <b>${esc(S.source.fichier)}</b> · feuille ${esc(S.source.feuille)} · ${S.source.nb} logements · ${esc(S.source.date)}`:'<span class="mut">Aucun import.</span>'}</p>
+   <div class="row"><label class="btn">📥 Importer Excel / CSV<input type="file" id="ifile" accept=".xlsx,.xlsm,.csv" hidden></label><button class="btn sec" id="dexp">💾 Sauvegarde module (JSON)</button><label class="btn sec">♻️ Restaurer<input type="file" id="drest" accept=".json" hidden></label></div></div>
+
+   <div class="card"><h2>Chantiers et villes d'intervention</h2><div class="tw"><table><thead><tr><th>Nom</th><th>Commune</th><th>Prog.</th><th>Statut</th><th class="num">Logts*</th><th>Début</th><th>Base-vie</th><th>Lat / Lon (si commune inconnue)</th><th></th></tr></thead><tbody>
+   ${S.chantiers.map((c,i)=>`<tr><td><input data-ch="${i}" data-f="nom" value="${esc(c.nom)}" style="width:190px"></td><td><input data-ch="${i}" data-f="commune" value="${esc(c.commune)}" style="width:150px" list="dlc"></td><td><input data-ch="${i}" data-f="prog" value="${esc(c.prog)}" style="width:80px"></td>
+     <td><select data-ch="${i}" data-f="statut"><option value="actif" ${c.statut==='actif'?'selected':''}>Actif</option><option value="futur" ${c.statut==='futur'?'selected':''}>Futur</option></select></td>
+     <td class="num"><input type="number" data-ch="${i}" data-f="nb" value="${c.nb??''}" style="width:65px"></td><td><input type="date" data-ch="${i}" data-f="debut" value="${c.debut||''}"></td>
+     <td><input type="checkbox" data-ch="${i}" data-f="baseVie" ${c.baseVie?'checked':''}></td><td><input data-ch="${i}" data-f="lat" value="${c.lat??''}" placeholder="lat" style="width:70px"> <input data-ch="${i}" data-f="lon" value="${c.lon??''}" placeholder="lon" style="width:70px"></td>
+     <td><button class="btn sec sm" data-chdel="${i}">✕</button></td></tr>`).join('')}
+   </tbody></table></div><datalist id="dlc">${COMMUNES.map(c=>`<option value="${esc(c[0])}">`).join('')}</datalist>
+   <div class="row" style="margin-top:8px"><button class="btn sec sm" id="chadd">＋ Ajouter un chantier / une ville</button></div>
+   <p class="small mut">* Effectif utilisé uniquement tant qu'aucun logement de ce chantier n'est importé. « Base-vie » = lieu de stockage déjà disponible (zone tampon sans loyer).</p></div>
+
+   <div class="card"><h2>Hypothèses de calcul</h2><div class="grid2">
+   ${[['facteurRoute','Facteur routier (× vol d\'oiseau)',0.05],['vitesse','Vitesse moyenne (km/h)',1],['coutKmVL','Coût utilitaire (€/km)',0.01],['capVL','Capacité utilitaire (m³)',1],['coutKmPL','Coût porteur navette (€/km)',0.01],['capPL','Capacité porteur (m³)',1],['coutHeure','Coût horaire chauffeur (€/h)',1],['tArret','Déchargement / arrêt (min)',1],['tChargeBase','Chargement au départ (min)',1],['manutKit','Manutention tampon / kit (min)',1],['coutStockMois','Location stockage tampon (€/mois)',10],['seuilKm','Seuil distance tampon (km)',1],['seuilGain','Seuil gain tampon (%)',1],['rayonCluster','Rayon de regroupement (km)',1],['jPrep','Livraison J- (jours ouvrés)',1],['horizon','Horizon analysé (semaines)',1],['cadenceDefaut','Cadence par défaut (logts/jour/chantier)',1],['volDefaut','Volume moyen kit si inconnu (m³)',0.1]]
+     .map(([k,l,st])=>`<label class="f">${l}<input type="number" step="${st}" data-p="${k}" value="${p[k]}"></label>`).join('')}
+   </div><div class="row" style="margin-top:8px"><label class="f">Base : nom<input data-pb="nom" value="${esc(p.base.nom)}" style="width:280px"></label><label class="f">lat<input data-pb="lat" value="${p.base.lat}" style="width:90px"></label><label class="f">lon<input data-pb="lon" value="${p.base.lon}" style="width:90px"></label><button class="btn sec sm" id="prst">Valeurs par défaut</button></div>
+   <p class="small mut">Valeurs par défaut = ordres de grandeur du marché à confirmer avec vos coûts réels (parc, loueur, chauffeur). Elles conditionnent les recommandations de zones tampons.</p></div>
+
+   <div class="card"><details><summary>Composition des kits par prestation (articles, quantités, volumes, délais)</summary>
+   ${S.catalogue.map((c,ci)=>`<h3>${c.code} – ${esc(c.lib)} · ${esc(c.ent)} · <select data-cm="${ci}"><option value="kit" ${c.mode==='kit'?'selected':''}>Kit base</option><option value="surmesure" ${c.mode==='surmesure'?'selected':''}>Sur-mesure</option><option value="plateforme" ${c.mode==='plateforme'?'selected':''}>Plateforme</option><option value="cotraitant" ${c.mode==='cotraitant'?'selected':''}>Cotraitant</option></select> délai <input type="number" data-cd="${ci}" value="${c.delai}" style="width:60px"> j</h3>
+     ${c.art.length?`<table><thead><tr><th>Article</th><th>Désignation</th><th class="num">Qté/logt</th><th class="num">m³/u</th><th class="num">kg/u</th></tr></thead><tbody>${c.art.map((a,ai)=>`<tr><td>${a.id}</td><td>${esc(a.des)}</td><td class="num"><input type="number" step="0.5" data-a="${ci}|${ai}|q" value="${a.q}" style="width:65px"></td><td class="num"><input type="number" step="0.005" data-a="${ci}|${ai}|v" value="${a.v}" style="width:75px"></td><td class="num"><input type="number" step="0.5" data-a="${ci}|${ai}|kg" value="${a.kg}" style="width:65px"></td></tr>`).join('')}</tbody></table>`:'<p class="small mut">Fourniture cotraitant : hors kit, apparaît dans les livraisons pour synchronisation.</p>'}`).join('')}
+   <div class="row" style="margin-top:8px"><button class="btn sec sm" id="crst">Restaurer la composition par défaut</button></div></details></div>
+
+   <div class="card"><h2>Intégration EVOLUD</h2><p class="small">Page autonome placée dans le même dépôt que l'appli (même adresse) : aucune dépendance externe, fonctionne sur le PC filtré et hors ligne. Clé de stockage propre : <code>${LS_KEY}</code> (n'écrit jamais dans les données de l'appli). Lien d'ouverture direct d'un logement : <code>logistique.html#ug=107494</code>. Interface de lecture pour l'appli : <code>window.EvoludLogistique</code> (getKits, getLivraisons, getAlertes, getTampons).</p></div>`;
+  // liaisons
+  const f=$('#ifile'); if(f) f.onchange=e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
+  if(IMPORT_TMP){ $('#isheet').onchange=e=>selectImportSheet(e.target.value); $('#iok').onclick=applyImport; $('#icancel').onclick=()=>{IMPORT_TMP=null;renderDonnees();}; }
+  $('#dexp').onclick=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})); a.download='evolud_logistique_'+todayISO()+'.json'; a.click(); };
+  $('#drest').onchange=async e=>{ const fl=e.target.files[0]; if(!fl) return; try{ const o=JSON.parse(await fl.text()); if(!o.params||!o.chantiers) throw 0; localStorage.setItem(LS_KEY,JSON.stringify(o)); S=load(); recompute(); toast('Sauvegarde restaurée'); }catch(_){ alert('Fichier de sauvegarde invalide'); } };
+  el.querySelectorAll('[data-ch]').forEach(i=>i.onchange=()=>{ const c=S.chantiers[+i.dataset.ch], k=i.dataset.f; let v=i.type==='checkbox'?i.checked:i.value;
+    if(k==='nb') v=v===''?null:+v; if((k==='lat'||k==='lon')) v=v===''?null:+String(v).replace(',','.'); c[k]=v;
+    if(k==='commune' && !findCommune(v) && (c.lat==null||c.lon==null)) toast('Commune inconnue : saisissez lat / lon');
+    save(); recompute(); });
+  el.querySelectorAll('[data-chdel]').forEach(b=>b.onclick=()=>{ const c=S.chantiers[+b.dataset.chdel]; if(!confirm('Supprimer le chantier « '+c.nom+' » ?')) return; S.chantiers.splice(+b.dataset.chdel,1); save(); recompute(); });
+  $('#chadd').onclick=()=>{ S.chantiers.push({id:'CH-'+Date.now(),nom:'Nouveau chantier',commune:'',prog:'',statut:'futur',nb:null,debut:'',fin:'',baseVie:false}); save(); recompute(); };
+  el.querySelectorAll('[data-p]').forEach(i=>i.onchange=()=>{ const v=+String(i.value).replace(',','.'); if(!isNaN(v)&&v>=0){ S.params[i.dataset.p]=v; save(); recompute(); } });
+  el.querySelectorAll('[data-pb]').forEach(i=>i.onchange=()=>{ const k=i.dataset.pb; S.params.base[k]= k==='nom'?i.value:+String(i.value).replace(',','.'); save(); recompute(); });
+  $('#prst').onclick=()=>{ if(!confirm('Remettre toutes les hypothèses par défaut ?')) return; S.params=structuredClone(DEF_PARAMS); save(); recompute(); };
+  el.querySelectorAll('[data-cm]').forEach(s=>s.onchange=()=>{ S.catalogue[+s.dataset.cm].mode=s.value; save(); recompute(); });
+  el.querySelectorAll('[data-cd]').forEach(s=>s.onchange=()=>{ S.catalogue[+s.dataset.cd].delai=Math.max(0,+s.value||0); save(); recompute(); });
+  el.querySelectorAll('[data-a]').forEach(s=>s.onchange=()=>{ const [ci,ai,k]=s.dataset.a.split('|'); S.catalogue[+ci].art[+ai][k]=Math.max(0,+s.value||0); save(); recompute(); });
+  $('#crst').onclick=()=>{ if(!confirm('Restaurer la composition des kits par défaut ?')) return; S.catalogue=structuredClone(DEF_CATALOGUE); save(); recompute(); };
+}
+
+/* ---------- API d'intégration (lecture seule) ---------- */
+window.EvoludLogistique = {
+  version:'1.0',
+  getKits:()=>R.kits.map(k=>({ug:k.l.ug,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
+  getLivraisons:()=>R.tournees.map(t=>({date:t.date,type:t.type,itineraire:t.stops.map(s=>s.nom),logements:t.items.map(i=>i.kt.l.ug),km:+t.km.toFixed(1),cout:Math.round(t.cout)})),
+  getAlertes:()=>R.alertes.slice(),
+  getTampons:()=>R.analyses.map(a=>({secteur:a.cl.nom,km:+a.cl.km.toFixed(1),recommande:a.reco,actif:!!(S.tampons[a.cl.key]||{}).actif,gain:Math.round(a.gain),gainPct:+a.gainPct.toFixed(1)}))
+};
+
+/* ---------- Démarrage ---------- */
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+recompute();
+(function(){ const m=/ug=([^&]+)/.exec(location.hash); if(m){ KF.q=decodeURIComponent(m[1]); show('kits'); } })();
+</script>
+</body>
+</html>
