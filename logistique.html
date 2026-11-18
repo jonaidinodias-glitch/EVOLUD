@@ -81,7 +81,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
   <section id="v-tampon" class="hide"></section>
   <section id="v-alertes" class="hide"></section>
   <section id="v-donnees" class="hide"></section>
-  <footer>Module Logistique EVOLUD · v1.4 · Conçu et développé par Saïd OUFQIR</footer>
+  <footer>Module Logistique EVOLUD · v1.5 · Conçu et développé par Saïd OUFQIR</footer>
 </main>
 <div id="printzone"></div>
 <div id="toast"></div>
@@ -98,7 +98,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 <script>
 "use strict";
 /* =====================================================================
-   MODULE LOGISTIQUE EVOLUD — v1.4
+   MODULE LOGISTIQUE EVOLUD — v1.5
    Conçu et développé par Saïd OUFQIR
    Aucune dépendance externe : fonctionne hors ligne et sur PC filtré.
    Données propres au module uniquement (stock, commandes, kits préparés,
@@ -1050,7 +1050,7 @@ function renderDonnees(){
 
 /* ---------- API d'intégration (lecture seule) ---------- */
 window.EvoludLogistique = {
-  version:'1.4',
+  version:'1.5',
   getKits:()=>R.kits.map(k=>({ug:k.l.ug,source:k.k.src,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
   getLivraisons:()=>R.tournees.map(t=>({date:t.date,type:t.type,itineraire:t.stops.map(s=>s.nom),logements:t.items.map(i=>i.kt.l.ug),km:+t.km.toFixed(1),cout:Math.round(t.cout)})),
   getAlertes:()=>R.alertes.slice(),
@@ -1059,6 +1059,8 @@ window.EvoludLogistique = {
 
 /* ---------- Démarrage ---------- */
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+// Ouvert dans l'appli Évolud (bouton 🚚 Logistique) : le retour ferme le module au lieu de recharger l'appli dans le cadre
+if(window.self!==window.top){ const hd=document.querySelector('header'); if(hd) hd.style.display='none'; }  // la barre « ← Retour Évolud » de l'appli remplace l'en-tête
 recompute();
 (function(){ const m=/ug=([^&]+)/.exec(location.hash); if(m){ KF.q=decodeURIComponent(m[1]); show('kits'); } })();
 </script>
