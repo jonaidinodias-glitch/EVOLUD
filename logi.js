@@ -1,42 +1,61 @@
-/* Évolud – bouton « Logistique » : ouvre le module Logistique & Kitting dans l'appli
+/* Évolud – petit bouton rond « Outils » (Logistique + Index INSEE)
    Conçu et développé par Saïd OUFQIR
-   Script non chiffré, ajouté à la page par sw.js (comme guide.js) : ne modifie aucune fonction existante. */
+   Script non chiffré, ajouté à la page par sw.js (comme guide.js) : ne modifie aucune fonction existante.
+   v5.31.8 : bouton discret (rond, à gauche, symétrique du « ? »), masqué sur l'écran de connexion. */
 (function () {
   if (window.__evoludLogi) return; window.__evoludLogi = true;
+  var F = 'font:600 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;';
   var css = document.createElement('style');
   css.textContent =
-    '#evLogiBtn{position:fixed;left:12px;bottom:calc(225px + env(safe-area-inset-bottom));z-index:2147483000;' +
-    'background:#0f2a44;color:#fff;border:2px solid #f07c1b;border-radius:24px;padding:9px 14px;font:600 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;' +
-    'box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;gap:6px}' +
-    '#evLogiBtn:active{transform:scale(.96)}' +
+    '#evLogiBtn{position:fixed;left:14px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:2147483000;width:46px;height:46px;border-radius:50%;' +
+    'background:#0f2a44;color:#fff;border:2px solid #f07c1b;font-size:20px;line-height:1;box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer;opacity:.9;padding:0}' +
+    '#evLogiBtn:active{transform:scale(.94)}' +
+    '#evLogiMenu{position:fixed;left:14px;bottom:calc(146px + env(safe-area-inset-bottom));z-index:2147483001;background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;overflow:hidden}' +
+    '#evLogiMenu.on{display:block}' +
+    '#evLogiMenu button{display:block;width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid #e3e8ef;padding:12px 16px;color:#0f2a44;cursor:pointer;' + F + '}' +
     '#evLogiWrap{position:fixed;inset:0;z-index:2147483600;background:#f3f5f8;display:none;flex-direction:column}' +
     '#evLogiWrap.on{display:flex}' +
-    '#evLogiBar{background:#0f2a44;color:#fff;display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;font:600 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif}' +
+    '#evLogiBar{background:#0f2a44;color:#fff;display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;' + F + '}' +
     '#evLogiBar button{background:none;border:1px solid rgba(255,255,255,.45);color:#fff;border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}' +
     '#evLogiFrame{flex:1;border:0;width:100%;background:#f3f5f8}';
   document.head.appendChild(css);
 
-  var wrap = null;
-  function open() {
+  var PAGES = { logi: ['🚚 Logistique & Kitting', 'logistique.html?embed=1'], idx: ['📈 Index INSEE & révision', 'indices.html?embed=1'] };
+  var wrap = null, cur = null;
+  function open(k) {
+    k = PAGES[k] ? k : 'logi'; menu.classList.remove('on');
     if (!wrap) {
       wrap = document.createElement('div'); wrap.id = 'evLogiWrap';
-      wrap.innerHTML = '<div id="evLogiBar"><button type="button" id="evLogiClose">← Retour Évolud</button><span>🚚 Logistique & Kitting</span></div>' +
-        '<iframe id="evLogiFrame" title="Logistique" src="logistique.html?embed=1"></iframe>';
+      wrap.innerHTML = '<div id="evLogiBar"><button type="button" id="evLogiClose">← Retour Évolud</button><span id="evLogiTit"></span></div><iframe id="evLogiFrame" title="Outil"></iframe>';
       document.body.appendChild(wrap);
       wrap.querySelector('#evLogiClose').onclick = close;
     }
+    if (cur !== k) { wrap.querySelector('#evLogiFrame').src = PAGES[k][1]; cur = k; }
+    wrap.querySelector('#evLogiTit').textContent = PAGES[k][0];
     wrap.classList.add('on'); btn.style.display = 'none';
     try { history.pushState({ evLogi: 1 }, ''); } catch (e) {}
   }
-  function close() { if (wrap) wrap.classList.remove('on'); btn.style.display = 'flex'; }
+  function close() { if (wrap) wrap.classList.remove('on'); vis(); }
   window.addEventListener('popstate', function () { if (wrap && wrap.classList.contains('on')) close(); });
   window.addEventListener('message', function (e) { if (e.origin === location.origin && e.data === 'evolud-logi-close') close(); });
 
   var btn = document.createElement('button');
-  btn.id = 'evLogiBtn'; btn.type = 'button'; btn.title = 'Logistique & Kitting';
-  btn.innerHTML = '🚚 Logistique';
-  btn.onclick = open;
-  function add() { if (!document.getElementById('evLogiBtn')) document.body.appendChild(btn); }
+  btn.id = 'evLogiBtn'; btn.type = 'button'; btn.title = 'Outils : Logistique, Index INSEE'; btn.textContent = '🧰';
+  var menu = document.createElement('div'); menu.id = 'evLogiMenu';
+  menu.innerHTML = '<button type="button" data-k="logi">🚚 Logistique</button><button type="button" data-k="idx">📈 Index INSEE & révision</button>';
+  menu.onclick = function (e) { var b = e.target.closest('button'); if (b) open(b.getAttribute('data-k')); };
+  btn.onclick = function (e) { e.stopPropagation(); menu.classList.toggle('on'); };
+  document.addEventListener('click', function (e) { if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('on'); });
+
+  // Masqué sur l'écran de connexion (champ code PIN visible) et quand un outil est ouvert
+  function vis() {
+    var pin = document.querySelector('input[type=password]');
+    var login = pin && pin.offsetParent !== null;
+    var shown = !login && !(wrap && wrap.classList.contains('on'));
+    btn.style.display = shown ? 'block' : 'none'; if (!shown) menu.classList.remove('on');
+  }
+  function add() { if (!document.getElementById('evLogiBtn')) { document.body.appendChild(menu); document.body.appendChild(btn); } vis(); setInterval(vis, 1200); }
   if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
-  window.EvoludOuvrirLogistique = open;
+  window.EvoludOuvrirLogistique = function () { open('logi'); };
+  window.EvoludOuvrirIndex = function () { open('idx'); };
 })();
