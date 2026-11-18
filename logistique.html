@@ -81,7 +81,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
   <section id="v-tampon" class="hide"></section>
   <section id="v-alertes" class="hide"></section>
   <section id="v-donnees" class="hide"></section>
-  <footer>Module Logistique EVOLUD · v1.1 · Conçu et développé par Saïd OUFQIR</footer>
+  <footer>Module Logistique EVOLUD · v1.2 · Conçu et développé par Saïd OUFQIR</footer>
 </main>
 <div id="printzone"></div>
 <div id="toast"></div>
@@ -98,7 +98,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 <script>
 "use strict";
 /* =====================================================================
-   MODULE LOGISTIQUE EVOLUD — v1.1
+   MODULE LOGISTIQUE EVOLUD — v1.2
    Conçu et développé par Saïd OUFQIR
    Aucune dépendance externe : fonctionne hors ligne et sur PC filtré.
    Données propres au module uniquement (stock, commandes, kits préparés,
@@ -216,11 +216,34 @@ const ART_BDC = {
  'PE-CSP-IMP':{des:"Porte d'entrée bois Condé St Pierre avec imposte",u:'u',v:0.45,kg:75,code:'PE',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
  'PE-AUTRE':{des:"Porte d'entrée (autre modèle)",u:'u',v:0.35,kg:65,code:'PE',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
  'PBS-PVC':{des:'Porte arrière BS PVC (allège pleine)',u:'u',v:0.30,kg:45,code:'PBS',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
+ 'LV240':{des:'Laine de verre déroulée 160+80 mm',u:'m²',v:0.08,kg:2.5,delai:7,mode:'kit',lot:'Isolation',ent:'BBNE'},
+ 'PLINTHE':{des:'Plinthes (ml)',u:'ml',v:0.001,kg:1,delai:7,mode:'kit',lot:'Revêtements',ent:'BBNE'},
+ 'ROB-TH':{des:'Robinet thermostatique',u:'u',v:0.002,kg:0.5,delai:7,mode:'kit',lot:'Chauffage',ent:'À affecter'},
+ 'PF-VR':{des:'Porte-fenêtre PVC + volet roulant (sur cotes)',u:'u',v:0.5,kg:70,code:'PF',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
+ 'WC':{des:'Cuvette WC complète',u:'u',v:0.15,kg:22,delai:7,mode:'kit',lot:'Plomberie',ent:'À affecter'},
+ 'BAIGN':{des:'Baignoire 1,40–1,70 m',u:'u',v:0.6,kg:30,delai:14,mode:'kit',lot:'Plomberie',ent:'À affecter'},
+ 'TABLIER':{des:'Tablier / panneau de baignoire',u:'u',v:0.05,kg:5,delai:14,mode:'kit',lot:'Plomberie',ent:'À affecter'},
+ 'PAROI':{des:'Paroi de baignoire vitrée pivotante',u:'u',v:0.05,kg:12,delai:14,mode:'kit',lot:'Plomberie',ent:'À affecter'},
  'MEXT-CH':{des:'Châssis PVC + volet roulant incorporé',u:'m²',v:0.15,kg:35,code:'MEXT',mode:'plateforme',lot:'Menuiseries',ent:'GROSFILEX'}
 };
 const C=Math.ceil;
 // règles : expression → code prestation + conversion quantité BDC → articles. cot = fourniture cotraitant (hors kit)
 const BDC_RULES = [
+ {id:'labo',re:/mesure d air|strategie d echantillonnage|transports et evacuations des dechets|depose et evacuation de plinthes|pv pour depose et repose|depose et repose avec soins d un radiateur/,code:'DIV',conv:()=>[]},
+ {id:'lv240',re:/laine minerale de verre deroulee/,code:'RAMP',conv:q=>[['LV240',C(q*1.05)]]},
+ {id:'refPlaf',re:/refection partielle de plafonds/,code:'PLAF',conv:q=>[['BA13',C(q/3)],['PLAT-CONSO',C(q/5)]]},
+ {id:'ebras',re:/ebrasements/,code:'MEXT',conv:q=>[['BA13H',1],['PLAT-CONSO',1]],once:['BA13H','PLAT-CONSO']},
+ {id:'deposeDoubl',re:/depose de doublages|demolition seule de faiences/,code:'MF',conv:q=>[['BIGBAG',C(q/4)]]},
+ {id:'plinthe',re:/plinthes/,code:'DIV',conv:q=>[['PLINTHE',C(q*1.05)]]},
+ {id:'robTh',re:/robinet a tete thermostatique/,code:'CHAUF',conv:q=>[['ROB-TH',q]]},
+ {id:'cage',re:/cage d escalier/,code:'PEINT',conv:q=>[['PEINT',C(q*0.25)]]},
+ {id:'tableau',re:/tableau de repartition tous types/,code:'ELEC',conv:q=>[['ELEC-CONSO',q]]},
+ {id:'pfVR',re:/bloc porte fenetre pvc.*volet roulant/,code:'PF',conv:q=>{const n=Math.max(1,Math.round(q/2.4)); return [['PF-VR',n],['MEN-CONSO',n]];}},
+ {id:'velux',re:/fenetre de toit/,code:'VELUX',cot:{ent:'ATS',lib:'Velux / fenêtre de toit'}},
+ {id:'wc',re:/cuvette de wc/,code:'PLOMB',conv:q=>[['WC',q]]},
+ {id:'baignoire',re:/remplacement baignoire/,code:'PLOMB',conv:q=>[['BAIGN',q]]},
+ {id:'tablier',re:/panneau de facade et ou de retour pour baignoire/,code:'PLOMB',conv:q=>[['TABLIER',q]]},
+ {id:'paroi',re:/paroi de baignoire/,code:'PLOMB',conv:q=>[['PAROI',q]]},
  {id:'trap60',re:/trappe de plafond isolante/,code:'TRAP',conv:q=>[['TRAPPE',q],['TRAPPE-FIX',q]]},
  {id:'trap30',re:/trappe de visite technique/,code:'TRAP',conv:q=>[['TRAPPE30',q]]},
  {id:'plafBA13',re:/plafond en plaques de platre ba13/,code:'PLAF',conv:q=>[['BA13',C(q*1.05/3)],['FOURR',C(q*2.4/3)],['PLAT-CONSO',C(q/10)]]},
@@ -232,7 +255,7 @@ const BDC_RULES = [
  {id:'murNeuf',re:/pour 1 seul mur neuf/,code:'PEINT',conv:q=>[['PEINT',C(q*3)]]},
  {id:'doublage',re:/cloison de doublage/,code:'MF',conv:q=>[['BA13',C(q*1.05/3)],['RAIL48',C(q*2.2/3)],['LV120',C(q*1.05)],['PLAT-CONSO',C(q/10)]]},
  {id:'gaine',re:/gaine technique/,code:'PLAF',conv:q=>[['BA13H',C(q*0.8/3)],['RAIL48',C(q*2/3)],['PLAT-CONSO',1]]},
- {id:'vmc',re:/vmc|extracteur d air pour vmr|entrees d air|sortie de ventilation|tuile a douille/,code:'VMC',cot:{ent:'GDS',lib:'VMC / VMR / entrées d\'air'}},
+ {id:'vmc',re:/vmc|vmr|entrees d air|sortie de ventilation|tuile a douille|bouche d extraction/,code:'VMC',cot:{ent:'GDS',lib:'VMC / VMR / entrées d\'air'}},
  {id:'diff',re:/interrupteur differentiel/,code:'VMC',cot:{ent:'GDS',lib:'Différentiel tableau (lié VMC)'}},
  {id:'ventMur',re:/suppression d une ventilation exterieure murale/,code:'BV',conv:q=>[['MORT',q],['BRIQ',2*q]]},
  {id:'ventPlaf',re:/suppression ventilation haute en plafond/,code:'BV',conv:q=>[['PLAT-CONSO',1]],once:['PLAT-CONSO']},
@@ -242,7 +265,7 @@ const BDC_RULES = [
  {id:'peAutre',re:/porte d entree/,code:'PE',conv:q=>[['PE-AUTRE',q],['PE-EBR',q],['MEN-CONSO',q]]},
  {id:'pbs',re:/bloc porte fenetre pvc/,code:'PBS',conv:q=>{const n=Math.max(1,Math.round(q/2.4)); return [['PBS-PVC',n],['MEN-CONSO',n]];}},
  {id:'chassis',re:/chassis exterieur pvc/,code:'MEXT',conv:q=>[['MEXT-CH',q]]},
- {id:'pvMenu',re:/^pv pour fourniture et pose|depose complete de menuiseries|depose avec soins de volet/,code:'MEXT',conv:()=>[]},
+ {id:'pvMenu',re:/^pv pour fourniture et pose|depose complete de menuiseries|depose avec soins de volet|depose et evacuation de volet/,code:'MEXT',conv:()=>[]},
  {id:'gc',re:/barres de protection/,code:'GC',conv:q=>[['GC-ML',C(q)],['GC-FIX',1]]},
  {id:'mc',re:/main courante/,code:'GC',conv:q=>[['MC',q]]},
  {id:'bpi',re:/bloc porte interieur/,code:'BPI',conv:q=>[['BPI',q]]},
@@ -268,6 +291,30 @@ function bdcKit(items){
   for(const id in agg){ const a=ART_BDC[id]; if(!a) continue; const q=+agg[id].toFixed(2);
     lines.push({code:a.code||(a.mode==='kit'?'KIT':''),mode:a.mode,lot:a.lot,ent:a.ent,id,des:a.des,q,u:a.u,v:a.v*q,kg:a.kg*q,delai:a.delai||0}); vol+=a.v*q; kg+=a.kg*q; }
   return {lines,cot:Object.values(cot),vol,kg,unknown,codes:[...codes],src:'bdc'};
+}
+function importGammaExtraction(sheets,fname){
+  let shL=null,hL=-1,shC=null,hC=-1;
+  for(const sh of sheets) for(let hr=0;hr<Math.min(sh.rows.length,6);hr++){ const H=(sh.rows[hr]||[]).map(norm);
+    if(H.includes('id ug')&&H.includes('code ug')&&!shL){shL=sh;hL=hr;}
+    if(H.includes('id ug')&&H.some(h=>h.startsWith('article'))&&H.some(h=>h.startsWith('quantite'))&&!shC){shC=sh;hC=hr;} }
+  if(!shL) return false;
+  const H=shL.rows[hL].map(norm); const ix=k=>H.indexOf(k);
+  const iId=ix('id ug'),iUg=ix('code ug'),iAd=ix('adresse'),iV=ix('ville'),iRdv=ix('date rdv vte'),iDeb=ix('date debut travaux'),iFin=ix('date fin travaux'),iVts=ix('date vts'),iCmd=ix('date commande tce validee');
+  const idToUg={}; const G={};
+  for(let i=hL+1;i<shL.rows.length;i++){ const r=shL.rows[i]||[]; const ug=String(r[iUg]??'').trim(); if(!ug) continue; idToUg[String(r[iId]??'').trim()]=ug;
+    const fc=findCommune(r[iV])||findCommune(r[iAd]);
+    G[ug]={adresse:String(r[iAd]??'').trim(),commune:fc?fc[0]:String(r[iV]??'').replace(/^\d{5}\s*/,'').trim(),vte:parseDateAny(r[iRdv]),cmd:iCmd>=0?parseDateAny(r[iCmd]):'',debut:parseDateAny(r[iDeb]),fin:parseDateAny(r[iFin]),vts:parseDateAny(r[iVts])}; }
+  S.gamma=G; let nbBdc=0, unk={};
+  if(shC){ const HC=shC.rows[hC].map(norm); const jI=HC.indexOf('id ug'), jA=HC.findIndex(h=>h.startsWith('article')), jQ=HC.findIndex(h=>h.startsWith('quantite')), jU=HC.findIndex(h=>h.startsWith('unite'));
+    const out={};
+    for(let i=hC+1;i<shC.rows.length;i++){ const r=shC.rows[i]||[]; const ug=idToUg[String(r[jI]??'').trim()]; const art=String(r[jA]??'').trim(); if(!ug||!art) continue;
+      const q=parseFloat(String(r[jQ]??'').replace(',','.').replace(/[^\d.\-]/g,'')); if(!(q>0)) continue;
+      const rule=ruleFor(art); (out[ug]=out[ug]||[]).push(rule?[rule.id,q]:[null,q,art.slice(0,120),String(r[jU]??'')]); if(!rule) unk[art.slice(0,120)]=(unk[art.slice(0,120)]||0)+1; }
+    Object.assign(S.bdc,out); nbBdc=Object.keys(out).length;
+    S.bdcSource={fichier:fname,date:new Date().toLocaleString('fr-FR'),nb:Object.keys(S.bdc).length,nonReconnus:unk}; }
+  S.gammaSource={fichier:fname,date:new Date().toLocaleString('fr-FR'),nb:Object.keys(G).length};
+  save(); recompute(); toast(Object.keys(G).length+' logements Gamma · '+nbBdc+' bons de commande · '+Object.keys(unk).length+' article(s) non reconnu(s)'); show('kits');
+  return true;
 }
 function importBdc(sh,hr){
   const H=(sh.rows[hr]||[]).map(norm); const ix=k=>H.findIndex(h=>h===k||h.startsWith(k));
@@ -329,6 +376,8 @@ function load(){
   s.mapping = s.mapping || null;
   s.bdc = s.bdc || {};                   // {ug: [[règle, qté] | [null, qté, article, unité]]} issus des bons de commande Gamma
   s.bdcSource = s.bdcSource || null;
+  s.gamma = s.gamma || {};               // {ug: {adresse, commune, debut, fin, vte, vts}} issus de l'extraction Gamma (hors données locataires)
+  s.gammaSource = s.gammaSource || null;
   return s;
 }
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){ toast('⚠️ Stockage local indisponible : données non conservées'); } }
@@ -471,13 +520,13 @@ async function handleFile(file){
     for(const sh of sheets){ if(!sh.rows.length) continue; const hr=findHeaderRow(sh.rows); const m=detectMapping((sh.rows[hr]||[]).map(x=>x==null?'':String(x)));
       const sc=(m.fields.ug!=null?10:0)+Object.keys(m.fields).length*2+Object.keys(m.presta).length; if(sc>bs){bs=sc;best={sh,hr,m};} }
     if(!best) throw new Error('Aucune feuille exploitable');
+    // Extraction BDD Gamma : feuille logements (ID_UG + Code UG) + feuille commandes (ID_UG / Article / Quantité)
+    if(importGammaExtraction(sheets,file.name)) return;
     // Bons de commande Gamma (format ligne à ligne : UG / Article / Quantité) → import direct, sans écran de correspondance
     for(const sh of sheets){ for(let hr=0;hr<Math.min(sh.rows.length,10);hr++){ const H=(sh.rows[hr]||[]).map(norm);
       if(H.includes('ug') && H.some(h=>h.startsWith('article')) && H.some(h=>h.startsWith('quantite'))){
         const {out,unk}=importBdc(sh,hr); const n=Object.keys(out).length; if(!n) continue;
         Object.assign(S.bdc,out); S.bdcSource={fichier:file.name,date:new Date().toLocaleString('fr-FR'),nb:Object.keys(S.bdc).length,nonReconnus:unk};
-        // logements présents dans le BDC mais absents du planning : ajoutés sans date (en attente de planification)
-        for(const ug of Object.keys(out)) if(!S.logements.some(l=>l.ug===ug)) S.logements.push({ug,adresse:'',commune:'',prog:'',scenario:'',debut:'',vte:'',diag:'',pr:{},ch:null,horsPlanning:true});
         save(); recompute(); toast(n+' bons de commande intégrés ('+Object.keys(unk).length+' article(s) non reconnu(s))'); show('kits'); return; } } }
     IMPORT_TMP={file:file.name,sheets,cur:best};
     renderDonnees();
@@ -503,7 +552,6 @@ function applyImport(){
     const progTxt=norm(g('prog')); const prog = /2/.test(progTxt)?'Évolud 2': /1/.test(progTxt)?'Évolud 1':'';
     out.push({ug,adresse:adr,commune:com,prog,scenario:String(g('scenario')??'').trim(),debut:parseDateAny(g('debut')),vte:parseDateAny(g('vte')),diag:String(g('diag')??'').trim(),pr});
   }
-  for(const ug of Object.keys(S.bdc||{})) if(!seen.has(ug)) out.push({ug,adresse:'',commune:'',prog:'',scenario:'',debut:'',vte:'',diag:'',pr:{},ch:null,horsPlanning:true});
   S.logements=out; S.mapping={fields:m.fields,presta:m.presta,sheet:sh.name,hr};
   S.source={fichier:IMPORT_TMP.file,feuille:sh.name,date:new Date().toLocaleString('fr-FR'),nb:out.length};
   // rattacher les logements aux chantiers (créés si commune inconnue)
@@ -519,6 +567,17 @@ function chantierFor(l){
 
 /* ---------- MOTEUR LOGISTIQUE ---------- */
 let R = {}; // résultats calculés
+let LOGS = []; // vue fusionnée : planning + extraction Gamma + bons de commande (rien n'est recopié)
+function buildLogs(){
+  const m=new Map();
+  S.logements.filter(l=>!l.horsPlanning).forEach(l=>m.set(l.ug,Object.assign({},l,{pr:l.pr||{}})));
+  for(const ug in (S.gamma||{})){ const g=S.gamma[ug]; let l=m.get(ug);
+    if(!l){ l={ug,adresse:'',commune:'',prog:'',scenario:'',debut:'',vte:'',diag:'',pr:{},ch:null,srcGamma:true}; m.set(ug,l); }
+    if(!l.adresse) l.adresse=g.adresse; if(!l.commune) l.commune=g.commune; if(!l.vte) l.vte=g.vte;
+    if(g.debut){ l.debutPlanning=l.debut; l.debut=g.debut; l.debutGamma=true; } l.fin=g.fin; l.vts=g.vts; }
+  for(const ug in (S.bdc||{})) if(!m.has(ug)) m.set(ug,{ug,adresse:'',commune:'',prog:'',scenario:'',debut:'',vte:'',diag:'',pr:{},ch:null,horsPlanning:true});
+  const out=[...m.values()]; out.forEach(l=>{ if(!l.ch||!S.chantiers.some(c=>c.id===l.ch)) l.ch=chantierFor(l); }); return out;
+}
 function catByCode(c){ return S.catalogue.find(x=>x.code===c); }
 function kitOf(l){
   if(S.bdc[l.ug]) return bdcKit(S.bdc[l.ug]);
@@ -531,15 +590,16 @@ function kitOf(l){
 }
 function recompute(){
   const p=P(), today=todayISO(), horizonEnd=addDays(today,p.horizon*7);
+  LOGS=buildLogs();
   const base={lat:p.base.lat,lon:p.base.lon};
   // 1. chantiers : coordonnées, distances, volumes
-  const chs=S.chantiers.map(c=>{ const co=coordsOf(c); const logs=S.logements.filter(l=>l.ch===c.id);
+  const chs=S.chantiers.map(c=>{ const co=coordsOf(c); const logs=LOGS.filter(l=>l.ch===c.id);
     const nb = logs.length || (+c.nb||0);
     const km = co? road(base,co):null;
     return Object.assign({},c,{co,logs,nbEff:nb,km,min:km!=null?minutes(km):null}); });
   // 2. kits par logement + allocation stock (ordre chronologique)
   const stockLeft=Object.assign({},S.stock); const kits=[];
-  const logsSorted=[...S.logements].sort((a,b)=>(a.debut||'9999').localeCompare(b.debut||'9999'));
+  const logsSorted=[...LOGS].sort((a,b)=>(a.debut||'9999').localeCompare(b.debut||'9999'));
   for(const l of logsSorted){
     const k=kitOf(l); const miss=[]; const sm=[]; let wait=[];
     if(Object.values(l.pr).includes('DP')) wait.push('Double plafond : attente diag complémentaire');
@@ -554,8 +614,9 @@ function recompute(){
     let status;
     const prepared=S.prepares[l.ug], delivered=S.livres[l.ug];
     if(!wait.length && l.debut){ for(const id in agg){ const have=stockLeft[id]||0; if(have>=agg[id]) stockLeft[id]=have-agg[id]; else { miss.push({id,need:agg[id],have:Math.max(0,have)}); stockLeft[id]=0; } } }
-    const doneAll = !S.bdc[l.ug] && Object.keys(l.pr).length>0 && Object.values(l.pr).every(v=>v==='fait');
+    const doneAll = !!l.vts || (l.fin && l.fin<today) || (!S.bdc[l.ug] && Object.keys(l.pr).length>0 && Object.values(l.pr).every(v=>v==='fait'));
     if(doneAll) status='termine';
+    else if(l.debutGamma && l.debut<today) status='encours';
     else if(delivered) status='livre';
     else if(wait.length) status='attente';
     else if(miss.length || sm.some(x=>x.late||x.risk||(!x.cmd&&x.limite&&x.limite<=todayISO()))) status='incomplet';
@@ -566,7 +627,7 @@ function recompute(){
   // 3. besoins / ruptures / surplus par article (horizon + total)
   const art={}; S.catalogue.forEach(c=>c.art.forEach(a=>{ if(c.mode==='kit') art[a.id]=art[a.id]||{id:a.id,des:a.des,u:a.u,v:a.v,delai:c.delai,besH:0,besT:0,first:null}; }));
   for(const id in ART_BDC){ const a=ART_BDC[id]; if(a.mode==='kit') art[id]=Object.assign(art[id]||{id,besH:0,besT:0,first:null},{des:a.des,u:a.u,v:a.v,delai:a.delai}); }
-  for(const kt of kits){ if(kt.status==='termine'||kt.status==='livre') continue; for(const ln of kt.k.lines){ if(ln.mode!=='kit') continue; const a=art[ln.id]; if(!a) continue;
+  for(const kt of kits){ if(kt.status==='termine'||kt.status==='livre'||kt.status==='encours') continue; for(const ln of kt.k.lines){ if(ln.mode!=='kit') continue; const a=art[ln.id]; if(!a) continue;
     a.besT+=ln.q; if(kt.inHorizon){ a.besH+=ln.q; if(!a.first||kt.l.debut<a.first) a.first=kt.l.debut; } } }
   const artList=Object.values(art).map(a=>{ const st=+S.stock[a.id]||0; const manqueH=Math.max(0,a.besH-st); const surplus=Math.max(0,st-a.besT);
     const cmdAvant = a.first? prevWorkDay(a.first, Math.max(1,Math.ceil(a.delai*5/7))+1): null;
@@ -668,11 +729,11 @@ function analyseTampon(cl,kits,base){
 }
 function buildAlertes(chs,kits,artList,tournees,analyses){
   const A=[]; const p=P(); const t=todayISO();
-  if(!S.logements.length) A.push({niv:'info',t:'Aucun logement importé',d:"Importez l'export logements d'EVOLUD ou Planning_EVOLUD (onglet Données) pour générer les kits par logement."});
+  if(!LOGS.length) A.push({niv:'info',t:'Aucun logement importé',d:"Importez l'export logements d'EVOLUD ou Planning_EVOLUD (onglet Données) pour générer les kits par logement."});
   chs.forEach(c=>{ if(!c.co) A.push({niv:'ko',t:'Chantier non localisé : '+c.nom,d:'Commune « '+(c.commune||'?')+" » inconnue : saisissez latitude / longitude dans Données."});
     if(!c.logs.length && !c.nb) A.push({niv:'info',t:'Effectif à renseigner : '+c.nom,d:'Nombre de logements inconnu : le chantier est exclu des calculs de transport.'}); });
   artList.filter(a=>a.manqueH>0).forEach(a=>A.push({niv: a.cmdAvant&&a.cmdAvant<=t?'ko':'warn',g:a.cmdAvant&&a.cmdAvant<=t?'Ruptures à commander immédiatement':'Ruptures à anticiper',ug:a.des,d:`manque ${fmt(a.manqueH)} ${a.u} (besoin ${fmt(a.besH)}, stock ${fmt(a.st)}), commander avant ${frDate(a.cmdAvant)}`}));
-  kits.forEach(k=>{ k.sm.forEach(s=>{ if(s.late) A.push({niv:'ko',g:`Commande ${s.code} en retard`,ug:k.l.ug,d:`démarrage ${frDate(k.l.debut)}, limite ${frDate(s.limite)}`});
+  kits.filter(k=>k.status!=='termine'&&k.status!=='encours').forEach(k=>{ k.sm.forEach(s=>{ if(s.late) A.push({niv:'ko',g:`Commande ${s.code} en retard`,ug:k.l.ug,d:`démarrage ${frDate(k.l.debut)}, limite ${frDate(s.limite)}`});
       else if(s.risk) A.push({niv:'ko',g:`Livraison ${s.code} après démarrage`,ug:k.l.ug,d:`arrivée ${frDate(s.arr)} > démarrage ${frDate(k.l.debut)}`}); });
     if(k.inHorizon && k.status==='incomplet' && diffDays(k.l.debut,t)<=3) A.push({niv:'ko',g:'Kit incomplet à moins de 3 jours du démarrage',ug:k.l.ug,d:'J-'+diffDays(k.l.debut,t)+' '+(k.miss.length?'Manquants : '+k.miss.map(m=>m.id+' ('+fmt(m.need-m.have)+')').join(', '):'sur-mesure non arrivé ou non commandé')});
     if(k.inHorizon && k.status==='attente' && k.l.debut) A.push({niv:'warn',g:'Démarrage planifié mais kit bloqué',ug:k.l.ug,d:k.wait.join(' · ')+' (démarrage '+frDate(k.l.debut)+')'}); });
@@ -689,7 +750,7 @@ let CUR='carte';
 function show(v){ CUR=v; document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   document.querySelectorAll('main>section').forEach(s=>s.classList.toggle('hide',s.id!=='v-'+v)); renderCurrent(); window.scrollTo(0,0); }
 function renderCurrent(){ ({carte:renderCarte,kits:renderKits,liv:renderLiv,tampon:renderTampon,alertes:renderAlertes,donnees:renderDonnees})[CUR](); }
-const ST={termine:['Terminé','p-mut'],livre:['Livré','p-info'],pret:['Prêt','p-ok'],apreparer:['À préparer','p-info'],incomplet:['Incomplet','p-ko'],attente:['En attente','p-wait']};
+const ST={termine:['Terminé','p-mut'],encours:['Travaux en cours','p-ok'],livre:['Livré','p-info'],pret:['Prêt','p-ok'],apreparer:['À préparer','p-info'],incomplet:['Incomplet','p-ko'],attente:['En attente','p-wait']};
 const pill=s=>`<span class="pill ${ST[s][1]}">${ST[s][0]}</span>`;
 
 function kpis(){
@@ -783,7 +844,8 @@ function panZoom(svg){
 /* --- Kits --- */
 let KF={q:'',st:'',ch:''};
 function renderKits(){
-  const el=$('#v-kits'); const ks=R.kits.filter(k=>(!KF.st||k.status===KF.st)&&(!KF.ch||k.l.ch===KF.ch)&&(!KF.q||norm(k.l.ug+' '+k.l.adresse+' '+k.l.commune).includes(norm(KF.q))));
+  const el=$('#v-kits'); const ORD={incomplet:0,apreparer:1,pret:2,attente:3,livre:4,encours:5,termine:6};
+  const ks=R.kits.slice().sort((a,b)=>(ORD[a.status]-ORD[b.status])||(a.l.debut||'9').localeCompare(b.l.debut||'9')).filter(k=>(!KF.st||k.status===KF.st)&&(!KF.ch||k.l.ch===KF.ch)&&(!KF.q||norm(k.l.ug+' '+k.l.adresse+' '+k.l.commune).includes(norm(KF.q))));
   // charge par lot et par semaine (coordination TCE)
   const wk={}; R.kits.filter(k=>k.inHorizon&&k.status!=='termine').forEach(k=>{ const w=weekKey(k.l.debut); wk[w]=wk[w]||{};
     const keys=new Set([...k.k.lines.map(x=>x.lot+' · '+x.ent),...k.k.cot.map(c=>c.lib.split(' – ')[0]+' · '+c.ent)]); keys.forEach(key=>wk[w][key]=(wk[w][key]||0)+1); });
@@ -793,10 +855,10 @@ function renderKits(){
    <select id="kst"><option value="">Tous statuts</option>${Object.keys(ST).map(s=>`<option value="${s}" ${KF.st===s?'selected':''}>${ST[s][0]}</option>`).join('')}</select>
    <select id="kch"><option value="">Tous chantiers</option>${R.chs.map(c=>`<option value="${c.id}" ${KF.ch===c.id?'selected':''}>${esc(c.nom)}</option>`).join('')}</select>
    <button class="btn sec sm" id="kbulk">📝 Déclarer commandé (filtre)</button><button class="btn sec sm" id="kprint">🖨️ Fiches kits (filtre)</button><button class="btn sec sm" id="kcsv">⬇️ Excel (CSV)</button></div>
-   ${S.logements.length?'':'<p class="mut">Aucun logement : importez vos données dans l\'onglet ⚙️ Données.</p>'}
+   ${LOGS.length?'':'<p class="mut">Aucun logement : importez vos données dans l\'onglet ⚙️ Données.</p>'}
    <div class="tw"><table><thead><tr><th>Logement</th><th>Démarrage</th><th>Statut</th><th>Contenu du kit (lots)</th><th class="num">m³</th><th class="num">kg</th><th>Points bloquants</th><th class="noprint">Actions</th></tr></thead><tbody>
    ${ks.slice(0,400).map(k=>{ const lots=[...new Set(k.k.lines.map(x=>x.lot))]; const blk=[...k.wait,...k.miss.map(m=>'Manque '+m.id+' ×'+fmt(m.need-m.have)),...k.sm.filter(s=>!s.ok).map(s=>s.code+(s.cmd?' arrivée '+frDate(s.arr):' à commander avant '+frDate(s.limite)))];
-     return `<tr><td><b>${esc(k.l.ug)}</b><div class="small mut">${esc(k.l.adresse||'')} ${esc(k.l.commune||'')}${k.l.horsPlanning?' · <span style="color:var(--warn)">hors planning</span>':''}</div></td><td>${frDate(k.l.debut)}</td><td>${pill(k.status)}</td>
+     return `<tr><td><b>${esc(k.l.ug)}</b><div class="small mut">${esc(k.l.adresse||'')} ${esc(k.l.commune||'')}${k.l.horsPlanning?' · <span style="color:var(--warn)">hors planning</span>':''}</div></td><td>${frDate(k.l.debut)}${k.l.debutGamma?'<div class="small mut">Gamma</div>':k.l.debut?'<div class="small mut">planning</div>':''}</td><td>${pill(k.status)}</td>
      <td>${lots.map(l=>`<span class="chip">${esc(l)}</span>`).join('')}${k.k.cot.map(c=>`<span class="chip" title="Fourniture cotraitant">${esc(c.ent)}</span>`).join('')}</td>
      <td class="num">${fmt(k.k.vol,2)}${k.k.src==='bdc'?'<div class="small" style="color:var(--ok)">BDC Gamma</div>':''}</td><td class="num">${fmt(k.k.kg)}</td><td class="small">${blk.map(esc).join('<br>')}</td>
      <td class="noprint"><div class="row">${k.sm.filter(s=>!s.cmd).map(s=>`<button class="btn sec sm" data-cmd="${esc(k.l.ug)}|${s.code}">Commandé ${s.code}</button>`).join('')}
@@ -916,7 +978,8 @@ function renderDonnees(){
   el.innerHTML = imp+`<div class="card"><h2>Source des logements</h2>
    <p class="small">Le module ne ressaisit rien : il relit l'export EVOLUD / Planning_EVOLUD (onglet Infos Dossiers) ou Chantier_evolud_2 (infos logt). Deux sources se complètent : le planning (logements, villes, dates) et les bons de commande Gamma (postes et quantités réelles, prioritaires pour composer les kits). Un nouvel import de planning remplace le précédent ; un import de BDC met à jour les logements qu'il contient ; stocks, commandes, kits préparés et zones tampons sont conservés (rattachés au n° UG).</p>
    <p>${S.source?`Dernier import : <b>${esc(S.source.fichier)}</b> · feuille ${esc(S.source.feuille)} · ${S.source.nb} logements · ${esc(S.source.date)}`:'<span class="mut">Aucun import.</span>'}</p>
-   <p>${S.bdcSource?`Bons de commande Gamma : <b>${esc(S.bdcSource.fichier)}</b> · ${Object.keys(S.bdc).length} logements · ${esc(S.bdcSource.date)} <button class="btn sec sm" id="bdcclr">Retirer les BDC</button>`:'<span class="mut">Aucun bon de commande Gamma importé (export Evolud_bons_de_commande…csv) : les kits sont alors estimés depuis les prestations « non ».</span>'}</p>
+   <p>${S.gammaSource?`Extraction Gamma : <b>${esc(S.gammaSource.fichier)}</b> · ${S.gammaSource.nb} logements (dates début / fin / VTS) · ${esc(S.gammaSource.date)}`:''}</p>
+   <p>${S.bdcSource?`Bons de commande Gamma : <b>${esc(S.bdcSource.fichier)}</b> · ${Object.keys(S.bdc).length} logements · ${esc(S.bdcSource.date)} <button class="btn sec sm" id="bdcclr">Retirer les données Gamma</button>`:'<span class="mut">Aucun bon de commande Gamma importé (export Evolud_bons_de_commande…csv) : les kits sont alors estimés depuis les prestations « non ».</span>'}</p>
    ${S.bdcSource&&Object.keys(S.bdcSource.nonReconnus||{}).length?`<details><summary>Articles Gamma non reconnus (${Object.keys(S.bdcSource.nonReconnus).length}) – non comptés dans les kits</summary><ul class="small">${Object.entries(S.bdcSource.nonReconnus).map(([a,n])=>`<li>${esc(a)} (${n})</li>`).join('')}</ul></details>`:''}
    <div class="row"><label class="btn">📥 Importer Excel / CSV<input type="file" id="ifile" accept=".xlsx,.xlsm,.csv" hidden></label><button class="btn sec" id="dexp">💾 Sauvegarde module (JSON)</button><label class="btn sec">♻️ Restaurer<input type="file" id="drest" accept=".json" hidden></label></div></div>
 
@@ -945,7 +1008,7 @@ function renderDonnees(){
   // liaisons
   const f=$('#ifile'); if(f) f.onchange=e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
   if(IMPORT_TMP){ $('#isheet').onchange=e=>selectImportSheet(e.target.value); $('#iok').onclick=applyImport; $('#icancel').onclick=()=>{IMPORT_TMP=null;renderDonnees();}; }
-  const bc=$('#bdcclr'); if(bc) bc.onclick=()=>{ if(!confirm('Retirer tous les bons de commande importés ?')) return; S.bdc={}; S.bdcSource=null; S.logements=S.logements.filter(l=>!l.horsPlanning); save(); recompute(); };
+  const bc=$('#bdcclr'); if(bc) bc.onclick=()=>{ if(!confirm('Retirer les bons de commande et l\'extraction Gamma importés ?')) return; S.bdc={}; S.bdcSource=null; S.gamma={}; S.gammaSource=null; save(); recompute(); };
   $('#dexp').onclick=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})); a.download='evolud_logistique_'+todayISO()+'.json'; a.click(); };
   $('#drest').onchange=async e=>{ const fl=e.target.files[0]; if(!fl) return; try{ const o=JSON.parse(await fl.text()); if(!o.params||!o.chantiers) throw 0; localStorage.setItem(LS_KEY,JSON.stringify(o)); S=load(); recompute(); toast('Sauvegarde restaurée'); }catch(_){ alert('Fichier de sauvegarde invalide'); } };
   el.querySelectorAll('[data-ch]').forEach(i=>i.onchange=()=>{ const c=S.chantiers[+i.dataset.ch], k=i.dataset.f; let v=i.type==='checkbox'?i.checked:i.value;
@@ -965,8 +1028,8 @@ function renderDonnees(){
 
 /* ---------- API d'intégration (lecture seule) ---------- */
 window.EvoludLogistique = {
-  version:'1.1',
-  getKits:()=>R.kits.map(k=>({ug:k.l.ug,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
+  version:'1.2',
+  getKits:()=>R.kits.map(k=>({ug:k.l.ug,source:k.k.src,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
   getLivraisons:()=>R.tournees.map(t=>({date:t.date,type:t.type,itineraire:t.stops.map(s=>s.nom),logements:t.items.map(i=>i.kt.l.ug),km:+t.km.toFixed(1),cout:Math.round(t.cout)})),
   getAlertes:()=>R.alertes.slice(),
   getTampons:()=>R.analyses.map(a=>({secteur:a.cl.nom,km:+a.cl.km.toFixed(1),recommande:a.reco,actif:!!(S.tampons[a.cl.key]||{}).actif,gain:Math.round(a.gain),gainPct:+a.gainPct.toFixed(1)}))
