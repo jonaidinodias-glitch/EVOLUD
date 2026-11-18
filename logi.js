@@ -5,7 +5,7 @@
   if (window.__evoludLogi) return; window.__evoludLogi = true;
   var css = document.createElement('style');
   css.textContent =
-    '#evLogiBtn{position:fixed;left:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:2147483000;' +
+    '#evLogiBtn{position:fixed;left:12px;bottom:calc(225px + env(safe-area-inset-bottom));z-index:2147483000;' +
     'background:#0f2a44;color:#fff;border:2px solid #f07c1b;border-radius:24px;padding:9px 14px;font:600 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;' +
     'box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;gap:6px}' +
     '#evLogiBtn:active{transform:scale(.96)}' +
