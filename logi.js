@@ -1,7 +1,7 @@
 /* Évolud – petit bouton rond « Outils » (Logistique + Index INSEE)
    Conçu et développé par Saïd OUFQIR
    Script non chiffré, ajouté à la page par sw.js (comme guide.js) : ne modifie aucune fonction existante.
-   v5.31.8 : bouton discret (rond, à gauche, symétrique du « ? »), masqué sur l'écran de connexion. */
+   v5.31.9 : boutons intégrés à l'Accueil (à côté de « Brief »), plus aucun bouton flottant. */
 (function () {
   if (window.__evoludLogi) return; window.__evoludLogi = true;
   var F = 'font:600 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;';
@@ -47,14 +47,31 @@
   btn.onclick = function (e) { e.stopPropagation(); menu.classList.toggle('on'); };
   document.addEventListener('click', function (e) { if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('on'); });
 
-  // Masqué sur l'écran de connexion (champ code PIN visible) et quand un outil est ouvert
-  function vis() {
-    var pin = document.querySelector('input[type=password]');
-    var login = pin && pin.offsetParent !== null;
-    var shown = !login && !(wrap && wrap.classList.contains('on'));
-    btn.style.display = shown ? 'block' : 'none'; if (!shown) menu.classList.remove('on');
+  // v5.31.9 : plus de bouton flottant. Les outils sont ajoutés comme boutons sur l'Accueil, à côté de « Brief ».
+  // Le bouton flottant ⚖️ (Scénarios & MEXT), qui recouvrait le « ? », est aussi rangé à cet endroit.
+  function balance() {
+    var bs = document.querySelectorAll('button,div,a'), r = null;
+    for (var i = 0; i < bs.length; i++) { var t = (bs[i].textContent || '').trim();
+      if (t === '⚖️' || t === '⚖') { var cs = getComputedStyle(bs[i]); if (cs.position === 'fixed') { r = bs[i]; break; } } }
+    return r;
   }
-  function add() { if (!document.getElementById('evLogiBtn')) { document.body.appendChild(menu); document.body.appendChild(btn); } vis(); setInterval(vis, 1200); }
+  function chips() {
+    if (wrap && wrap.classList.contains('on')) return;
+    var cands = document.querySelectorAll('button'), brief = null;
+    for (var i = 0; i < cands.length; i++) { var t = (cands[i].textContent || '').replace(/\s+/g, ' ').trim(); if (/Brief$/.test(t) && cands[i].offsetParent) { brief = cands[i]; break; } }
+    var bal = balance();
+    if (bal && brief) bal.style.display = 'none';
+    if (!brief || document.getElementById('evChipLogi')) return;
+    function mk(id, txt, fn) { var c = brief.cloneNode(false); c.removeAttribute('onclick'); c.id = id; c.textContent = txt; c.onclick = fn; return c; }
+    var after = brief;
+    [['evChipLogi', '🚚 Logistique', function () { open('logi'); }],
+     ['evChipIdx', '📈 Index INSEE', function () { open('idx'); }],
+     ['evChipBal', '⚖️ Scénarios & MEXT', function () { var x = balance(); if (x) x.click(); }]].forEach(function (d) {
+      if (d[0] === 'evChipBal' && !bal) return;
+      var c = mk(d[0], d[1], d[2]); after.parentNode.insertBefore(c, after.nextSibling); after = c; });
+  }
+  function vis() { btn.style.display = 'none'; menu.classList.remove('on'); }
+  function add() { setInterval(chips, 800); chips(); }
   if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
   window.EvoludOuvrirLogistique = function () { open('logi'); };
   window.EvoludOuvrirIndex = function () { open('idx'); };
