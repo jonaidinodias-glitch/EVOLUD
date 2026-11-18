@@ -69,7 +69,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 </head>
 <body>
 <header>
-  <div><h1>EVOLUD · Logistique & Kitting <small>Kits logements · Tournées · Zones tampons · Base Bruay-la-Buissière</small></h1></div>
+  <div><h1>EVOLUD · Logistique & Kitting <small>Kits logements · Main Forte (Harnes) · Base vie · Jour J</small></h1></div>
   <div class="sp"></div>
   <a class="back" href="./index.html">← Appli EVOLUD</a>
 </header>
@@ -81,7 +81,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
   <section id="v-tampon" class="hide"></section>
   <section id="v-alertes" class="hide"></section>
   <section id="v-donnees" class="hide"></section>
-  <footer>Module Logistique EVOLUD · v1.5 · Conçu et développé par Saïd OUFQIR</footer>
+  <footer>Module Logistique EVOLUD · v1.7 · Conçu et développé par Saïd OUFQIR</footer>
 </main>
 <div id="printzone"></div>
 <div id="toast"></div>
@@ -90,7 +90,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
   <button data-v="carte" class="on"><b>🗺️</b>Carte</button>
   <button data-v="kits"><b>📦</b>Kits</button>
   <button data-v="liv"><b>🚚</b>Livraisons</button>
-  <button data-v="tampon"><b>📍</b>Tampons</button>
+  <button data-v="tampon"><b>📍</b>Stocks</button>
   <button data-v="alertes"><b>⚠️</b>Alertes<span id="nbAl"></span></button>
   <button data-v="donnees"><b>⚙️</b>Données</button>
 </nav>
@@ -98,7 +98,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 <script>
 "use strict";
 /* =====================================================================
-   MODULE LOGISTIQUE EVOLUD — v1.5
+   MODULE LOGISTIQUE EVOLUD — v1.7
    Conçu et développé par Saïd OUFQIR
    Aucune dépendance externe : fonctionne hors ligne et sur PC filtré.
    Données propres au module uniquement (stock, commandes, kits préparés,
@@ -139,16 +139,16 @@ function findCommune(txt){
 }
 
 /* ---------- Catalogue des prestations → kits (valeurs par défaut À AJUSTER) ---------- */
-// mode : kit = préparé à la base BBNE ; surmesure = fabriqué sur cotes (commande + délai) ; plateforme = livré par la plateforme logistique ;
+// mode : kit = stocké à la plateforme de Harnes, préparé et livré par kit ; surmesure = fabriqué sur cotes (commande + délai) ; plateforme = stocké à Harnes et livré par la plateforme le jour J de la pose ;
 //        cotraitant = fourniture et livraison par l'entreprise (hors kit, à synchroniser)
 const DEF_CATALOGUE = [
  {code:'MEXT',lib:'Menuiseries extérieures',ent:'GROSFILEX',lot:'Menuiseries',mode:'plateforme',delai:42,kw:['mext','menuiserie ext','menuiseries ext','fenetre','fenetres','chassis'],
   art:[{id:'MEXT-LOT',des:'Lot menuiseries du logement (sur cotes)',q:1,u:'lot',v:1.6,kg:190}]},
- {code:'PF',lib:'Porte-fenêtre',ent:'BBNE',lot:'Menuiseries',mode:'surmesure',delai:42,kw:['porte fenetre','pf'],
+ {code:'PF',lib:'Porte-fenêtre',ent:'BBNE',lot:'Menuiseries',mode:'plateforme',delai:42,kw:['porte fenetre','pf'],
   art:[{id:'PF-BLOC',des:'Porte-fenêtre (sur cotes)',q:1,u:'u',v:0.45,kg:55},{id:'MEN-CONSO',des:'Kit pose menuiserie (mousse, mastic, vis)',q:1,u:'kit',v:0.02,kg:3}]},
- {code:'PE',lib:"Porte d'entrée",ent:'BBNE',lot:'Menuiseries',mode:'surmesure',delai:42,kw:['porte d entree','porte entree','pe','porte palier'],
+ {code:'PE',lib:"Porte d'entrée",ent:'BBNE',lot:'Menuiseries',mode:'plateforme',delai:42,kw:['porte d entree','porte entree','pe','porte palier'],
   art:[{id:'PE-BLOC',des:"Bloc-porte d'entrée (Belleforière / Condé St Pierre)",q:1,u:'u',v:0.35,kg:65},{id:'PE-EBR',des:'Ébrasements PVC + listels',q:1,u:'kit',v:0.04,kg:4},{id:'MEN-CONSO',des:'Kit pose menuiserie (mousse, mastic, vis)',q:1,u:'kit',v:0.02,kg:3}]},
- {code:'PBS',lib:'Porte BS',ent:'BBNE',lot:'Menuiseries',mode:'surmesure',delai:42,kw:['porte bs','porte de bs','porte arriere','porte bs '],
+ {code:'PBS',lib:'Porte BS',ent:'BBNE',lot:'Menuiseries',mode:'plateforme',delai:42,kw:['porte bs','porte de bs','porte arriere','porte bs '],
   art:[{id:'PBS-BLOC',des:'Bloc-porte BS feuilleté anti-effraction',q:1,u:'u',v:0.30,kg:55},{id:'MEN-CONSO',des:'Kit pose menuiserie (mousse, mastic, vis)',q:1,u:'kit',v:0.02,kg:3}]},
  {code:'TBP',lib:'Trappe BP',ent:'BBNE',lot:'Plâtrerie',mode:'kit',delai:7,kw:['trappe bp','trappes bp','trappe bat principal','trappe'],
   art:[{id:'TRAPPE',des:"Trappe d'accès isolée 60×60",q:1,u:'u',v:0.05,kg:7},{id:'TRAPPE-FIX',des:'Kit fixation trappe (tasseaux, vis, joint)',q:1,u:'kit',v:0.01,kg:1.5}]},
@@ -185,7 +185,7 @@ const DEF_CATALOGUE = [
 // Articles de préparation (valeurs de conditionnement par défaut, à ajuster)
 const ART_BDC = {
  'TRAPPE':{des:"Trappe d'accès isolée 60×60",u:'u',v:0.05,kg:7,delai:7,mode:'kit',lot:'Plâtrerie',ent:'BBNE'},
- 'TRAPPE-FIX':{des:'Kit chevêtre + réhausse + joint trappe',u:'kit',v:0.02,kg:3,delai:7,mode:'kit',lot:'Plâtrerie',ent:'BBNE'},
+ 'TRAPPE-FIX':{des:'Contreplaqué trappe prédécoupé (IDEA Emballages) + joint',u:'kit',v:0.02,kg:3,delai:7,mode:'kit',lot:'Plâtrerie',ent:'BBNE'},
  'TRAPPE30':{des:'Trappe de visite 30×30',u:'u',v:0.01,kg:2,delai:7,mode:'kit',lot:'Plâtrerie',ent:'BBNE'},
  'BA13':{des:'Plaque BA13 2,50×1,20 (3 m²)',u:'u',v:0.0375,kg:25,delai:5,mode:'kit',lot:'Plâtrerie',ent:'BBNE'},
  'BA13H':{des:'Plaque BA13 hydro 2,50×1,20',u:'u',v:0.0375,kg:26,delai:5,mode:'kit',lot:'Plâtrerie',ent:'BBNE'},
@@ -210,16 +210,16 @@ const ART_BDC = {
  'RESEAU':{des:'Kit réseau distribution radiateur',u:'kit',v:0.02,kg:4,delai:7,mode:'kit',lot:'Chauffage',ent:'À affecter'},
  'ELEC-CONSO':{des:'Kit électricité (boîtes, fils, appareillage)',u:'kit',v:0.01,kg:1.5,delai:3,mode:'kit',lot:'Électricité',ent:'BBNE'},
  'SS4-KIT':{des:'Kit SS4 (polyane, sacs amiante, EPI jetables)',u:'kit',v:0.08,kg:8,delai:3,mode:'kit',lot:'Amiante SS4',ent:'BBNE'},
- 'MEN-CONSO':{des:'Kit pose menuiserie (mousse, mastic, vis)',u:'kit',v:0.02,kg:3,delai:3,mode:'kit',lot:'Menuiseries',ent:'BBNE'},
- 'PE-EBR':{des:'Ébrasements PVC + listels',u:'kit',v:0.04,kg:4,delai:7,mode:'kit',lot:'Menuiseries',ent:'BBNE'},
- 'PE-CSP':{des:"Porte d'entrée bois Condé St Pierre sans imposte",u:'u',v:0.35,kg:65,code:'PE',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
- 'PE-CSP-IMP':{des:"Porte d'entrée bois Condé St Pierre avec imposte",u:'u',v:0.45,kg:75,code:'PE',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
- 'PE-AUTRE':{des:"Porte d'entrée (autre modèle)",u:'u',v:0.35,kg:65,code:'PE',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
- 'PBS-PVC':{des:'Porte arrière BS PVC (allège pleine)',u:'u',v:0.30,kg:45,code:'PBS',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
+ 'MEN-CONSO':{des:'Accessoires menuiserie (mousse, mastic, vis)',u:'kit',v:0.02,kg:3,delai:3,code:'MEXT',mode:'plateforme',lot:'Menuiseries',ent:'BBNE'},
+ 'PE-EBR':{des:'Kit HIM prédécoupé (habillage intérieur menuiserie)',u:'kit',v:0.04,kg:4,delai:7,code:'MEXT',mode:'plateforme',lot:'Menuiseries',ent:'BBNE'},
+ 'PE-CSP':{des:"Porte d'entrée bois Condé St Pierre sans imposte",u:'u',v:0.35,kg:65,code:'PE',mode:'plateforme',lot:'Menuiseries',ent:'BBNE'},
+ 'PE-CSP-IMP':{des:"Porte d'entrée bois Condé St Pierre avec imposte",u:'u',v:0.45,kg:75,code:'PE',mode:'plateforme',lot:'Menuiseries',ent:'BBNE'},
+ 'PE-AUTRE':{des:"Porte d'entrée (autre modèle)",u:'u',v:0.35,kg:65,code:'PE',mode:'plateforme',lot:'Menuiseries',ent:'BBNE'},
+ 'PBS-PVC':{des:'Porte arrière BS PVC (allège pleine)',u:'u',v:0.30,kg:45,code:'PBS',mode:'plateforme',lot:'Menuiseries',ent:'BBNE'},
  'LV240':{des:'Laine de verre déroulée 160+80 mm',u:'m²',v:0.08,kg:2.5,delai:7,mode:'kit',lot:'Isolation',ent:'BBNE'},
  'PLINTHE':{des:'Plinthes (ml)',u:'ml',v:0.001,kg:1,delai:7,mode:'kit',lot:'Revêtements',ent:'BBNE'},
  'ROB-TH':{des:'Robinet thermostatique',u:'u',v:0.002,kg:0.5,delai:7,mode:'kit',lot:'Chauffage',ent:'À affecter'},
- 'PF-VR':{des:'Porte-fenêtre PVC + volet roulant (sur cotes)',u:'u',v:0.5,kg:70,code:'PF',mode:'surmesure',lot:'Menuiseries',ent:'BBNE'},
+ 'PF-VR':{des:'Porte-fenêtre PVC + volet roulant (sur cotes)',u:'u',v:0.5,kg:70,code:'PF',mode:'plateforme',lot:'Menuiseries',ent:'BBNE'},
  'WC':{des:'Cuvette WC complète',u:'u',v:0.15,kg:22,delai:7,mode:'kit',lot:'Plomberie',ent:'À affecter'},
  'BAIGN':{des:'Baignoire 1,40–1,70 m',u:'u',v:0.6,kg:30,delai:14,mode:'kit',lot:'Plomberie',ent:'À affecter'},
  'TABLIER':{des:'Tablier / panneau de baignoire',u:'u',v:0.05,kg:5,delai:14,mode:'kit',lot:'Plomberie',ent:'À affecter'},
@@ -344,7 +344,11 @@ function importBdc(sh,hr){
 }
 
 const DEF_PARAMS = {
-  base:{nom:'Base logistique BBNE – Bruay-la-Buissière',lat:50.4833,lon:2.5500},
+  base:{nom:'Plateforme Main Forte – Harnes',court:'Harnes',lat:50.4458,lon:2.9058},
+  // Tarifs Main Forte / TMF au logement (MEXT + porte + HIM + accessoires) – Board DG Logistique 07/10/2026
+  mfP3:167, mfP6:142, tmfP3:204, tmfP6:168, budgetLgt:265, mfMaxLgt:6, mfMinLgt:3, mfStockMax:30,
+  recMinJ:3, recMaxJ:10,   // réception chez Main Forte : au plus tard J-3 (contrôle du kit), au plus tôt J-10 (stock limité à 30 logements)
+  semSecu:1,               // stock base vie : semaines de sécurité au-dessus de la conso d'une campagne   // stock principal : MEXT (livrées le jour J) + placo, laine…
   facteurRoute:1.30,   // distance routière ≈ vol d'oiseau × 1,30 (réseau secondaire, valeur usuelle)
   vitesse:42,          // km/h moyenne utilitaire en zone urbaine / périurbaine
   coutKmVL:0.42,       // € / km utilitaire 12 m³ (carburant + usure + entretien)
@@ -379,11 +383,16 @@ function load(){
   s = s||{};
   s.params = Object.assign({}, structuredClone(DEF_PARAMS), s.params||{});
   s.params.base = Object.assign({}, DEF_PARAMS.base, (s.params&&s.params.base)||{});
+  if(s.v===2){ if(/Harnes/i.test(s.params.base.nom||'')) s.params.base.nom=DEF_PARAMS.base.nom; (s.catalogue||[]).forEach(c=>{ if(['PE','PBS','PF'].includes(c.code)) c.mode='plateforme'; }); s.v=3; }
+  if(!s.v || s.v<2){ if(/Bruay/i.test(s.params.base.nom||'')) s.params.base=Object.assign({},DEF_PARAMS.base); s.tamponsAuto={}; (s.catalogue||[]).forEach(c=>{ if(['PE','PBS','PF'].includes(c.code)) c.mode='plateforme'; }); s.v=3; }   // v1.6 : plateforme de Harnes
+  if(!s.params.base.court) s.params.base.court=(s.params.base.nom||'Base').split(/[–-]/).pop().trim();
+  s.tamponsAuto = s.tamponsAuto || {};
   s.catalogue = s.catalogue || structuredClone(DEF_CATALOGUE);
   s.chantiers = s.chantiers || structuredClone(DEF_CHANTIERS);
   s.logements = s.logements || [];       // cache d'import (remplacé à chaque import)
   s.source = s.source || null;           // {fichier, feuille, date, nb}
-  s.stock = s.stock || {};               // {articleId: qte en stock base}
+  s.stock = s.stock || {};               // {articleId: qte} stock plateforme (Harnes)
+  s.stock2 = s.stock2 || {};             // {articleId: qte} stock chantier (Bruay : quelques portes, placo, laine…)
   s.commandes = s.commandes || {};       // {ug: {CODE: 'AAAA-MM-JJ'}} commandes sur-mesure
   s.prepares = s.prepares || {};         // {ug: 'AAAA-MM-JJ'} kit préparé / contrôlé
   s.livres = s.livres || {};             // {ug: 'AAAA-MM-JJ'} kit livré
@@ -418,6 +427,10 @@ function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); 
 function hav(a,b){ const R=6371, r=x=>x*Math.PI/180; const dLa=r(b.lat-a.lat), dLo=r(b.lon-a.lon);
   const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
 const P = ()=>S.params;
+const BC = ()=>esc(P().base.court||'la base');
+const SITE2 = 'Bruay';   // stock chantier existant
+const stSuivi = id => (id in S.stock) || (id in S.stock2);
+const stTotal = id => (+S.stock[id]||0) + (+S.stock2[id]||0);   // nom court de l'origine des approvisionnements
 function road(a,b){ return hav(a,b)*P().facteurRoute; }
 function minutes(km){ return km/P().vitesse*60; }
 function coordsOf(ch){
@@ -618,7 +631,7 @@ function recompute(){
     const km = co? road(base,co):null;
     return Object.assign({},c,{co,logs,nbEff:nb,km,min:km!=null?minutes(km):null}); });
   // 2. kits par logement + allocation stock (ordre chronologique)
-  const stockLeft=Object.assign({},S.stock); const kits=[];
+  const stockLeft={}; for(const id of new Set([...Object.keys(S.stock),...Object.keys(S.stock2)])) stockLeft[id]=stTotal(id); const kits=[];
   const logsSorted=[...LOGS].sort((a,b)=>(a.debut||'9999').localeCompare(b.debut||'9999'));
   for(const l of logsSorted){
     const k=kitOf(l); const miss=[]; const sm=[]; let wait=[];
@@ -633,7 +646,7 @@ function recompute(){
       sm.push({code,lib:c.lib,mode:c.mode,cmd,arr,limite,ok: !!(arr && l.debut && arr<=l.debut), late: !cmd && limite && limite<today, risk: arr && l.debut && arr>l.debut}); }
     let status;
     const prepared=S.prepares[l.ug], delivered=S.livres[l.ug];
-    if(!wait.length && l.debut){ for(const id in agg){ if(!(id in S.stock)) continue; const have=stockLeft[id]||0; if(have>=agg[id]) stockLeft[id]=have-agg[id]; else { miss.push({id,need:agg[id],have:Math.max(0,have)}); stockLeft[id]=0; } } }
+    if(!wait.length && l.debut){ for(const id in agg){ if(!stSuivi(id)) continue; const have=stockLeft[id]||0; if(have>=agg[id]) stockLeft[id]=have-agg[id]; else { miss.push({id,need:agg[id],have:Math.max(0,have)}); stockLeft[id]=0; } } }
     const doneAll = !!l.vts || (l.fin && l.fin<today) || (!S.bdc[l.ug] && Object.keys(l.pr).length>0 && Object.values(l.pr).every(v=>v==='fait'));
     if(doneAll) status='termine';
     else if(l.debutGamma && l.debut<today) status='encours';
@@ -649,7 +662,7 @@ function recompute(){
   for(const id in ART_BDC){ const a=ART_BDC[id]; if(a.mode==='kit') art[id]=Object.assign(art[id]||{id,besH:0,besT:0,first:null},{des:a.des,u:a.u,v:a.v,delai:a.delai}); }
   for(const kt of kits){ if(kt.status==='termine'||kt.status==='livre'||kt.status==='encours') continue; for(const ln of kt.k.lines){ if(ln.mode!=='kit') continue; const a=art[ln.id]; if(!a) continue;
     a.besT+=ln.q; if(kt.inHorizon){ a.besH+=ln.q; if(!a.first||kt.l.debut<a.first) a.first=kt.l.debut; } } }
-  const artList=Object.values(art).map(a=>{ const suivi=(a.id in S.stock); const st=+S.stock[a.id]||0; const manqueH=suivi?Math.max(0,a.besH-st):0; const surplus=suivi?Math.max(0,st-a.besT):0;
+  const artList=Object.values(art).map(a=>{ const suivi=stSuivi(a.id); const st=stTotal(a.id); const manqueH=suivi?Math.max(0,a.besH-st):0; const surplus=suivi?Math.max(0,st-a.besT):0;
     const cmdAvant = a.first? prevWorkDay(a.first, Math.max(1,Math.ceil(a.delai*5/7))+1): null;
     const semaines=p.horizon; return Object.assign(a,{suivi,st,manqueH,surplus,parSem:a.besH/semaines,cmdAvant,volSem:a.besH/semaines*a.v}); });
   // 4. secteurs géographiques (regroupement des chantiers proches)
@@ -682,9 +695,11 @@ function recompute(){
       tournees.push({date:d,type:'direct',items:direct,stops:route.order,vol,trips,km,h,cout:km*p.coutKmVL+h*p.coutHeure}); }
     if(viaT.length){ const byCl={}; viaT.forEach(x=>(byCl[x.cl.key]=byCl[x.cl.key]||[]).push(x));
       for(const k in byCl){ const t=S.tampons[k]; const its=byCl[k]; const vol=its.reduce((s,x)=>s+x.vol,0);
-        const tp={lat:t.lat,lon:t.lon}; const route=bestRoute(tp,groupStops(its)); const h=(minutes(route.km)+p.tArret*its.length+p.manutKit*its.length)/60;
-        tournees.push({date:d,type:'tampon',tampon:t.lieu,key:k,items:its,stops:route.order,vol,trips:Math.max(1,Math.ceil(vol/p.capVL)),km:route.km,h,cout:route.km*p.coutKmVL+h*p.coutHeure}); } }
+        const tp={lat:t.lat,lon:t.lon}; const route=bestRoute(tp,groupStops(its)); const h=(p.manutKit*its.length)/60;   // les compagnons chargent leur camionnette le matin : pas de tournée dédiée
+        tournees.push({date:d,type:'tampon',tampon:t.lieu,key:k,items:its,stops:route.order,vol,trips:1,km:0,h,cout:h*p.coutHeure}); } }
   }
+  // Main Forte : livraisons jour J (MEXT + porte + HIM + accessoires), camions de 1 à 6 logements, reprises, stock limité
+  const mf=calcMainForte(kits,today,horizonEnd);
   // navettes hebdomadaires vers tampons actifs
   const navettes=[];
   for(const k of tampActifs){ const t=S.tampons[k]; const its=tournees.filter(x=>x.key===k); if(!its.length) continue;
@@ -693,11 +708,35 @@ function recompute(){
       navettes.push({date:prevWorkDay(weeks[wk].first,1),tampon:t.lieu,key:k,vol:weeks[wk].vol,trips,km:km*trips,h,cout:km*trips*p.coutKmPL+h*p.coutHeure}); } }
   // 6. analyse zones tampons (économique + géographique + opérationnelle)
   const analyses=clusters.map(cl=>analyseTampon(cl,kits,base));
+  let autoChange=false;
+  analyses.forEach(an=>{ const k=an.cl.key; if(an.reco && an.hasBV && !S.tamponsAuto[k] && !S.tampons[k]){ S.tampons[k]={actif:true,lieu:an.lieu.commune+' (base-vie)',lat:an.lieu.co.lat,lon:an.lieu.co.lon,date:todayISO(),auto:true}; S.tamponsAuto[k]=1; autoChange=true; } });
+  if(autoChange){ save(); return recompute(); }
   // 7. alertes
-  const alertes=buildAlertes(chs,kits,artList,tournees,analyses);
-  R={chs,kits,artList,clusters,tournees,navettes,plateforme,cotra,analyses,alertes,base,today,horizonEnd};
+  const alertes=buildAlertes(chs,kits,artList,tournees,analyses,mf);
+  R={chs,kits,artList,clusters,tournees,navettes,plateforme,cotra,analyses,alertes,base,today,horizonEnd,mf};
   const nb=alertes.filter(a=>a.niv==='ko').length; $('#nbAl').innerHTML= nb?`<span class="bdg">${nb}</span>`:'';
   renderCurrent();
+}
+function camionCout(n,p3,p6){ if(n<=0) return 0; const c3=3*p3, c6=6*p6; return n<3? c3 : c3+(n-3)*(c6-c3)/3; }   // < 3 logements : facturé comme 3 (hypothèse : 3 minimum pour rentabiliser)
+function repartir(n,max){ const k=Math.ceil(n/max); const out=[]; for(let i=0;i<k;i++) out.push(Math.floor(n/k)+(i<n%k?1:0)); return out; }
+function calcMainForte(kits,today,horizonEnd){
+  const p=P(); const jours={};
+  const isAm=k=>k.k.lines.some(x=>x.id==='SS4-KIT');
+  for(const k of kits){ if(!k.l.debut||['termine','encours','livre'].includes(k.status)) continue; if(!k.k.lines.some(x=>x.mode==='plateforme')) continue;
+    if(k.l.debut<today||k.l.debut>horizonEnd) continue; (jours[k.l.debut]=jours[k.l.debut]||[]).push(k); }
+  const days=Object.keys(jours).sort().map(d=>{ const ks=jours[d]; const n=ks.length; const sizes=repartir(n,p.mfMaxLgt);
+    const cout=sizes.reduce((s,x)=>s+camionCout(x,p.mfP3,p.mfP6),0), tmf=sizes.reduce((s,x)=>s+camionCout(x,p.tmfP3,p.tmfP6),0);
+    return {date:d,n,sizes,cout,tmf,budget:n*p.budgetLgt,parLgt:cout/n,ugs:ks.map(k=>k.l.ug),amiante:ks.filter(isAm).map(k=>k.l.ug),communes:[...new Set(ks.map(k=>k.l.commune).filter(Boolean))]}; });
+  // stock chez Main Forte : de la réception à la pose
+  const stockJ={}; const recep=[];
+  for(const k of kits){ if(!k.l.debut||k.l.debut<today||['termine','encours','livre'].includes(k.status)) continue; if(!k.k.lines.some(x=>x.mode==='plateforme')) continue;
+    const sm=k.sm.find(x=>x.mode==='plateforme'); const rec=S.receptions[k.l.ug]||(sm&&sm.arr)||null; if(!rec) continue;
+    const ecart=diffDays(k.l.debut,rec); recep.push({ug:k.l.ug,rec,debut:k.l.debut,ecart});
+    let d=rec<today?today:rec; while(d<k.l.debut && d<=horizonEnd){ stockJ[d]=(stockJ[d]||0)+1; d=addDays(d,1); } }
+  let stockMax=0,stockMaxDate=null; for(const d in stockJ) if(stockJ[d]>stockMax){ stockMax=stockJ[d]; stockMaxDate=d; }
+  const tot=days.reduce((a,x)=>({n:a.n+x.n,cout:a.cout+x.cout,tmf:a.tmf+x.tmf,budget:a.budget+x.budget,camions:a.camions+x.sizes.length}),{n:0,cout:0,tmf:0,budget:0,camions:0});
+  const ideal=tot.n*p.mfP6;   // si tous les camions partaient pleins (6 logements)
+  return {days,tot,ideal,stockMax,stockMaxDate,recep};
 }
 function weekKey(isoS){ const d=toD(isoS); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return iso(d); }
 function groupStops(items){ const m={}; for(const x of items){ const co=x.ch&&x.ch.co; const key=x.ch?x.ch.id:'?'; if(!co) continue; (m[key]=m[key]||{id:key,nom:x.ch.commune,co,n:0,vol:0}); m[key].n++; m[key].vol+=x.vol; } return Object.values(m); }
@@ -726,7 +765,7 @@ function analyseTampon(cl,kits,base){
   const intra = cl.items.length>1 ? bestRoute(cl.bary,cl.items.map(x=>({co:x.co}))).km : 0;
   const kmRT = 2*cl.km + intra;
   const kitsParJour = nbLog/Math.max(1,jours);
-  // DIRECT : une tournée VL par jour de démarrage depuis Bruay
+  // DIRECT : une tournée VL par jour de démarrage depuis la plateforme
   const tripsDay=Math.max(1,Math.ceil(vol/jours/p.capVL));
   const dKm=kmRT*tripsDay*jours; const dH=((minutes(kmRT)+p.tChargeBase)*tripsDay + p.tArret*kitsParJour)*jours/60;
   const direct={km:dKm,h:dH,cout:dKm*p.coutKmVL+dH*p.coutHeure};
@@ -747,7 +786,7 @@ function analyseTampon(cl,kits,base){
   const enBase = cl.km<3;
   return {cl,nbLog,vol,jours,semaines,mois,src,direct,relais,gain,gainPct,crit,reco,enBase,lieu:tLieu,hasBV,kitsParJour,tripsDay};
 }
-function buildAlertes(chs,kits,artList,tournees,analyses){
+function buildAlertes(chs,kits,artList,tournees,analyses,mf){
   const A=[]; const p=P(); const t=todayISO();
   if(!LOGS.length) A.push({niv:'info',t:'Aucun logement importé',d:"Importez l'export logements d'EVOLUD ou Planning_EVOLUD (onglet Données) pour générer les kits par logement."});
   chs.forEach(c=>{ if(!c.co) A.push({niv:'ko',t:'Chantier non localisé : '+c.nom,d:'Commune « '+(c.commune||'?')+" » inconnue : saisissez latitude / longitude dans Données."});
@@ -758,8 +797,12 @@ function buildAlertes(chs,kits,artList,tournees,analyses){
     if(k.inHorizon && k.status==='incomplet' && diffDays(k.l.debut,t)<=3) A.push({niv:'ko',g:'Kit incomplet à moins de 3 jours du démarrage',ug:k.l.ug,d:'J-'+diffDays(k.l.debut,t)+' '+(k.miss.length?'Manquants : '+k.miss.map(m=>m.id+' ('+fmt(m.need-m.have)+')').join(', '):'sur-mesure non arrivé ou non commandé')});
     if(k.inHorizon && k.status==='attente' && k.l.debut) A.push({niv:'warn',g:'Démarrage planifié mais kit bloqué',ug:k.l.ug,d:k.wait.join(' · ')+' (démarrage '+frDate(k.l.debut)+')'}); });
   kits.filter(k=>k.l.debut && k.l.debut<t && !k.l.debutGamma && !['termine','encours','livre'].includes(k.status)).forEach(k=>A.push({niv:'ko',g:'Date de démarrage dépassée, travaux non démarrés dans Gamma',ug:k.l.ug,d:'prévu '+frDate(k.l.debut)+(k.wait.length?' – '+k.wait[0]:'')}));
-  tournees.forEach(x=>{ if(x.trips>1) A.push({niv:'warn',g:'Capacité utilitaire dépassée',ug:frDate(x.date),d:`${fmt(x.vol,1)} m³ → ${x.trips} rotations (avancer des kits la veille ou faire livrer l'isolant en direct par le fournisseur)`}); });
-  analyses.filter(a=>a.reco && !(S.tampons[a.cl.key]||{}).actif).forEach(a=>A.push({niv:'info',t:'Zone tampon recommandée : '+a.cl.nom,d:`Gain estimé ${eur(a.gain)} (${fmt(a.gainPct)} %) sur la période. Voir l'onglet Tampons.`}));
+  if(mf){ mf.days.forEach(d=>d.sizes.forEach(sz=>{ if(sz<P().mfMinLgt) A.push({niv:'warn',g:'Camion Main Forte non rentabilisé (moins de '+P().mfMinLgt+' logements)',ug:frDate(d.date),d:sz+' logement(s) : regrouper avec un jour voisin'}); }));
+    if(mf.stockMax>P().mfStockMax) A.push({niv:'ko',t:'Stock Main Forte saturé',d:`${mf.stockMax} logements en stock le ${frDate(mf.stockMaxDate)} pour ${P().mfStockMax} maximum : décaler des livraisons usine ou avancer des poses.`});
+    mf.recep.filter(r=>r.ecart<P().recMinJ).forEach(r=>A.push({niv:'ko',g:'Menuiseries reçues trop tard chez Main Forte',ug:r.ug,d:'réception '+frDate(r.rec)+', pose '+frDate(r.debut)}));
+    mf.days.forEach(d=>d.amiante.forEach(u=>A.push({niv:'warn',g:'Reprise anciennes menuiseries à exclure de Covanord (amiante)',ug:u,d:'pose '+frDate(d.date)+' : évacuation par la filière SS4'}))); }
+  tournees.forEach(x=>{ if(x.trips>1 && x.type!=='tampon') A.push({niv:'warn',g:'Capacité utilitaire dépassée',ug:frDate(x.date),d:`${fmt(x.vol,1)} m³ → ${x.trips} rotations (avancer des kits la veille ou faire livrer l'isolant en direct par le fournisseur)`}); });
+  analyses.filter(a=>a.reco && !(S.tampons[a.cl.key]||{}).actif).forEach(a=>A.push({niv:'info',t:'Stock chantier recommandé : '+a.cl.nom,d:`Gain estimé ${eur(a.gain)} (${fmt(a.gainPct)} %) sur la période. Voir l'onglet Tampons.`}));
   const G=[], idx={};
   for(const a of A){ if(!a.g){ G.push(a); continue; } const k=a.niv+'|'+a.g; if(!idx[k]){ idx[k]={niv:a.niv,g:a.g,ugs:[],ds:[]}; G.push(idx[k]); } idx[k].ugs.push(a.ug); idx[k].ds.push(a.ug+' : '+a.d); }
   G.forEach(x=>{ if(x.ugs){ x.t=x.g+' ('+x.ugs.length+')'; x.d=x.ds.slice(0,12).join(' · ')+(x.ds.length>12?' · … +'+(x.ds.length-12):''); } });
@@ -783,8 +826,8 @@ function kpis(){
    <div class="kpi"><div class="v" style="color:var(--info)">${c('apreparer')}</div><div class="l">Kits à préparer</div></div>
    <div class="kpi"><div class="v" style="color:var(--ko)">${c('incomplet')}</div><div class="l">Kits incomplets</div></div>
    <div class="kpi"><div class="v" style="color:var(--wait)">${c('attente')}</div><div class="l">Kits en attente</div></div>
-   <div class="kpi"><div class="v">${R.tournees.length}</div><div class="l">Tournées sur ${P().horizon} sem.</div></div>
-   <div class="kpi"><div class="v">${eur(tCout)}</div><div class="l">Coût transport prévu</div></div>
+   <div class="kpi"><div class="v">${R.mf.tot.camions}</div><div class="l">Camions Main Forte (${P().horizon} sem.)</div></div>
+   <div class="kpi"><div class="v">${R.mf.tot.n?fmt(R.mf.tot.cout/R.mf.tot.n):'–'} €</div><div class="l">par logement livré (budget ${fmt(P().budgetLgt)} €)</div></div>
    <div class="kpi"><div class="v" style="color:var(--ko)">${R.alertes.filter(a=>a.niv==='ko').length}</div><div class="l">Alertes critiques</div></div>
   </div>`;
 }
@@ -797,9 +840,9 @@ function renderCarte(){
     <div class="row noprint"><select id="daySel"><option value="">Toutes liaisons base → chantiers</option>${days.map(d=>`<option value="${d}" ${MAPSEL===d?'selected':''}>Tournée du ${frDate(d)}</option>`).join('')}</select>
     <button class="btn sec sm" id="zIn">＋</button><button class="btn sec sm" id="zOut">－</button><button class="btn sec sm" id="zR">⟲</button></div></div>
     <svg id="map"></svg>
-    <div class="legend"><span><i style="background:#0f2a44;border-radius:2px"></i>Base Bruay</span><span><i style="background:#1f8a4c"></i>Chantier actif</span><span><i style="background:#2563a8"></i>Chantier futur</span><span><i style="background:#f07c1b;border-radius:2px;transform:rotate(45deg)"></i>Zone tampon active</span><span><i style="background:none;border:2px dashed #f07c1b"></i>Tampon recommandé</span><span>Distances routières estimées (vol d'oiseau × ${fmt(P().facteurRoute,2)})</span></div>
+    <div class="legend"><span><i style="background:#0f2a44;border-radius:2px"></i>Plateforme ${BC()}</span><span><i style="background:#1f8a4c"></i>Chantier actif</span><span><i style="background:#2563a8"></i>Chantier futur</span><span><i style="background:#f07c1b;border-radius:2px;transform:rotate(45deg)"></i>Stock chantier (tampon)</span><span><i style="background:none;border:2px dashed #f07c1b"></i>Tampon recommandé</span><span>Distances routières estimées (vol d'oiseau × ${fmt(P().facteurRoute,2)})</span></div>
     <div id="mapInfo" class="just">Touchez un point pour le détail.</div></div>
-    <div class="card"><h2>Distances depuis la base</h2><div class="tw"><table><thead><tr><th>Chantier</th><th>Statut</th><th class="num">Logts</th><th class="num">km</th><th class="num">min</th><th class="num">Coût A/R VL</th><th>Secteur</th></tr></thead><tbody>
+    <div class="card"><h2>Distances depuis la plateforme ${BC()}</h2><div class="tw"><table><thead><tr><th>Chantier</th><th>Statut</th><th class="num">Logts</th><th class="num">km</th><th class="num">min</th><th class="num">Coût A/R VL</th><th>Secteur</th></tr></thead><tbody>
     ${R.chs.map(c=>{ const cl=R.clusters.find(k=>k.items.some(x=>x.id===c.id)); return `<tr><td>${esc(c.nom)}</td><td>${c.statut==='actif'?'<span class="pill p-ok">Actif</span>':'<span class="pill p-info">Futur</span>'}</td><td class="num">${c.nbEff||'<span class="mut">?</span>'}</td><td class="num">${c.km!=null?fmt(c.km,1):'–'}</td><td class="num">${c.min!=null?fmt(c.min):'–'}</td><td class="num">${c.km!=null?eur(2*c.km*P().coutKmVL+2*c.min/60*P().coutHeure):'–'}</td><td>${cl?esc(cl.nom):'–'}</td></tr>`; }).join('')}
     </tbody></table></div></div>`;
   drawMap(); $('#daySel').onchange=e=>{MAPSEL=e.target.value||null; drawMap();};
@@ -838,16 +881,16 @@ function drawMap(){
     h+=`<g data-c="${esc(c.id)}" style="cursor:pointer"><circle cx="${q[0]+off}" cy="${q[1]}" r="${r}" fill="${col}" fill-opacity=".85" stroke="#fff" stroke-width="2"/>
       ${inc?`<circle cx="${q[0]+off+r-2}" cy="${q[1]-r+2}" r="7" fill="#c62f2f"/><text x="${q[0]+off+r-2}" y="${q[1]-r+6}" font-size="10" fill="#fff" text-anchor="middle">${inc}</text>`:''}
       <text x="${q[0]+off}" y="${q[1]+r+13+off}" font-size="12" text-anchor="middle" fill="#1b2430" paint-order="stroke" stroke="#eaf0f5" stroke-width="3">${esc(c.prog&&c.prog!=='—'?c.prog.replace('Évolud ','É')+' · ':'')}${esc(c.commune)}${c.nbEff?' ('+c.nbEff+')':''}</text></g>`; });
-  const q=pr(R.base); h+=`<g data-b="1" style="cursor:pointer"><rect x="${q[0]-12}" y="${q[1]-12}" width="24" height="24" rx="4" fill="#0f2a44"/><text x="${q[0]}" y="${q[1]+5}" font-size="14" fill="#fff" text-anchor="middle">B</text><text x="${q[0]}" y="${q[1]-18}" font-size="12" font-weight="700" text-anchor="middle" fill="#0f2a44" paint-order="stroke" stroke="#eaf0f5" stroke-width="3">BASE BRUAY</text></g>`;
+  const q=pr(R.base); h+=`<g data-b="1" style="cursor:pointer"><rect x="${q[0]-12}" y="${q[1]-12}" width="24" height="24" rx="4" fill="#0f2a44"/><text x="${q[0]}" y="${q[1]+5}" font-size="14" fill="#fff" text-anchor="middle">B</text><text x="${q[0]}" y="${q[1]-18}" font-size="12" font-weight="700" text-anchor="middle" fill="#0f2a44" paint-order="stroke" stroke="#eaf0f5" stroke-width="3">${esc((P().base.court||'BASE').toUpperCase())}</text></g>`;
   svg.innerHTML=`<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="#0f2a44"/></marker></defs>`+h;
   svg.querySelectorAll('[data-c]').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation(); infoChantier(g.dataset.c);}));
   svg.querySelectorAll('[data-t]').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation(); const an=R.analyses.find(a=>a.cl.key===g.dataset.t); $('#mapInfo').innerHTML=justif(an); bindAct($('#mapInfo'));}));
   svg.querySelectorAll('[data-b]').forEach(g=>g.addEventListener('click',e=>{e.stopPropagation(); $('#mapInfo').innerHTML=`<b>${esc(P().base.nom)}</b><p>Point de départ de toutes les tournées et de la préparation des kits. Stock suivi : ${Object.keys(S.stock).length} articles.</p>`;}));
-  if(MAPSEL){ const ts=R.tournees.filter(t=>t.date===MAPSEL); $('#mapInfo').innerHTML=ts.map(t=>`<p><b>${t.type==='tampon'?'Depuis tampon '+esc(t.tampon):'Depuis la base'}</b> · ${t.stops.map((s,i)=>(i+1)+'. '+esc(s.nom)+' ('+s.n+' kit'+(s.n>1?'s':'')+')').join(' → ')} · ${fmt(t.km,1)} km · ${fmt(t.h,1)} h · ${fmt(t.vol,1)} m³ · ${eur(t.cout)}</p>`).join('')||'Aucune tournée ce jour.'; }
+  if(MAPSEL){ const ts=R.tournees.filter(t=>t.date===MAPSEL); $('#mapInfo').innerHTML=ts.map(t=>`<p><b>${t.type==='tampon'?'Depuis tampon '+esc(t.tampon):'Depuis '+BC()}</b> · ${t.stops.map((s,i)=>(i+1)+'. '+esc(s.nom)+' ('+s.n+' kit'+(s.n>1?'s':'')+')').join(' → ')} · ${fmt(t.km,1)} km · ${fmt(t.h,1)} h · ${fmt(t.vol,1)} m³ · ${eur(t.cout)}</p>`).join('')||'Aucune tournée ce jour.'; }
 }
 function infoChantier(id){ const c=R.chs.find(x=>x.id===id); const ks=R.kits.filter(k=>k.l.ch===id); const cnt=s=>ks.filter(k=>k.status===s).length;
   const next=R.tournees.filter(t=>t.items.some(i=>i.ch&&i.ch.id===id)).slice(0,3);
-  $('#mapInfo').innerHTML=`<b>${esc(c.nom)}</b><p>${c.nbEff||'?'} logements · ${c.km!=null?fmt(c.km,1)+' km / '+fmt(c.min)+' min de la base':'non localisé'} · ${c.baseVie?'base-vie sur place':'pas de base-vie déclarée'}</p>
+  $('#mapInfo').innerHTML=`<b>${esc(c.nom)}</b><p>${c.nbEff||'?'} logements · ${c.km!=null?fmt(c.km,1)+' km / '+fmt(c.min)+' min de '+BC():'non localisé'} · ${c.baseVie?'base-vie sur place':'pas de base-vie déclarée'}</p>
    <p>${ks.length? `Kits : ${cnt('pret')} prêts · ${cnt('apreparer')} à préparer · ${cnt('incomplet')} incomplets · ${cnt('attente')} en attente · ${cnt('livre')} livrés`:'Aucun logement importé pour ce chantier.'}</p>
    ${next.length?'<p>Prochaines livraisons : '+next.map(t=>frDate(t.date)).join(', ')+'</p>':''}`; }
 function panZoom(svg){
@@ -887,13 +930,14 @@ function renderKits(){
       ${(S.prepares[k.l.ug]||S.livres[k.l.ug])?`<button class="btn sec sm" data-raz="${esc(k.l.ug)}">↺</button>`:''}<button class="btn sec sm" data-fiche="${esc(k.l.ug)}">Fiche</button></div></td></tr>`; }).join('')}
    </tbody></table></div>${ks.length>400?'<p class="small mut">400 premiers affichés : affinez le filtre.</p>':''}</div>
    <div class="card"><h2>Charge par corps d'état (démarrages / semaine)</h2>${weeks.length?`<div class="tw"><table><thead><tr><th>Lot · entreprise</th>${weeks.map(w=>`<th class="num">S. ${frDate(w)}</th>`).join('')}</tr></thead><tbody>${lots.map(l=>`<tr><td>${esc(l)}</td>${weeks.map(w=>`<td class="num">${wk[w][l]||''}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="small mut">Sert à synchroniser équipes BBNE, sous-traitants et cotraitants (GDS, ISOWECK, ATS) avec les approvisionnements.</p>`:'<p class="mut">Aucun démarrage daté sur l\'horizon.</p>'}</div>
-   <div class="card"><h2>Approvisionnements, ruptures et surplus (stock base Bruay)</h2>
-   <div class="tw"><table><thead><tr><th>Article</th><th class="num">Stock</th><th class="num">Besoin ${P().horizon} sem.</th><th class="num">/ semaine</th><th class="num">m³ / sem.</th><th class="num">Manque / achat</th><th class="num">Surplus</th><th>Commander avant</th></tr></thead><tbody>
-   ${R.artList.filter(a=>a.besT>0||a.st>0).map(a=>`<tr><td>${esc(a.des)}<div class="small mut">${a.id}</div></td><td class="num"><input type="number" min="0" data-stock="${a.id}" value="${S.stock[a.id]??''}" style="width:70px"></td><td class="num">${fmt(a.besH)} ${a.u}</td><td class="num">${fmt(a.parSem,1)}</td><td class="num">${fmt(a.volSem,2)}</td><td class="num">${!a.suivi?(a.besH?`<span class="pill p-info">À commander ${fmt(a.besH)}</span>`:''):a.manqueH?`<span class="pill p-ko">${fmt(a.manqueH)}</span>`:'<span class="pill p-ok">0</span>'}</td><td class="num">${a.surplus?`<span class="pill p-warn">${fmt(a.surplus)}</span>`:''}</td><td>${(a.manqueH||(!a.suivi&&a.besH))?frDate(a.cmdAvant):''}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">Aucun besoin calculé.</td></tr>'}
-   </tbody></table></div><p class="small mut">Stock vide = article non stocké à la base : il apparaît « À commander » (achat au besoin) et ne bloque pas les kits. Saisissez un stock (même 0) pour le suivre et déclencher les alertes de rupture. Surplus = stock au-delà de tous les besoins connus (à réaffecter ou retourner). « Commander avant » tient compte du délai fournisseur de l'article.</p></div>`;
+   <div class="card"><h2>Approvisionnements, ruptures et surplus (stocks ${BC()} + ${SITE2})</h2>
+   <div class="tw"><table><thead><tr><th>Article</th><th class="num">Stock ${BC()}</th><th class="num">Stock ${SITE2}</th><th class="num">Besoin ${P().horizon} sem.</th><th class="num">/ semaine</th><th class="num">m³ / sem.</th><th class="num">Seuil réappro base vie</th><th class="num">Manque / achat</th><th class="num">Surplus</th><th>Commander avant</th></tr></thead><tbody>
+   ${R.artList.filter(a=>a.besT>0||a.st>0).map(a=>`<tr><td>${esc(a.des)}<div class="small mut">${a.id}</div></td><td class="num"><input type="number" min="0" data-stock="${a.id}" value="${S.stock[a.id]??''}" style="width:64px"></td><td class="num"><input type="number" min="0" data-stock2="${a.id}" value="${S.stock2[a.id]??''}" style="width:64px"></td><td class="num">${fmt(a.besH)} ${a.u}</td><td class="num">${fmt(a.parSem,1)}</td><td class="num">${fmt(a.volSem,2)}</td><td class="num">${a.parSem?`${fmt(Math.ceil(a.parSem*(1+P().semSecu)))}${(a.id in S.stock2)&&(+S.stock2[a.id]||0)<Math.ceil(a.parSem*(1+P().semSecu))?' <span class="pill p-warn">à réappro</span>':''}`:''}</td><td class="num">${!a.suivi?(a.besH?`<span class="pill p-info">À commander ${fmt(a.besH)}</span>`:''):a.manqueH?`<span class="pill p-ko">${fmt(a.manqueH)}</span>`:'<span class="pill p-ok">0</span>'}</td><td class="num">${a.surplus?`<span class="pill p-warn">${fmt(a.surplus)}</span>`:''}</td><td>${(a.manqueH||(!a.suivi&&a.besH))?frDate(a.cmdAvant):''}</td></tr>`).join('')||'<tr><td colspan="10" class="mut">Aucun besoin calculé.</td></tr>'}
+   </tbody></table></div><p class="small mut">Stocks vides = article non stocké : il apparaît « À commander » (achat au besoin) et ne bloque pas les kits. Saisissez le stock de Harnes et / ou de Bruay (même 0) pour suivre l'article : les kits puisent dans les deux et déclencher les alertes de rupture. Surplus = stock au-delà de tous les besoins connus (à réaffecter ou retourner). « Commander avant » tient compte du délai fournisseur de l'article.</p></div>`;
   $('#kq').oninput=e=>{KF.q=e.target.value; clearTimeout(renderKits._t); renderKits._t=setTimeout(()=>{renderKits(); const i=$('#kq'); i.focus(); i.setSelectionRange(i.value.length,i.value.length);},300);};
   $('#kst').onchange=e=>{KF.st=e.target.value;renderKits();}; $('#kch').onchange=e=>{KF.ch=e.target.value;renderKits();};
   el.querySelectorAll('[data-stock]').forEach(i=>i.onchange=()=>{ const v=i.value===''?undefined:Math.max(0,+i.value); if(v==null) delete S.stock[i.dataset.stock]; else S.stock[i.dataset.stock]=v; save(); recompute(); });
+  el.querySelectorAll('[data-stock2]').forEach(i=>i.onchange=()=>{ const v=i.value===''?undefined:Math.max(0,+i.value); if(v==null) delete S.stock2[i.dataset.stock2]; else S.stock2[i.dataset.stock2]=v; save(); recompute(); });
   el.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=()=>{ const [ug,code]=b.dataset.cmd.split('|'); const d=prompt('Date de commande '+code+' pour '+ug+' (JJ/MM/AAAA) :',new Date().toLocaleDateString('fr-FR')); const v=parseDateAny(d); if(!v) return; (S.commandes[ug]=S.commandes[ug]||{})[code]=v; save(); recompute(); });
   el.querySelectorAll('[data-prep]').forEach(b=>b.onclick=()=>{ S.prepares[b.dataset.prep]=todayISO(); save(); recompute(); toast('Kit '+b.dataset.prep+' marqué prêt'); });
   el.querySelectorAll('[data-liv]').forEach(b=>b.onclick=()=>{ S.livres[b.dataset.liv]=todayISO(); save(); recompute(); toast('Kit '+b.dataset.liv+' livré'); });
@@ -913,7 +957,7 @@ function printFiches(list){
     const dl=k.l.debut?prevWorkDay(k.l.debut,P().jPrep):'';
     return `<div class="fk"><h2>FICHE KIT · ${esc(k.l.ug)}</h2><div>${esc(k.l.adresse||'')} ${esc(k.l.commune||'')} · Scénario ${esc(k.l.scenario||'–')}</div>
      <div>Démarrage : <b>${frDate(k.l.debut)}</b> · Livraison : <b>${frDate(dl)}</b> · Statut : ${ST[k.status][0]} · ${fmt(k.k.vol,2)} m³ · ${fmt(k.k.kg)} kg</div>
-     ${Object.keys(byLot).map(l=>`<h3>${esc(l)}</h3><table><thead><tr><th>☐</th><th>Article</th><th>Désignation</th><th class="num">Qté</th><th>Mode</th></tr></thead><tbody>${byLot[l].map(x=>`<tr><td>☐</td><td>${x.id}</td><td>${esc(x.des)}</td><td class="num">${x.q} ${x.u}</td><td>${x.mode==='kit'?'Kit base':x.mode==='plateforme'?'Plateforme logistique':'Sur-mesure'}</td></tr>`).join('')}</tbody></table>`).join('')}
+     ${Object.keys(byLot).map(l=>`<h3>${esc(l)}</h3><table><thead><tr><th>☐</th><th>Article</th><th>Désignation</th><th class="num">Qté</th><th>Mode</th></tr></thead><tbody>${byLot[l].map(x=>`<tr><td>☐</td><td>${x.id}</td><td>${esc(x.des)}</td><td class="num">${x.q} ${x.u}</td><td>${x.mode==='kit'?'Kit base':x.mode==='plateforme'?'Plateforme '+P().base.court+' – livrée le jour J':'Sur-mesure'}</td></tr>`).join('')}</tbody></table>`).join('')}
      ${k.k.cot.length?`<h3>Cotraitants à synchroniser (hors kit)</h3><p>${k.k.cot.map(c=>esc(c.ent+' – '+c.lib+(c.q?' ('+fmt(c.q,1)+' '+c.u+')':''))).join(' · ')}</p>`:''}
      ${[...k.wait,...k.miss.map(m=>'Manque '+m.id)].length?`<h3>Points bloquants</h3><p>${[...k.wait,...k.miss.map(m=>'Manque '+m.id+' ×'+fmt(m.need-m.have))].map(esc).join('<br>')}</p>`:''}
      <p style="margin-top:14px">Préparé par : ____________ le ___/___ · Contrôlé par : ____________ · Réceptionné sur site par : ____________</p>
@@ -926,57 +970,78 @@ function exportCsv(name,head,rows){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'})); a.download=name+'_'+todayISO()+'.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 
+/* --- Main Forte --- */
+function renderMainForte(){
+  const m=R.mf, p=P(), t=m.tot;
+  const gainBud=t.budget-t.cout, gainTmf=t.tmf-t.cout, perte=t.cout-m.ideal;
+  return `<div class="card"><h2>Main Forte (Harnes) – livraisons jour J</h2>
+   <p class="small mut">MEXT + porte + HIM + accessoires, kittés au logement en usine, stockés à Harnes puis déposés devant le logement le jour J dès l'aube (porteur à hayon, 2 chevalets par logement). 1 à 6 logements par camion, 3 minimum pour le rentabiliser. Tarifs Board DG du 07/10/2026 : ${p.mfP3} €/logt à 3, ${p.mfP6} €/logt à 6 (TMF : ${p.tmfP3} / ${p.tmfP6} €) ; budget FBM ${p.budgetLgt} €/logt.</p>
+   ${t.n?`<div class="kpis" style="margin-top:8px">
+     <div class="kpi"><div class="v">${t.n}</div><div class="l">logements livrés · ${t.camions} camion(s)</div></div>
+     <div class="kpi"><div class="v">${fmt(t.cout/t.n)} €</div><div class="l">par logement (Main Forte)</div></div>
+     <div class="kpi"><div class="v" style="color:${gainBud>=0?'var(--ok)':'var(--ko)'}">${gainBud>=0?'−':'+'}${eur(Math.abs(gainBud))}</div><div class="l">${gainBud>=0?'sous le':'au-dessus du'} budget FBM</div></div>
+     <div class="kpi"><div class="v" style="color:${perte>0.5?'var(--warn)':'var(--ok)'}">${eur(perte)}</div><div class="l">perdus en camions pas pleins</div></div></div>
+   <div class="tw"><table><thead><tr><th>Jour J</th><th class="num">Logts</th><th>Camions</th><th class="num">Coût MF</th><th class="num">€/logt</th><th>Reprise anciennes menuiseries</th><th>Logements</th></tr></thead><tbody>
+   ${m.days.map(d=>`<tr><td>${frDate(d.date)}</td><td class="num">${d.n}</td><td>${d.sizes.map(x=>x<p.mfMinLgt?`<span class="pill p-warn">${x}</span>`:`<span class="pill p-ok">${x}</span>`).join(' ')}</td><td class="num">${eur(d.cout)}</td><td class="num">${fmt(d.parLgt)}</td><td class="small">${d.n-d.amiante.length} → Covanord${d.amiante.length?` · <b style="color:var(--ko)">${d.amiante.length} amiante → filière SS4</b>`:''}</td><td class="small">${d.ugs.map(esc).join(', ')}</td></tr>`).join('')}
+   </tbody></table></div>
+   <p class="small mut">Économie par rapport à TMF : ${eur(gainTmf)}. Pastille orange = camion de moins de ${p.mfMinLgt} logements : regrouper la pose avec un jour voisin de la même rue.</p>`
+   :'<p class="mut">Aucune livraison Main Forte sur l\'horizon (dates de pose manquantes ou logements en attente). Allongez l\'horizon ci-dessus.</p>'}
+   <h3>Stock chez Main Forte (maximum ${p.mfStockMax} logements ≈ 2,5 semi-remorques)</h3>
+   <p>${m.recep.length?`Pic prévu : <b style="color:${m.stockMax>p.mfStockMax?'var(--ko)':'var(--ok)'}">${m.stockMax} logement(s)</b>${m.stockMaxDate?' le '+frDate(m.stockMaxDate):''} · réception visée entre J-${p.recMaxJ} et J-${p.recMinJ} de la pose.`:'<span class="mut">Aucune date de réception connue (importez le suivi MEXT).</span>'}</p>
+   ${m.recep.filter(r=>r.ecart>p.recMaxJ||r.ecart<p.recMinJ).length?`<div class="tw"><table><thead><tr><th>Logement</th><th>Réception</th><th>Pose</th><th>Écart</th></tr></thead><tbody>${m.recep.filter(r=>r.ecart>p.recMaxJ||r.ecart<p.recMinJ).sort((a,b)=>a.debut.localeCompare(b.debut)).map(r=>`<tr><td>${esc(r.ug)}</td><td>${frDate(r.rec)}</td><td>${frDate(r.debut)}</td><td>${r.ecart<p.recMinJ?`<span class="pill p-ko">J-${r.ecart} : trop tard</span>`:`<span class="pill p-warn">J-${r.ecart} : stock immobilisé</span>`}</td></tr>`).join('')}</tbody></table></div>`:''}
+  </div>`;
+}
+
 /* --- Livraisons --- */
 function renderLiv(){
   const el=$('#v-liv'); const p=P(); const all=[...R.tournees.map(t=>Object.assign({k:'t'},t)),...R.navettes.map(n=>Object.assign({k:'n'},n))].sort((a,b)=>a.date.localeCompare(b.date));
   const tot=all.reduce((s,x)=>s+x.cout,0), km=all.reduce((s,x)=>s+x.km,0);
-  el.innerHTML = kpis()+`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Livraisons programmées (${p.horizon} semaines)</h2><button class="btn sec sm noprint" id="lcsv">⬇️ Excel (CSV)</button></div>
+  el.innerHTML = kpis()+renderMainForte()+`<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Base vie : kits et réappros (${p.horizon} semaines)</h2><button class="btn sec sm noprint" id="lcsv">⬇️ Excel (CSV)</button></div>
    <div class="row noprint" style="margin:6px 0"><label class="f">Horizon analysé<select id="lhor">${[6,13,26,52].map(w=>`<option value="${w}" ${p.horizon==w?'selected':''}>${w} semaines</option>`).join('')}</select></label></div>
-   <p class="small mut">Kits livrés J-${p.jPrep} ouvré avant démarrage · tournées optimisées (ordre de passage le plus court) · ${fmt(km)} km · ${eur(tot)}</p>
+   <p class="small mut">Plâtrerie, isolation, CET… : stock tampon à la base vie, réapprovisionné par campagnes depuis Main Forte (camion séparé). Kit préparé J-${p.jPrep} ouvré, chargé le matin par les compagnons dans leur camionnette.</p>
    ${all.length?all.map(x=> x.k==='n'
-     ? `<div class="al info"><b>🚛 ${frDate(x.date)} · Navette porteur Base → tampon ${esc(x.tampon)}</b>${fmt(x.vol,1)} m³ · ${x.trips} rotation(s) · ${fmt(x.km,1)} km · ${fmt(x.h,1)} h · ${eur(x.cout)}</div>`
-     : `<div class="al ${x.trips>1?'':'info'}" style="border-left-color:${x.type==='tampon'?'var(--acc)':'var(--navy)'}"><b>🚚 ${frDate(x.date)} · ${x.type==='tampon'?'Depuis tampon '+esc(x.tampon):'Depuis la base Bruay'} · ${x.items.length} kit(s)</b>
-        Itinéraire : ${x.type==='tampon'?'Tampon':'Base'} → ${x.stops.map(s=>esc(s.nom)+' ('+s.n+')').join(' → ')} → retour · ${fmt(x.km,1)} km · ${fmt(x.h,1)} h · ${fmt(x.vol,1)} m³${x.trips>1?' · <b style="display:inline;color:var(--ko)">'+x.trips+' rotations</b>':''} · ${eur(x.cout)}
+     ? `<div class="al info"><b>🚛 ${frDate(x.date)} · Réappro base vie ${esc(x.tampon)} – campagne depuis Main Forte</b>${fmt(x.vol,1)} m³ · ${x.trips} camion(s) · ${fmt(x.km,1)} km · coût estimé ${eur(x.cout)} (tarif campagne Main Forte à confirmer)</div>`
+     : `<div class="al ${x.trips>1?'':'info'}" style="border-left-color:${x.type==='tampon'?'var(--acc)':'var(--navy)'}"><b>${x.type==='tampon'?'📦 '+frDate(x.date)+' · Kits à préparer à la base vie '+esc(x.tampon)+' (retrait le lendemain matin)':'🚚 '+frDate(x.date)+' · Livraison directe depuis '+BC()} · ${x.items.length} kit(s)</b>
+        ${x.type==='tampon'?'Pour : '+x.stops.map(s=>esc(s.nom)+' ('+s.n+')').join(', ')+' · '+fmt(x.vol,1)+' m³':'Itinéraire : '+BC()+' → '+x.stops.map(s=>esc(s.nom)+' ('+s.n+')').join(' → ')+' → retour · '+fmt(x.km,1)+' km · '+fmt(x.h,1)+' h · '+fmt(x.vol,1)+' m³'+(x.trips>1?' · <b style="display:inline;color:var(--ko)">'+x.trips+' rotations</b>':'')+' · '+eur(x.cout)}
         <div class="small mut">${x.items.map(i=>esc(i.kt.l.ug)).join(', ')}</div></div>`).join(''):'<p class="mut">Aucune livraison sur l\'horizon (dates de démarrage manquantes ou kits en attente).</p>'}
    </div>
-   <div class="card"><h2>Menuiseries – plateforme logistique</h2><p class="small mut">Livrées devant le logement par le chauffeur de la plateforme (hors tournées BBNE). À rapprocher de la cadence MEXT.</p>
-   ${R.plateforme.length?`<div class="tw"><table><thead><tr><th>Date</th><th>Logement</th><th>Commune</th></tr></thead><tbody>${R.plateforme.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<tr><td>${frDate(x.date)}</td><td>${esc(x.ug)}</td><td>${esc(x.commune)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="mut">Aucune.</p>'}</div>
+
    <div class="card"><h2>Cotraitants à prévenir (fourniture propre)</h2>
    ${R.cotra.length?`<div class="tw"><table><thead><tr><th>Date</th><th>Entreprise</th><th>Prestation</th><th>Logement</th><th>Commune</th></tr></thead><tbody>${R.cotra.sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<tr><td>${frDate(x.date)}</td><td>${esc(x.ent)}</td><td>${esc(x.lib)}</td><td>${esc(x.ug)}</td><td>${esc(x.commune)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="mut">Aucun.</p>'}</div>`;
   $('#lhor').onchange=e=>{ S.params.horizon=+e.target.value; save(); recompute(); };
   $('#lcsv').onclick=()=>exportCsv('livraisons',['Date','Type','Départ','Itinéraire','Logements','m3','km','heures','Coût €'],
-    all.map(x=>x.k==='n'?[x.date,'Navette','Base Bruay','Tampon '+x.tampon,'',x.vol.toFixed(2),x.km.toFixed(1),x.h.toFixed(2),Math.round(x.cout)]:[x.date,x.type,x.type==='tampon'?'Tampon '+x.tampon:'Base Bruay',x.stops.map(s=>s.nom).join(' > '),x.items.map(i=>i.kt.l.ug).join(' '),x.vol.toFixed(2),x.km.toFixed(1),x.h.toFixed(2),Math.round(x.cout)]));
+    all.map(x=>x.k==='n'?[x.date,'Navette',P().base.court,'Tampon '+x.tampon,'',x.vol.toFixed(2),x.km.toFixed(1),x.h.toFixed(2),Math.round(x.cout)]:[x.date,x.type,x.type==='tampon'?'Tampon '+x.tampon:P().base.court,x.stops.map(s=>s.nom).join(' > '),x.items.map(i=>i.kt.l.ug).join(' '),x.vol.toFixed(2),x.km.toFixed(1),x.h.toFixed(2),Math.round(x.cout)]));
 }
 
 /* --- Zones tampons --- */
 function justif(an){
   if(!an) return ''; const p=P(); const act=(S.tampons[an.cl.key]||{}).actif;
   const ok=v=>v?'<span class="pill p-ok">✓</span>':'<span class="pill p-ko">✗</span>';
-  const verdict = an.enBase? 'Secteur de la base : livraison directe depuis Bruay, aucune zone tampon utile.'
-    : an.reco? `ZONE TAMPON RECOMMANDÉE à ${esc(an.lieu.commune)}${an.hasBV?' (base-vie existante)':' (conteneur à installer)'}`
-    : 'Pas de zone tampon : la livraison directe depuis Bruay reste la meilleure option.';
+  const verdict = an.enBase? 'Secteur de la plateforme : livraison directe depuis '+BC()+', aucun stock chantier utile.'
+    : an.reco? `STOCK CHANTIER RECOMMANDÉ à ${esc(an.lieu.commune)}${an.hasBV?' (base-vie existante)':' (conteneur à installer)'} : navette depuis ${BC()}, puis kits livrés depuis ce stock`
+    : 'Pas de stock chantier : la livraison directe depuis '+BC()+' reste la meilleure option.';
   return `<div class="verdict" style="color:${an.reco?'var(--acc)':'var(--ok)'}">${verdict}</div>
    <p class="small mut">Secteur ${esc(an.cl.nom)} · base de calcul : ${esc(an.src)} · ${an.jours} jours de livraison sur ~${an.semaines} semaines · ${fmt(an.kitsParJour,1)} kit/jour · ${fmt(an.vol,1)} m³</p>
-   <p>${ok(an.crit.geo)} <b>Géographique</b> : ${fmt(an.cl.km,1)} km / ${fmt(an.cl.min)} min de Bruay (seuil ${p.seuilKm} km).</p>
-   <p>${ok(an.crit.eco)} <b>Économique</b> : direct ${eur(an.direct.cout)} (${fmt(an.direct.km)} km, ${fmt(an.direct.h)} h) contre plateforme relais ${eur(an.relais.cout)} (navettes + derniers km ${fmt(an.relais.km)} km, ${fmt(an.relais.h)} h dont manutention, stockage ${eur(an.relais.stock)}). Écart ${an.gain>=0?'gain':'surcoût'} ${eur(Math.abs(an.gain))} soit ${fmt(an.gainPct)} % (seuil ${p.seuilGain} %).</p>
+   <p>${ok(an.crit.geo)} <b>Géographique</b> : ${fmt(an.cl.km,1)} km / ${fmt(an.cl.min)} min de ${BC()} (seuil ${p.seuilKm} km).</p>
+   <p>${ok(an.crit.eco)} <b>Économique</b> : direct ${eur(an.direct.cout)} (${fmt(an.direct.km)} km, ${fmt(an.direct.h)} h) contre stock chantier ${eur(an.relais.cout)} (navettes + derniers km ${fmt(an.relais.km)} km, ${fmt(an.relais.h)} h dont manutention, stockage ${eur(an.relais.stock)}). Écart ${an.gain>=0?'gain':'surcoût'} ${eur(Math.abs(an.gain))} soit ${fmt(an.gainPct)} % (seuil ${p.seuilGain} %).</p>
    <p>${ok(an.crit.ops)} <b>Opérationnel</b> : ${fmt(an.kitsParJour,1)} kit(s)/jour pendant ~${an.semaines} semaine(s) ${an.crit.ops?'→ flux régulier qui justifie un stock avancé (moins de rupture, équipes servies dès 7 h).':'→ flux trop faible ou trop court pour immobiliser un stock.'}</p>
-   ${!an.enBase&&an.reco?`<div class="row noprint" style="margin-top:6px"><button class="btn ${act?'sec':'acc'} sm" data-act="${esc(an.cl.key)}">${act?'Désactiver la zone tampon':'Activer cette zone tampon'}</button></div>`:''}
-   ${!an.enBase&&!an.reco&&act?`<div class="row noprint"><button class="btn sec sm" data-act="${esc(an.cl.key)}">Désactiver (non justifiée)</button></div>`:''}`;
+   ${!an.enBase&&an.reco?`<div class="row noprint" style="margin-top:6px"><button class="btn ${act?'sec':'acc'} sm" data-act="${esc(an.cl.key)}">${act?'Désactiver ce stock chantier':'Activer ce stock chantier'}</button></div>`:''}
+   ${!an.enBase&&!an.reco&&act?`<div class="row noprint"><button class="btn sec sm" data-act="${esc(an.cl.key)}">Désactiver (non justifié)</button></div>`:''}`;
 }
 function renderTampon(){
   const el=$('#v-tampon'); const p=P();
   const list=[...R.analyses].sort((a,b)=>b.cl.km-a.cl.km);
-  el.innerHTML = `<div class="card"><h2>Zones tampons stratégiques</h2>
-   <p class="small">Méthode : les chantiers à moins de ${p.rayonCluster} km les uns des autres forment un secteur. Pour chaque secteur, deux organisations sont chiffrées sur la même période : <b>livraison directe</b> quotidienne depuis Bruay en utilitaire, et <b>plateforme relais</b> (navette porteur hebdomadaire vers un stock avancé + derniers kilomètres + double manutention + location du stockage, nulle si une base-vie existe). Une zone tampon n'est proposée que si les <b>trois critères</b> sont remplis : éloignement ≥ ${p.seuilKm} km, gain ≥ ${p.seuilGain} %, flux régulier.</p></div>
-   ${list.map(an=>`<div class="card"><h2>${esc(an.cl.nom)} <span class="pill ${an.reco?'p-warn':'p-ok'}">${an.enBase?'Base':an.reco?'Tampon recommandé':'Direct'}</span></h2>${justif(an)}</div>`).join('')||'<div class="card mut">Aucun chantier localisé avec effectif.</div>'}
-   <div class="card"><h2>Comparatif</h2><div class="tw"><table><thead><tr><th>Secteur</th><th class="num">km base</th><th class="num">Logts</th><th class="num">Direct</th><th class="num">Relais</th><th class="num">Écart</th><th>Décision</th></tr></thead><tbody>
-   ${list.map(an=>`<tr><td>${esc(an.cl.nom)}</td><td class="num">${fmt(an.cl.km,1)}</td><td class="num">${an.nbLog}</td><td class="num">${eur(an.direct.cout)}</td><td class="num">${eur(an.relais.cout)}</td><td class="num" style="color:${an.gain>0?'var(--ok)':'var(--ko)'}">${an.gain>0?'+':''}${eur(an.gain)}</td><td>${an.enBase?'Base':an.reco?'<b>Tampon</b>':'Direct'}</td></tr>`).join('')}
+  el.innerHTML = `<div class="card"><h2>Plateforme de Harnes et stocks chantier</h2>
+   <p class="small">Méthode : les chantiers à moins de ${p.rayonCluster} km les uns des autres forment un secteur. Pour chaque secteur, deux organisations sont chiffrées sur la même période : <b>livraison directe</b> quotidienne de chaque kit depuis la plateforme ${BC()} en utilitaire, et <b>stock chantier</b> (navette porteur hebdomadaire ${BC()} → stock sur chantier + derniers kilomètres + double manutention + location du stockage, nulle si une base-vie existe). Un stock chantier n'est proposé que si les <b>trois critères</b> sont remplis : éloignement ≥ ${p.seuilKm} km, gain ≥ ${p.seuilGain} %, flux régulier.</p></div>
+   ${list.map(an=>`<div class="card"><h2>${esc(an.cl.nom)} <span class="pill ${an.reco?'p-warn':'p-ok'}">${an.enBase?'Plateforme':an.reco?'Stock chantier':'Direct depuis '+BC()}</span></h2>${justif(an)}</div>`).join('')||'<div class="card mut">Aucun chantier localisé avec effectif.</div>'}
+   <div class="card"><h2>Comparatif</h2><div class="tw"><table><thead><tr><th>Secteur</th><th class="num">km ${BC()}</th><th class="num">Logts</th><th class="num">Direct</th><th class="num">Stock chantier</th><th class="num">Écart</th><th>Décision</th></tr></thead><tbody>
+   ${list.map(an=>`<tr><td>${esc(an.cl.nom)}</td><td class="num">${fmt(an.cl.km,1)}</td><td class="num">${an.nbLog}</td><td class="num">${eur(an.direct.cout)}</td><td class="num">${eur(an.relais.cout)}</td><td class="num" style="color:${an.gain>0?'var(--ok)':'var(--ko)'}">${an.gain>0?'+':''}${eur(an.gain)}</td><td>${an.enBase?'Plateforme':an.reco?'<b>Stock chantier</b>':'Direct'}</td></tr>`).join('')}
    </tbody></table></div><p class="small mut">Hypothèses de coûts modifiables dans ⚙️ Données (€/km, €/h, capacités, location conteneur, seuils). Les distances sont estimées : corrigez le facteur routier si vous constatez un écart avec vos trajets réels.</p></div>`;
   bindAct(el);
 }
 function bindAct(el){ el.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{ const k=b.dataset.act; const an=R.analyses.find(a=>a.cl.key===k); const cur=S.tampons[k];
   if(cur&&cur.actif){ cur.actif=false; } else { S.tampons[k]={actif:true,lieu:an.lieu.commune+(an.hasBV?' (base-vie)':''),lat:an.lieu.co.lat,lon:an.lieu.co.lon,date:todayISO()}; }
-  save(); recompute(); toast(S.tampons[k].actif?'Zone tampon activée : tournées recalculées':'Zone tampon désactivée'); }); }
+  save(); recompute(); toast(S.tampons[k].actif?'Stock chantier activé : tournées recalculées':'Stock chantier désactivé'); }); }
 
 /* --- Alertes --- */
 function renderAlertes(){
@@ -1013,12 +1078,12 @@ function renderDonnees(){
      <td><button class="btn sec sm" data-chdel="${i}">✕</button></td></tr>`).join('')}
    </tbody></table></div><datalist id="dlc">${COMMUNES.map(c=>`<option value="${esc(c[0])}">`).join('')}</datalist>
    <div class="row" style="margin-top:8px"><button class="btn sec sm" id="chadd">＋ Ajouter un chantier / une ville</button></div>
-   <p class="small mut">* Effectif utilisé uniquement tant qu'aucun logement de ce chantier n'est importé. « Base-vie » = lieu de stockage déjà disponible (zone tampon sans loyer).</p></div>
+   <p class="small mut">* Effectif utilisé uniquement tant qu'aucun logement de ce chantier n'est importé. « Base-vie » = lieu de stockage déjà disponible (stock chantier sans loyer).</p></div>
 
    <div class="card"><h2>Hypothèses de calcul</h2><div class="grid2">
-   ${[['facteurRoute','Facteur routier (× vol d\'oiseau)',0.05],['vitesse','Vitesse moyenne (km/h)',1],['coutKmVL','Coût utilitaire (€/km)',0.01],['capVL','Capacité utilitaire (m³)',1],['coutKmPL','Coût porteur navette (€/km)',0.01],['capPL','Capacité porteur (m³)',1],['coutHeure','Coût horaire chauffeur (€/h)',1],['tArret','Déchargement / arrêt (min)',1],['tChargeBase','Chargement au départ (min)',1],['manutKit','Manutention tampon / kit (min)',1],['coutStockMois','Location stockage tampon (€/mois)',10],['seuilKm','Seuil distance tampon (km)',1],['seuilGain','Seuil gain tampon (%)',1],['rayonCluster','Rayon de regroupement (km)',1],['jPrep','Livraison J- (jours ouvrés)',1],['horizon','Horizon analysé (semaines)',1],['cadenceDefaut','Cadence par défaut (logts/jour/chantier)',1],['volDefaut','Volume moyen kit si inconnu (m³)',0.1]]
+   ${[['facteurRoute','Facteur routier (× vol d\'oiseau)',0.05],['vitesse','Vitesse moyenne (km/h)',1],['coutKmVL','Coût utilitaire (€/km)',0.01],['capVL','Capacité utilitaire (m³)',1],['coutKmPL','Coût porteur navette (€/km)',0.01],['capPL','Capacité porteur (m³)',1],['coutHeure','Coût horaire chauffeur (€/h)',1],['tArret','Déchargement / arrêt (min)',1],['tChargeBase','Chargement au départ (min)',1],['manutKit','Manutention tampon / kit (min)',1],['coutStockMois','Location stockage tampon (€/mois)',10],['seuilKm','Seuil distance tampon (km)',1],['seuilGain','Seuil gain tampon (%)',1],['rayonCluster','Rayon de regroupement (km)',1],['jPrep','Livraison J- (jours ouvrés)',1],['horizon','Horizon analysé (semaines)',1],['cadenceDefaut','Cadence par défaut (logts/jour/chantier)',1],['mfP3','Main Forte €/logt (camion de 3)',1],['mfP6','Main Forte €/logt (camion de 6)',1],['tmfP3','TMF €/logt (camion de 3)',1],['tmfP6','TMF €/logt (camion de 6)',1],['budgetLgt','Budget FBM €/logt',1],['mfMaxLgt','Logements max par camion',1],['mfMinLgt','Logements min pour rentabiliser',1],['mfStockMax','Stock max Main Forte (logements)',1],['recMaxJ','Réception au plus tôt (J-…)',1],['recMinJ','Réception au plus tard (J-…)',1],['semSecu','Stock base vie : semaines de sécurité',1],['volDefaut','Volume moyen kit si inconnu (m³)',0.1]]
      .map(([k,l,st])=>`<label class="f">${l}<input type="number" step="${st}" data-p="${k}" value="${p[k]}"></label>`).join('')}
-   </div><div class="row" style="margin-top:8px"><label class="f">Base : nom<input data-pb="nom" value="${esc(p.base.nom)}" style="width:280px"></label><label class="f">lat<input data-pb="lat" value="${p.base.lat}" style="width:90px"></label><label class="f">lon<input data-pb="lon" value="${p.base.lon}" style="width:90px"></label><button class="btn sec sm" id="prst">Valeurs par défaut</button></div>
+   </div><div class="row" style="margin-top:8px"><label class="f">Plateforme logistique : nom<input data-pb="nom" value="${esc(p.base.nom)}" style="width:260px"></label><label class="f">nom court<input data-pb="court" value="${esc(p.base.court||'')}" style="width:110px"></label><label class="f">lat<input data-pb="lat" value="${p.base.lat}" style="width:90px"></label><label class="f">lon<input data-pb="lon" value="${p.base.lon}" style="width:90px"></label><button class="btn sec sm" id="prst">Valeurs par défaut</button></div>
    <p class="small mut">Valeurs par défaut = ordres de grandeur du marché à confirmer avec vos coûts réels (parc, loueur, chauffeur). Elles conditionnent les recommandations de zones tampons.</p></div>
 
    <div class="card"><details><summary>Composition des kits par prestation (articles, quantités, volumes, délais)</summary>
@@ -1050,7 +1115,7 @@ function renderDonnees(){
 
 /* ---------- API d'intégration (lecture seule) ---------- */
 window.EvoludLogistique = {
-  version:'1.5',
+  version:'1.7',
   getKits:()=>R.kits.map(k=>({ug:k.l.ug,source:k.k.src,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
   getLivraisons:()=>R.tournees.map(t=>({date:t.date,type:t.type,itineraire:t.stops.map(s=>s.nom),logements:t.items.map(i=>i.kt.l.ug),km:+t.km.toFixed(1),cout:Math.round(t.cout)})),
   getAlertes:()=>R.alertes.slice(),
