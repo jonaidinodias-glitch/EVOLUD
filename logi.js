@@ -50,15 +50,26 @@
   // v5.31.9 : plus de bouton flottant. Les outils sont ajoutés comme boutons sur l'Accueil, à côté de « Brief ».
   // Le bouton flottant ⚖️ (Scénarios & MEXT), qui recouvrait le « ? », est aussi rangé à cet endroit.
   function balance() {
-    var bs = document.querySelectorAll('button,div,a'), r = null;
-    for (var i = 0; i < bs.length; i++) { var t = (bs[i].textContent || '').trim();
-      if (t === '⚖️' || t === '⚖') { var cs = getComputedStyle(bs[i]); if (cs.position === 'fixed') { r = bs[i]; break; } } }
-    return r;
+    var bs = document.body.querySelectorAll('*');
+    for (var i = 0; i < bs.length; i++) { var el = bs[i]; if (el.closest && el.closest('#evLogiWrap')) continue;
+      var t = (el.textContent || '').trim();
+      if (t.length <= 4 && t.indexOf('\u2696') >= 0 && !el.firstElementChild) { var x = el; while (x && x !== document.body) { if (getComputedStyle(x).position === 'fixed') { x.__evLeaf = el; return x; } x = x.parentElement; } } }
+    return null;
+  }
+  function findBrief() {
+    var all = document.body.querySelectorAll('button,a,div,span,label,li'), best = null;
+    for (var i = 0; i < all.length; i++) { var t = (all[i].textContent || '').replace(/\s+/g, ' ').trim();
+      if (t.length < 14 && /Brief$/.test(t) && all[i].offsetParent) { best = all[i]; break; } }
+    if (!best) return null;
+    // remonte jusqu'au « bouton » complet (dernier parent dont le texte reste « ☀️ Brief »)
+    while (best.parentElement && best.parentElement !== document.body) {
+      var pt = (best.parentElement.textContent || '').replace(/\s+/g, ' ').trim();
+      if (pt.length < 14 && /Brief$/.test(pt)) best = best.parentElement; else break; }
+    return best;
   }
   function chips() {
     if (wrap && wrap.classList.contains('on')) return;
-    var cands = document.querySelectorAll('button'), brief = null;
-    for (var i = 0; i < cands.length; i++) { var t = (cands[i].textContent || '').replace(/\s+/g, ' ').trim(); if (/Brief$/.test(t) && cands[i].offsetParent) { brief = cands[i]; break; } }
+    var brief = findBrief();
     var bal = balance();
     if (bal && brief) bal.style.display = 'none';
     if (!brief || document.getElementById('evChipLogi')) return;
@@ -66,7 +77,7 @@
     var after = brief;
     [['evChipLogi', '🚚 Logistique', function () { open('logi'); }],
      ['evChipIdx', '📈 Index INSEE', function () { open('idx'); }],
-     ['evChipBal', '⚖️ Scénarios & MEXT', function () { var x = balance(); if (x) x.click(); }]].forEach(function (d) {
+     ['evChipBal', '⚖️ Scénarios & MEXT', function () { var x = balance(); if (x) (x.__evLeaf || x).click(); }]].forEach(function (d) {
       if (d[0] === 'evChipBal' && !bal) return;
       var c = mk(d[0], d[1], d[2]); after.parentNode.insertBefore(c, after.nextSibling); after = c; });
   }
