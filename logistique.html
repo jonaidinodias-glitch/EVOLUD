@@ -81,7 +81,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
   <section id="v-tampon" class="hide"></section>
   <section id="v-alertes" class="hide"></section>
   <section id="v-donnees" class="hide"></section>
-  <footer>Module Logistique EVOLUD · v1.3 · Conçu et développé par Saïd OUFQIR</footer>
+  <footer>Module Logistique EVOLUD · v1.4 · Conçu et développé par Saïd OUFQIR</footer>
 </main>
 <div id="printzone"></div>
 <div id="toast"></div>
@@ -98,7 +98,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 <script>
 "use strict";
 /* =====================================================================
-   MODULE LOGISTIQUE EVOLUD — v1.3
+   MODULE LOGISTIQUE EVOLUD — v1.4
    Conçu et développé par Saïd OUFQIR
    Aucune dépendance externe : fonctionne hors ligne et sur PC filtré.
    Données propres au module uniquement (stock, commandes, kits préparés,
@@ -633,7 +633,7 @@ function recompute(){
       sm.push({code,lib:c.lib,mode:c.mode,cmd,arr,limite,ok: !!(arr && l.debut && arr<=l.debut), late: !cmd && limite && limite<today, risk: arr && l.debut && arr>l.debut}); }
     let status;
     const prepared=S.prepares[l.ug], delivered=S.livres[l.ug];
-    if(!wait.length && l.debut){ for(const id in agg){ const have=stockLeft[id]||0; if(have>=agg[id]) stockLeft[id]=have-agg[id]; else { miss.push({id,need:agg[id],have:Math.max(0,have)}); stockLeft[id]=0; } } }
+    if(!wait.length && l.debut){ for(const id in agg){ if(!(id in S.stock)) continue; const have=stockLeft[id]||0; if(have>=agg[id]) stockLeft[id]=have-agg[id]; else { miss.push({id,need:agg[id],have:Math.max(0,have)}); stockLeft[id]=0; } } }
     const doneAll = !!l.vts || (l.fin && l.fin<today) || (!S.bdc[l.ug] && Object.keys(l.pr).length>0 && Object.values(l.pr).every(v=>v==='fait'));
     if(doneAll) status='termine';
     else if(l.debutGamma && l.debut<today) status='encours';
@@ -649,9 +649,9 @@ function recompute(){
   for(const id in ART_BDC){ const a=ART_BDC[id]; if(a.mode==='kit') art[id]=Object.assign(art[id]||{id,besH:0,besT:0,first:null},{des:a.des,u:a.u,v:a.v,delai:a.delai}); }
   for(const kt of kits){ if(kt.status==='termine'||kt.status==='livre'||kt.status==='encours') continue; for(const ln of kt.k.lines){ if(ln.mode!=='kit') continue; const a=art[ln.id]; if(!a) continue;
     a.besT+=ln.q; if(kt.inHorizon){ a.besH+=ln.q; if(!a.first||kt.l.debut<a.first) a.first=kt.l.debut; } } }
-  const artList=Object.values(art).map(a=>{ const st=+S.stock[a.id]||0; const manqueH=Math.max(0,a.besH-st); const surplus=Math.max(0,st-a.besT);
+  const artList=Object.values(art).map(a=>{ const suivi=(a.id in S.stock); const st=+S.stock[a.id]||0; const manqueH=suivi?Math.max(0,a.besH-st):0; const surplus=suivi?Math.max(0,st-a.besT):0;
     const cmdAvant = a.first? prevWorkDay(a.first, Math.max(1,Math.ceil(a.delai*5/7))+1): null;
-    const semaines=p.horizon; return Object.assign(a,{st,manqueH,surplus,parSem:a.besH/semaines,cmdAvant,volSem:a.besH/semaines*a.v}); });
+    const semaines=p.horizon; return Object.assign(a,{suivi,st,manqueH,surplus,parSem:a.besH/semaines,cmdAvant,volSem:a.besH/semaines*a.v}); });
   // 4. secteurs géographiques (regroupement des chantiers proches)
   const pts=chs.filter(c=>c.co && c.nbEff>0);
   const clusters=[]; for(const c of pts){ let cl=clusters.find(k=>k.items.some(x=>hav(x.co,c.co)*p.facteurRoute<=p.rayonCluster)); if(cl) cl.items.push(c); else clusters.push({items:[c]}); }
@@ -757,6 +757,7 @@ function buildAlertes(chs,kits,artList,tournees,analyses){
       else if(s.risk) A.push({niv:'ko',g:`Livraison ${s.code} après démarrage`,ug:k.l.ug,d:`arrivée ${frDate(s.arr)} > démarrage ${frDate(k.l.debut)}`}); });
     if(k.inHorizon && k.status==='incomplet' && diffDays(k.l.debut,t)<=3) A.push({niv:'ko',g:'Kit incomplet à moins de 3 jours du démarrage',ug:k.l.ug,d:'J-'+diffDays(k.l.debut,t)+' '+(k.miss.length?'Manquants : '+k.miss.map(m=>m.id+' ('+fmt(m.need-m.have)+')').join(', '):'sur-mesure non arrivé ou non commandé')});
     if(k.inHorizon && k.status==='attente' && k.l.debut) A.push({niv:'warn',g:'Démarrage planifié mais kit bloqué',ug:k.l.ug,d:k.wait.join(' · ')+' (démarrage '+frDate(k.l.debut)+')'}); });
+  kits.filter(k=>k.l.debut && k.l.debut<t && !k.l.debutGamma && !['termine','encours','livre'].includes(k.status)).forEach(k=>A.push({niv:'ko',g:'Date de démarrage dépassée, travaux non démarrés dans Gamma',ug:k.l.ug,d:'prévu '+frDate(k.l.debut)+(k.wait.length?' – '+k.wait[0]:'')}));
   tournees.forEach(x=>{ if(x.trips>1) A.push({niv:'warn',g:'Capacité utilitaire dépassée',ug:frDate(x.date),d:`${fmt(x.vol,1)} m³ → ${x.trips} rotations (avancer des kits la veille ou faire livrer l'isolant en direct par le fournisseur)`}); });
   analyses.filter(a=>a.reco && !(S.tampons[a.cl.key]||{}).actif).forEach(a=>A.push({niv:'info',t:'Zone tampon recommandée : '+a.cl.nom,d:`Gain estimé ${eur(a.gain)} (${fmt(a.gainPct)} %) sur la période. Voir l'onglet Tampons.`}));
   const G=[], idx={};
@@ -887,9 +888,9 @@ function renderKits(){
    </tbody></table></div>${ks.length>400?'<p class="small mut">400 premiers affichés : affinez le filtre.</p>':''}</div>
    <div class="card"><h2>Charge par corps d'état (démarrages / semaine)</h2>${weeks.length?`<div class="tw"><table><thead><tr><th>Lot · entreprise</th>${weeks.map(w=>`<th class="num">S. ${frDate(w)}</th>`).join('')}</tr></thead><tbody>${lots.map(l=>`<tr><td>${esc(l)}</td>${weeks.map(w=>`<td class="num">${wk[w][l]||''}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="small mut">Sert à synchroniser équipes BBNE, sous-traitants et cotraitants (GDS, ISOWECK, ATS) avec les approvisionnements.</p>`:'<p class="mut">Aucun démarrage daté sur l\'horizon.</p>'}</div>
    <div class="card"><h2>Approvisionnements, ruptures et surplus (stock base Bruay)</h2>
-   <div class="tw"><table><thead><tr><th>Article</th><th class="num">Stock</th><th class="num">Besoin ${P().horizon} sem.</th><th class="num">/ semaine</th><th class="num">m³ / sem.</th><th class="num">Manque</th><th class="num">Surplus</th><th>Commander avant</th></tr></thead><tbody>
-   ${R.artList.filter(a=>a.besT>0||a.st>0).map(a=>`<tr><td>${esc(a.des)}<div class="small mut">${a.id}</div></td><td class="num"><input type="number" min="0" data-stock="${a.id}" value="${S.stock[a.id]??''}" style="width:70px"></td><td class="num">${fmt(a.besH)} ${a.u}</td><td class="num">${fmt(a.parSem,1)}</td><td class="num">${fmt(a.volSem,2)}</td><td class="num">${a.manqueH?`<span class="pill p-ko">${fmt(a.manqueH)}</span>`:'<span class="pill p-ok">0</span>'}</td><td class="num">${a.surplus?`<span class="pill p-warn">${fmt(a.surplus)}</span>`:''}</td><td>${a.manqueH?frDate(a.cmdAvant):''}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">Aucun besoin calculé.</td></tr>'}
-   </tbody></table></div><p class="small mut">Surplus = stock au-delà de tous les besoins connus (à réaffecter ou retourner). « Commander avant » tient compte du délai fournisseur de l'article.</p></div>`;
+   <div class="tw"><table><thead><tr><th>Article</th><th class="num">Stock</th><th class="num">Besoin ${P().horizon} sem.</th><th class="num">/ semaine</th><th class="num">m³ / sem.</th><th class="num">Manque / achat</th><th class="num">Surplus</th><th>Commander avant</th></tr></thead><tbody>
+   ${R.artList.filter(a=>a.besT>0||a.st>0).map(a=>`<tr><td>${esc(a.des)}<div class="small mut">${a.id}</div></td><td class="num"><input type="number" min="0" data-stock="${a.id}" value="${S.stock[a.id]??''}" style="width:70px"></td><td class="num">${fmt(a.besH)} ${a.u}</td><td class="num">${fmt(a.parSem,1)}</td><td class="num">${fmt(a.volSem,2)}</td><td class="num">${!a.suivi?(a.besH?`<span class="pill p-info">À commander ${fmt(a.besH)}</span>`:''):a.manqueH?`<span class="pill p-ko">${fmt(a.manqueH)}</span>`:'<span class="pill p-ok">0</span>'}</td><td class="num">${a.surplus?`<span class="pill p-warn">${fmt(a.surplus)}</span>`:''}</td><td>${(a.manqueH||(!a.suivi&&a.besH))?frDate(a.cmdAvant):''}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">Aucun besoin calculé.</td></tr>'}
+   </tbody></table></div><p class="small mut">Stock vide = article non stocké à la base : il apparaît « À commander » (achat au besoin) et ne bloque pas les kits. Saisissez un stock (même 0) pour le suivre et déclencher les alertes de rupture. Surplus = stock au-delà de tous les besoins connus (à réaffecter ou retourner). « Commander avant » tient compte du délai fournisseur de l'article.</p></div>`;
   $('#kq').oninput=e=>{KF.q=e.target.value; clearTimeout(renderKits._t); renderKits._t=setTimeout(()=>{renderKits(); const i=$('#kq'); i.focus(); i.setSelectionRange(i.value.length,i.value.length);},300);};
   $('#kst').onchange=e=>{KF.st=e.target.value;renderKits();}; $('#kch').onchange=e=>{KF.ch=e.target.value;renderKits();};
   el.querySelectorAll('[data-stock]').forEach(i=>i.onchange=()=>{ const v=i.value===''?undefined:Math.max(0,+i.value); if(v==null) delete S.stock[i.dataset.stock]; else S.stock[i.dataset.stock]=v; save(); recompute(); });
@@ -1049,7 +1050,7 @@ function renderDonnees(){
 
 /* ---------- API d'intégration (lecture seule) ---------- */
 window.EvoludLogistique = {
-  version:'1.3',
+  version:'1.4',
   getKits:()=>R.kits.map(k=>({ug:k.l.ug,source:k.k.src,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
   getLivraisons:()=>R.tournees.map(t=>({date:t.date,type:t.type,itineraire:t.stops.map(s=>s.nom),logements:t.items.map(i=>i.kt.l.ug),km:+t.km.toFixed(1),cout:Math.round(t.cout)})),
   getAlertes:()=>R.alertes.slice(),
