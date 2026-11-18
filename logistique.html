@@ -81,7 +81,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
   <section id="v-tampon" class="hide"></section>
   <section id="v-alertes" class="hide"></section>
   <section id="v-donnees" class="hide"></section>
-  <footer>Module Logistique EVOLUD · v1.2 · Conçu et développé par Saïd OUFQIR</footer>
+  <footer>Module Logistique EVOLUD · v1.3 · Conçu et développé par Saïd OUFQIR</footer>
 </main>
 <div id="printzone"></div>
 <div id="toast"></div>
@@ -98,7 +98,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 <script>
 "use strict";
 /* =====================================================================
-   MODULE LOGISTIQUE EVOLUD — v1.2
+   MODULE LOGISTIQUE EVOLUD — v1.3
    Conçu et développé par Saïd OUFQIR
    Aucune dépendance externe : fonctionne hors ligne et sur PC filtré.
    Données propres au module uniquement (stock, commandes, kits préparés,
@@ -292,20 +292,35 @@ function bdcKit(items){
     lines.push({code:a.code||(a.mode==='kit'?'KIT':''),mode:a.mode,lot:a.lot,ent:a.ent,id,des:a.des,q,u:a.u,v:a.v*q,kg:a.kg*q,delai:a.delai||0}); vol+=a.v*q; kg+=a.kg*q; }
   return {lines,cot:Object.values(cot),vol,kg,unknown,codes:[...codes],src:'bdc'};
 }
-function importGammaExtraction(sheets,fname){
+function importMextList(sheets,fname){
+  for(const sh of sheets) for(let hr=0;hr<Math.min(sh.rows.length,6);hr++){ const H=Array.from(sh.rows[hr]||[],norm);
+    const iUg=H.indexOf('ug'), iDem=H.findIndex(h=>h.startsWith('date de la demande'));
+    if(iUg<0||iDem<0) continue;
+    const iRec=H.findIndex(h=>h.startsWith('date reception')), iLiv=H.indexOf('livre'), iFab=H.findIndex(h=>h.startsWith('fabri')), iPose=H.findIndex(h=>h.startsWith('mise en'));
+    let n=0;
+    for(let i=hr+1;i<sh.rows.length;i++){ const r=sh.rows[i]||[]; const ug=String(r[iUg]??'').trim(); if(!/^\d{4,}$/.test(ug)) continue;
+      const dem=parseDateAny(r[iDem]); const rec=iRec>=0?parseDateAny(r[iRec]):''; const liv=iLiv>=0?String(r[iLiv]??'').trim():'';
+      if(dem){ S.commandes[ug]=Object.assign(S.commandes[ug]||{},{MEXT:dem,PE:dem,PBS:dem,PF:dem}); n++; }
+      if(rec) S.receptions[ug]=rec; else if(liv && !/^(0|non)$/i.test(liv)) S.receptions[ug]=parseDateAny(liv)||todayISO();
+      S.poseMen[ug]={fab:iFab>=0?String(r[iFab]??'').trim():'',pose:iPose>=0?String(r[iPose]??'').trim():''}; }
+    S.mextSource={fichier:fname,feuille:sh.name,date:new Date().toLocaleString('fr-FR'),nb:n};
+    return n; }
+  return 0;
+}
+function importGammaExtraction(sheets,fname,nM){
   let shL=null,hL=-1,shC=null,hC=-1;
-  for(const sh of sheets) for(let hr=0;hr<Math.min(sh.rows.length,6);hr++){ const H=(sh.rows[hr]||[]).map(norm);
-    if(H.includes('id ug')&&H.includes('code ug')&&!shL){shL=sh;hL=hr;}
+  for(const sh of sheets) for(let hr=0;hr<Math.min(sh.rows.length,6);hr++){ const H=Array.from(sh.rows[hr]||[],norm);
+    if(H.includes('id ug')&&H.includes('code ug')&&H.includes('date debut travaux')&&!shL){shL=sh;hL=hr;}
     if(H.includes('id ug')&&H.some(h=>h.startsWith('article'))&&H.some(h=>h.startsWith('quantite'))&&!shC){shC=sh;hC=hr;} }
   if(!shL) return false;
-  const H=shL.rows[hL].map(norm); const ix=k=>H.indexOf(k);
+  const H=Array.from(shL.rows[hL],norm); const ix=k=>H.indexOf(k);
   const iId=ix('id ug'),iUg=ix('code ug'),iAd=ix('adresse'),iV=ix('ville'),iRdv=ix('date rdv vte'),iDeb=ix('date debut travaux'),iFin=ix('date fin travaux'),iVts=ix('date vts'),iCmd=ix('date commande tce validee');
   const idToUg={}; const G={};
   for(let i=hL+1;i<shL.rows.length;i++){ const r=shL.rows[i]||[]; const ug=String(r[iUg]??'').trim(); if(!ug) continue; idToUg[String(r[iId]??'').trim()]=ug;
     const fc=findCommune(r[iV])||findCommune(r[iAd]);
     G[ug]={adresse:String(r[iAd]??'').trim(),commune:fc?fc[0]:String(r[iV]??'').replace(/^\d{5}\s*/,'').trim(),vte:parseDateAny(r[iRdv]),cmd:iCmd>=0?parseDateAny(r[iCmd]):'',debut:parseDateAny(r[iDeb]),fin:parseDateAny(r[iFin]),vts:parseDateAny(r[iVts])}; }
   S.gamma=G; let nbBdc=0, unk={};
-  if(shC){ const HC=shC.rows[hC].map(norm); const jI=HC.indexOf('id ug'), jA=HC.findIndex(h=>h.startsWith('article')), jQ=HC.findIndex(h=>h.startsWith('quantite')), jU=HC.findIndex(h=>h.startsWith('unite'));
+  if(shC){ const HC=Array.from(shC.rows[hC],norm); const jI=HC.indexOf('id ug'), jA=HC.findIndex(h=>h.startsWith('article')), jQ=HC.findIndex(h=>h.startsWith('quantite')), jU=HC.findIndex(h=>h.startsWith('unite'));
     const out={};
     for(let i=hC+1;i<shC.rows.length;i++){ const r=shC.rows[i]||[]; const ug=idToUg[String(r[jI]??'').trim()]; const art=String(r[jA]??'').trim(); if(!ug||!art) continue;
       const q=parseFloat(String(r[jQ]??'').replace(',','.').replace(/[^\d.\-]/g,'')); if(!(q>0)) continue;
@@ -313,11 +328,11 @@ function importGammaExtraction(sheets,fname){
     Object.assign(S.bdc,out); nbBdc=Object.keys(out).length;
     S.bdcSource={fichier:fname,date:new Date().toLocaleString('fr-FR'),nb:Object.keys(S.bdc).length,nonReconnus:unk}; }
   S.gammaSource={fichier:fname,date:new Date().toLocaleString('fr-FR'),nb:Object.keys(G).length};
-  save(); recompute(); toast(Object.keys(G).length+' logements Gamma · '+nbBdc+' bons de commande · '+Object.keys(unk).length+' article(s) non reconnu(s)'); show('kits');
+  save(); recompute(); toast(Object.keys(G).length+' logements Gamma · '+nbBdc+' bons de commande'+(nM?' · '+nM+' commandes menuiseries':'')+' · '+Object.keys(unk).length+' article(s) non reconnu(s)'); show('kits');
   return true;
 }
 function importBdc(sh,hr){
-  const H=(sh.rows[hr]||[]).map(norm); const ix=k=>H.findIndex(h=>h===k||h.startsWith(k));
+  const H=Array.from(sh.rows[hr]||[],norm); const ix=k=>H.findIndex(h=>h===k||h.startsWith(k));
   const iUG=ix('ug'), iA=ix('article'), iQ=ix('quantite'), iU=ix('unite'), iS=ix('source');
   const out={}; const unk={};
   for(let i=hr+1;i<sh.rows.length;i++){ const r=sh.rows[i]||[]; const ug=String(r[iUG]??'').trim(); const art=String(r[iA]??'').trim(); if(!ug||!art) continue;
@@ -378,6 +393,9 @@ function load(){
   s.bdcSource = s.bdcSource || null;
   s.gamma = s.gamma || {};               // {ug: {adresse, commune, debut, fin, vte, vts}} issus de l'extraction Gamma (hors données locataires)
   s.gammaSource = s.gammaSource || null;
+  s.receptions = s.receptions || {};     // {ug: 'AAAA-MM-JJ'} réception menuiseries prévue / réelle (suivi MEXT)
+  s.poseMen = s.poseMen || {};           // {ug: {fab, pose}} fabricant et entreprise de pose
+  s.mextSource = s.mextSource || null;
   return s;
 }
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){ toast('⚠️ Stockage local indisponible : données non conservées'); } }
@@ -521,9 +539,11 @@ async function handleFile(file){
       const sc=(m.fields.ug!=null?10:0)+Object.keys(m.fields).length*2+Object.keys(m.presta).length; if(sc>bs){bs=sc;best={sh,hr,m};} }
     if(!best) throw new Error('Aucune feuille exploitable');
     // Extraction BDD Gamma : feuille logements (ID_UG + Code UG) + feuille commandes (ID_UG / Article / Quantité)
-    if(importGammaExtraction(sheets,file.name)) return;
+    const nM=importMextList(sheets,file.name);
+    if(importGammaExtraction(sheets,file.name,nM)) return;
+    if(nM){ save(); recompute(); toast(nM+' logements du suivi MEXT : commandes et réceptions mises à jour'); show('kits'); return; }
     // Bons de commande Gamma (format ligne à ligne : UG / Article / Quantité) → import direct, sans écran de correspondance
-    for(const sh of sheets){ for(let hr=0;hr<Math.min(sh.rows.length,10);hr++){ const H=(sh.rows[hr]||[]).map(norm);
+    for(const sh of sheets){ for(let hr=0;hr<Math.min(sh.rows.length,10);hr++){ const H=Array.from(sh.rows[hr]||[],norm);
       if(H.includes('ug') && H.some(h=>h.startsWith('article')) && H.some(h=>h.startsWith('quantite'))){
         const {out,unk}=importBdc(sh,hr); const n=Object.keys(out).length; if(!n) continue;
         Object.assign(S.bdc,out); S.bdcSource={fichier:file.name,date:new Date().toLocaleString('fr-FR'),nb:Object.keys(S.bdc).length,nonReconnus:unk};
@@ -609,7 +629,7 @@ function recompute(){
     // sur-mesure / plateforme : commande + délai
     const codesSM=[...new Set(k.lines.filter(x=>x.mode!=='kit').map(x=>x.code))];
     for(const code of codesSM){ const c=catByCode(code); if(!c) continue; const cmd=(S.commandes[l.ug]||{})[code];
-      const arr= cmd? addDays(cmd,c.delai): null; const limite = l.debut? addDays(l.debut,-c.delai): null;
+      const arr= S.receptions[l.ug] || (cmd? addDays(cmd,c.delai): null); const limite = l.debut? addDays(l.debut,-c.delai): null;
       sm.push({code,lib:c.lib,mode:c.mode,cmd,arr,limite,ok: !!(arr && l.debut && arr<=l.debut), late: !cmd && limite && limite<today, risk: arr && l.debut && arr>l.debut}); }
     let status;
     const prepared=S.prepares[l.ug], delivered=S.livres[l.ug];
@@ -858,7 +878,7 @@ function renderKits(){
    ${LOGS.length?'':'<p class="mut">Aucun logement : importez vos données dans l\'onglet ⚙️ Données.</p>'}
    <div class="tw"><table><thead><tr><th>Logement</th><th>Démarrage</th><th>Statut</th><th>Contenu du kit (lots)</th><th class="num">m³</th><th class="num">kg</th><th>Points bloquants</th><th class="noprint">Actions</th></tr></thead><tbody>
    ${ks.slice(0,400).map(k=>{ const lots=[...new Set(k.k.lines.map(x=>x.lot))]; const blk=[...k.wait,...k.miss.map(m=>'Manque '+m.id+' ×'+fmt(m.need-m.have)),...k.sm.filter(s=>!s.ok).map(s=>s.code+(s.cmd?' arrivée '+frDate(s.arr):' à commander avant '+frDate(s.limite)))];
-     return `<tr><td><b>${esc(k.l.ug)}</b><div class="small mut">${esc(k.l.adresse||'')} ${esc(k.l.commune||'')}${k.l.horsPlanning?' · <span style="color:var(--warn)">hors planning</span>':''}</div></td><td>${frDate(k.l.debut)}${k.l.debutGamma?'<div class="small mut">Gamma</div>':k.l.debut?'<div class="small mut">planning</div>':''}</td><td>${pill(k.status)}</td>
+     return `<tr><td><b>${esc(k.l.ug)}</b><div class="small mut">${esc(k.l.adresse||'')} ${esc(k.l.commune||'')}${k.l.horsPlanning?' · <span style="color:var(--warn)">hors planning</span>':''}${S.poseMen[k.l.ug]&&S.poseMen[k.l.ug].pose?' · pose menuiseries : '+esc(S.poseMen[k.l.ug].pose):''}${S.receptions[k.l.ug]?' · réception '+frDate(S.receptions[k.l.ug]):''}</div></td><td>${frDate(k.l.debut)}${k.l.debutGamma?'<div class="small mut">Gamma</div>':k.l.debut?'<div class="small mut">planning</div>':''}</td><td>${pill(k.status)}</td>
      <td>${lots.map(l=>`<span class="chip">${esc(l)}</span>`).join('')}${k.k.cot.map(c=>`<span class="chip" title="Fourniture cotraitant">${esc(c.ent)}</span>`).join('')}</td>
      <td class="num">${fmt(k.k.vol,2)}${k.k.src==='bdc'?'<div class="small" style="color:var(--ok)">BDC Gamma</div>':''}</td><td class="num">${fmt(k.k.kg)}</td><td class="small">${blk.map(esc).join('<br>')}</td>
      <td class="noprint"><div class="row">${k.sm.filter(s=>!s.cmd).map(s=>`<button class="btn sec sm" data-cmd="${esc(k.l.ug)}|${s.code}">Commandé ${s.code}</button>`).join('')}
@@ -979,6 +999,7 @@ function renderDonnees(){
    <p class="small">Le module ne ressaisit rien : il relit l'export EVOLUD / Planning_EVOLUD (onglet Infos Dossiers) ou Chantier_evolud_2 (infos logt). Deux sources se complètent : le planning (logements, villes, dates) et les bons de commande Gamma (postes et quantités réelles, prioritaires pour composer les kits). Un nouvel import de planning remplace le précédent ; un import de BDC met à jour les logements qu'il contient ; stocks, commandes, kits préparés et zones tampons sont conservés (rattachés au n° UG).</p>
    <p>${S.source?`Dernier import : <b>${esc(S.source.fichier)}</b> · feuille ${esc(S.source.feuille)} · ${S.source.nb} logements · ${esc(S.source.date)}`:'<span class="mut">Aucun import.</span>'}</p>
    <p>${S.gammaSource?`Extraction Gamma : <b>${esc(S.gammaSource.fichier)}</b> · ${S.gammaSource.nb} logements (dates début / fin / VTS) · ${esc(S.gammaSource.date)}`:''}</p>
+   <p>${S.mextSource?`Suivi MEXT : <b>${esc(S.mextSource.fichier)}</b> · ${S.mextSource.nb} logements commandés (dates de demande et de réception) · ${esc(S.mextSource.date)}`:''}</p>
    <p>${S.bdcSource?`Bons de commande Gamma : <b>${esc(S.bdcSource.fichier)}</b> · ${Object.keys(S.bdc).length} logements · ${esc(S.bdcSource.date)} <button class="btn sec sm" id="bdcclr">Retirer les données Gamma</button>`:'<span class="mut">Aucun bon de commande Gamma importé (export Evolud_bons_de_commande…csv) : les kits sont alors estimés depuis les prestations « non ».</span>'}</p>
    ${S.bdcSource&&Object.keys(S.bdcSource.nonReconnus||{}).length?`<details><summary>Articles Gamma non reconnus (${Object.keys(S.bdcSource.nonReconnus).length}) – non comptés dans les kits</summary><ul class="small">${Object.entries(S.bdcSource.nonReconnus).map(([a,n])=>`<li>${esc(a)} (${n})</li>`).join('')}</ul></details>`:''}
    <div class="row"><label class="btn">📥 Importer Excel / CSV<input type="file" id="ifile" accept=".xlsx,.xlsm,.csv" hidden></label><button class="btn sec" id="dexp">💾 Sauvegarde module (JSON)</button><label class="btn sec">♻️ Restaurer<input type="file" id="drest" accept=".json" hidden></label></div></div>
@@ -1028,7 +1049,7 @@ function renderDonnees(){
 
 /* ---------- API d'intégration (lecture seule) ---------- */
 window.EvoludLogistique = {
-  version:'1.2',
+  version:'1.3',
   getKits:()=>R.kits.map(k=>({ug:k.l.ug,source:k.k.src,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
   getLivraisons:()=>R.tournees.map(t=>({date:t.date,type:t.type,itineraire:t.stops.map(s=>s.nom),logements:t.items.map(i=>i.kt.l.ug),km:+t.km.toFixed(1),cout:Math.round(t.cout)})),
   getAlertes:()=>R.alertes.slice(),
