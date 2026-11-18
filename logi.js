@@ -71,9 +71,17 @@
     if (wrap && wrap.classList.contains('on')) return;
     var brief = findBrief();
     var bal = balance();
-    if (bal && brief) bal.style.display = 'none';
+    if (bal && brief && !bal.__evHid) { bal.__evHid = 1; bal.setAttribute('data-ev-hide', '1');
+      var r = document.getElementById('evHideCss') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'evHideCss' }));
+      r.textContent = '[data-ev-hide]{display:none!important}' + (bal.id ? '#' + CSS.escape(bal.id) + '{display:none!important}' : ''); }
     if (!brief || document.getElementById('evChipLogi')) return;
-    function mk(id, txt, fn) { var c = brief.cloneNode(false); c.removeAttribute('onclick'); c.id = id; c.textContent = txt; c.onclick = fn; return c; }
+    function mk(id, txt, fn) {
+      var c = document.createElement('button'); c.type = 'button'; c.id = id; c.textContent = txt;
+      c.className = brief.className || ''; var st = brief.getAttribute('style'); if (st) c.setAttribute('style', st);
+      if (!c.className && !st) c.setAttribute('style', 'padding:8px 12px;border-radius:8px;border:0;background:#e9eef6;font:600 14px inherit');
+      c.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); fn(); }, true);
+      return c;
+    }
     var after = brief;
     [['evChipLogi', '🚚 Logistique', function () { open('logi'); }],
      ['evChipIdx', '📈 Index INSEE', function () { open('idx'); }],
