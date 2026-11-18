@@ -75,30 +75,31 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy2)}
 </header>
 
 <main class="screen">
-  <section id="v-carte"></section>
+  <section id="v-jour"></section>
+  <section id="v-plus" class="hide"></section>
+  <section id="v-carte" class="hide"></section>
   <section id="v-kits" class="hide"></section>
   <section id="v-liv" class="hide"></section>
   <section id="v-tampon" class="hide"></section>
   <section id="v-alertes" class="hide"></section>
   <section id="v-donnees" class="hide"></section>
-  <footer>Module Logistique EVOLUD · v1.7 · Conçu et développé par Saïd OUFQIR</footer>
+  <footer>Module Logistique EVOLUD · v1.8 · Conçu et développé par Saïd OUFQIR</footer>
 </main>
 <div id="printzone"></div>
 <div id="toast"></div>
 
 <nav class="tabs">
-  <button data-v="carte" class="on"><b>🗺️</b>Carte</button>
+  <button data-v="jour" class="on"><b>☀️</b>Aujourd'hui</button>
   <button data-v="kits"><b>📦</b>Kits</button>
   <button data-v="liv"><b>🚚</b>Livraisons</button>
-  <button data-v="tampon"><b>📍</b>Stocks</button>
   <button data-v="alertes"><b>⚠️</b>Alertes<span id="nbAl"></span></button>
-  <button data-v="donnees"><b>⚙️</b>Données</button>
+  <button data-v="plus"><b>☰</b>Plus</button>
 </nav>
 
 <script>
 "use strict";
 /* =====================================================================
-   MODULE LOGISTIQUE EVOLUD — v1.7
+   MODULE LOGISTIQUE EVOLUD — v1.8
    Conçu et développé par Saïd OUFQIR
    Aucune dépendance externe : fonctionne hors ligne et sur PC filtré.
    Données propres au module uniquement (stock, commandes, kits préparés,
@@ -810,10 +811,10 @@ function buildAlertes(chs,kits,artList,tournees,analyses,mf){
 }
 
 /* ---------- VUES ---------- */
-let CUR='carte';
-function show(v){ CUR=v; document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+let CUR='jour';
+function show(v){ CUR=v; document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v||(b.dataset.v==='plus'&&['carte','tampon','donnees'].includes(v))));
   document.querySelectorAll('main>section').forEach(s=>s.classList.toggle('hide',s.id!=='v-'+v)); renderCurrent(); window.scrollTo(0,0); }
-function renderCurrent(){ ({carte:renderCarte,kits:renderKits,liv:renderLiv,tampon:renderTampon,alertes:renderAlertes,donnees:renderDonnees})[CUR](); }
+function renderCurrent(){ ({jour:renderJour,plus:renderPlus,carte:renderCarte,kits:renderKits,liv:renderLiv,tampon:renderTampon,alertes:renderAlertes,donnees:renderDonnees})[CUR](); }
 const ST={termine:['Terminé','p-mut'],encours:['Travaux en cours','p-ok'],livre:['Livré','p-info'],pret:['Prêt','p-ok'],apreparer:['À préparer','p-info'],incomplet:['Incomplet','p-ko'],attente:['En attente','p-wait']};
 const pill=s=>`<span class="pill ${ST[s][1]}">${ST[s][0]}</span>`;
 
@@ -830,6 +831,45 @@ function kpis(){
    <div class="kpi"><div class="v">${R.mf.tot.n?fmt(R.mf.tot.cout/R.mf.tot.n):'–'} €</div><div class="l">par logement livré (budget ${fmt(P().budgetLgt)} €)</div></div>
    <div class="kpi"><div class="v" style="color:var(--ko)">${R.alertes.filter(a=>a.niv==='ko').length}</div><div class="l">Alertes critiques</div></div>
   </div>`;
+}
+
+
+/* --- Aujourd'hui : l'écran simple --- */
+function renderJour(){
+  const el=$('#v-jour'); const t=todayISO(); const dem=addWorkDays(t,1); const p=P();
+  if(!S.gammaSource && !S.logements.length){
+    el.innerHTML=`<div class="card" style="border-color:var(--acc)"><h2>Pour commencer</h2>
+     <p>Importe ton fichier <b>SUIVI_Adresses_MEXT</b> : il contient les logements, les dates Gamma, les bons de commande et les commandes de menuiseries.</p>
+     <label class="btn acc" style="display:inline-block">📥 Importer SUIVI_Adresses_MEXT<input type="file" id="jfile" accept=".xlsx,.xlsm,.csv" hidden></label>
+     <p class="small mut">À refaire chaque fois que le fichier change (une fois par semaine suffit).</p></div>`;
+    $('#jfile').onchange=e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; }; return; }
+  const rouges=R.alertes.filter(a=>a.niv==='ko');
+  const kd=R.kits.filter(k=>k.l.debut && prevWorkDay(k.l.debut,p.jPrep)<=dem && k.l.debut>=t && ['apreparer','pret','incomplet'].includes(k.status)).sort((a,b)=>a.l.debut.localeCompare(b.l.debut));
+  const fin=addDays(t,7); const mfj=R.mf.days.filter(d=>d.date<=fin);
+  el.innerHTML=`
+   <div class="card"><h2>🔴 Ce qui bloque</h2>
+    ${rouges.length?rouges.slice(0,5).map(a=>`<div class="al ko"><b>${esc(a.t)}</b><span class="small">${esc(a.d)}</span></div>`).join('')+(rouges.length>5?`<button class="btn sec sm" data-go="alertes">Voir les ${rouges.length} alertes</button>`:''):'<p style="color:var(--ok);font-weight:600">✓ Rien de bloquant aujourd\'hui.</p>'}</div>
+   <div class="card"><h2>📦 Kits à préparer pour demain (${frDate(dem)})</h2>
+    ${kd.length?kd.map(k=>`<div class="al ${k.status==='incomplet'?'ko':'info'}"><b>${esc(k.l.ug)} · ${esc(k.l.adresse||k.l.commune||'')} · démarrage ${frDate(k.l.debut)}</b>
+      <span class="small">${[...new Set(k.k.lines.filter(x=>x.mode==='kit').map(x=>x.lot))].join(', ')||'menuiseries seules (livrées par Main Forte)'}${k.status==='incomplet'?' · <b style="color:var(--ko)">incomplet</b>':''}</span>
+      <div class="row" style="margin-top:6px"><button class="btn sec sm" data-fiche="${esc(k.l.ug)}">Fiche à cocher</button>${k.status==='apreparer'?`<button class="btn sm" data-prep="${esc(k.l.ug)}">✓ Préparé</button>`:''}${k.status==='pret'?`<button class="btn sm acc" data-liv="${esc(k.l.ug)}">🚚 Livré</button>`:''}</div></div>`).join(''):'<p class="mut">Aucun démarrage demain.</p>'}</div>
+   <div class="card"><h2>🚚 Main Forte : livraisons des 7 prochains jours</h2>
+    ${mfj.length?mfj.map(d=>`<div class="al ${d.sizes.some(x=>x<p.mfMinLgt)?'':'info'}"><b>${frDate(d.date)} · ${d.n} logement(s) · ${d.sizes.length} camion(s)</b><span class="small">${d.ugs.map(esc).join(', ')}${d.sizes.some(x=>x<p.mfMinLgt)?' · <b style="color:var(--warn)">camion pas rentable : regrouper avec un jour voisin</b>':''}${d.amiante.length?' · reprise amiante : '+d.amiante.map(esc).join(', '):''}</span></div>`).join(''):'<p class="mut">Aucune livraison de menuiseries prévue cette semaine.</p>'}</div>
+   <p class="small mut">Données : ${S.gammaSource?esc(S.gammaSource.fichier)+' importé le '+esc(S.gammaSource.date):'—'} · <a href="#" data-go="donnees">mettre à jour</a></p>`;
+  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); show(b.dataset.go);});
+  el.querySelectorAll('[data-fiche]').forEach(b=>b.onclick=()=>printFiches(R.kits.filter(k=>k.l.ug===b.dataset.fiche)));
+  el.querySelectorAll('[data-prep]').forEach(b=>b.onclick=()=>{ S.prepares[b.dataset.prep]=todayISO(); save(); recompute(); toast('Kit '+b.dataset.prep+' prêt'); });
+  el.querySelectorAll('[data-liv]').forEach(b=>b.onclick=()=>{ S.livres[b.dataset.liv]=todayISO(); save(); recompute(); toast('Kit '+b.dataset.liv+' livré'); });
+}
+function renderPlus(){
+  const el=$('#v-plus');
+  el.innerHTML=`<div class="card"><h2>Plus</h2>
+   <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
+    <button class="btn sec" data-go="donnees">⚙️ Données : importer SUIVI_Adresses_MEXT, planning, tarifs</button>
+    <button class="btn sec" data-go="carte">🗺️ Carte et chiffres clés (pour la direction)</button>
+    <button class="btn sec" data-go="tampon">📍 Stocks : Harnes, base vie, calculs</button>
+   </div></div>`;
+  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
 }
 
 /* --- Carte interactive (SVG autonome, sans fond de carte externe) --- */
@@ -1115,7 +1155,7 @@ function renderDonnees(){
 
 /* ---------- API d'intégration (lecture seule) ---------- */
 window.EvoludLogistique = {
-  version:'1.7',
+  version:'1.8',
   getKits:()=>R.kits.map(k=>({ug:k.l.ug,source:k.k.src,commune:k.l.commune,debut:k.l.debut,statut:k.status,volume:+k.k.vol.toFixed(3),poids:Math.round(k.k.kg),bloquants:[...k.wait,...k.miss.map(m=>'Manque '+m.id)]})),
   getLivraisons:()=>R.tournees.map(t=>({date:t.date,type:t.type,itineraire:t.stops.map(s=>s.nom),logements:t.items.map(i=>i.kt.l.ug),km:+t.km.toFixed(1),cout:Math.round(t.cout)})),
   getAlertes:()=>R.alertes.slice(),
