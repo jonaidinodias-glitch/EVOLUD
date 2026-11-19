@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0f2a44">
+<title>Évolud · ERBM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: outil de chantier, net et direct, lisible sur téléphone en plein soleil
+   IDEA: le plan de cité minière — chaque maison est une tuile de brique qui fonce à mesure que les travaux avancent
+   PICTURE: la carte de la cité en haut du tableau de bord, une tuile par logement
+   COLOUR and TYPE: blanc, encre charbon, brique rouge du bassin minier, ardoise pour le terminé ; Archivo + Inter
+   LAYOUT: barre d'onglets (en bas sur téléphone), listes en une colonne, fiche logement en panneau plein écran */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#141518);--bg2:light-dark(#f4f2ef,#1d1f23);--ink:light-dark(#1b1d22,#eceae6);--mute:light-dark(#686a70,#a3a4a8);--line:light-dark(#e2dfda,#2e3036);--brick:light-dark(#c95f12,#f08a3c);--brick2:light-dark(#fbe3d0,#4a2c18);--slate:light-dark(#0f2a44,#7fa6cf);--warn:light-dark(#9a5b00,#f0b45a);--card:light-dark(#fff,#191a1e)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:Archivo,Inter,sans-serif;line-height:1.1;margin:0;text-wrap:balance}
+h1{font-size:clamp(24px,4vw,34px);font-weight:800}h2{font-size:21px;font-weight:700}h3{font-size:17px;font-weight:700}
+header{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;padding:18px max(4vw,16px) 10px;border-bottom:1px solid var(--line)}
+header .sub{color:var(--mute);font-size:14px}
+nav{display:flex;gap:4px;padding:0 max(4vw,16px);border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;overflow-x:auto}
+nav a{flex:none;padding:12px 14px;color:var(--mute);text-decoration:none;font-weight:600;font-size:15px;border-bottom:3px solid transparent}
+nav a.on{color:var(--ink);border-color:var(--brick)}
+main{padding:20px max(4vw,16px) 100px;max-width:1240px;margin:0 auto}
+.note{background:var(--bg2);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--mute);margin-bottom:16px}
+.note.warn{color:var(--warn)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:16px 0 24px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi b{display:block;font:800 clamp(26px,5vw,34px)/1 Archivo,sans-serif}
+.kpi span{font-size:13px;color:var(--mute)}
+.cite{margin-bottom:18px}
+.cite h3{margin-bottom:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px}
+.tile{position:relative;aspect-ratio:1/1.05;border:0;border-radius:4px 4px 3px 3px;font:700 13px Archivo,sans-serif;cursor:pointer;color:#fff;padding:0;clip-path:polygon(0 28%,50% 0,100% 28%,100% 100%,0 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:6px}
+.tile i{font-style:normal;font-size:10px;font-weight:500;opacity:.85}
+.tile:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--mute);margin:6px 0 20px}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:24px}
+.bars .row{display:grid;grid-template-columns:minmax(0,11em) minmax(0,1fr) 2.5em;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.bars .track{height:12px;background:var(--bg2);border-radius:6px;overflow:hidden}
+.bars .fill{height:100%;background:var(--brick);border-radius:6px}
+.bars .n{text-align:right;font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.item:hover{border-color:var(--brick)}
+.item .t{font-weight:600}.item .s{font-size:13px;color:var(--mute)}
+.badge{display:inline-block;font:700 12px Archivo,sans-serif;padding:3px 8px;border-radius:20px;background:var(--brick2);color:var(--brick);white-space:nowrap}
+.badge.gr{background:light-dark(#dfeeee,#1f3536);color:var(--slate)}
+.badge.ok{background:var(--slate);color:#fff}.badge.late{background:var(--warn);color:#fff}
+.prog{width:56px;height:56px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+input,select,textarea{font:16px Inter,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%}
+textarea{min-height:90px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--brick);outline-offset:1px}
+.tools input{flex:1 1 200px;width:auto}.tools select{flex:0 1 190px;width:auto}
+button.b{font:600 15px Inter,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button.p{background:var(--brick);border-color:var(--brick);color:#fff}
+button.d{color:var(--brick)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px 14px}
+label{display:block;font-size:13px;color:var(--mute);font-weight:500}
+label>input,label>select,label>textarea{margin-top:4px}
+.sheet{position:fixed;inset:0;background:rgb(0 0 0/.4);z-index:20;display:none;justify-content:flex-end}
+.sheet.on{display:flex}
+.panel{background:var(--bg);width:min(760px,100%);height:100%;overflow-y:auto;padding:0 0 60px}
+.panel .top{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;gap:10px;align-items:center;z-index:2}
+.panel .top h2{flex:1}
+.sec{padding:16px 18px;border-bottom:1px solid var(--line)}
+.sec h3{margin-bottom:10px}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:grid;grid-template-columns:32px minmax(0,1fr) 150px;gap:10px;align-items:center;padding:6px 0}
+.steps .ck{width:32px;height:32px;border-radius:50%;border:2px solid var(--line);background:var(--bg);cursor:pointer;font:700 14px Archivo;color:#fff;padding:0}
+.steps li.done .ck{background:var(--slate);border-color:var(--slate)}
+.steps li.cur .ck{border-color:var(--brick)}
+.steps li.cur span{font-weight:700}
+.steps input{min-height:38px;padding:6px 8px;font-size:15px}
+.lots{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:6px}
+.lot{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;background:var(--bg);font:15px Inter;color:var(--ink);text-align:left;min-height:44px}
+.lot em{font-style:normal;font-size:12px;font-weight:600;padding:2px 8px;border-radius:12px;background:var(--bg2);color:var(--mute);white-space:nowrap}
+.lot.s1 em{background:var(--brick2);color:var(--brick)}.lot.s2 em{background:var(--slate);color:#fff}
+.lot.s3{opacity:.45}
+.res{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px}
+.res.lev{opacity:.6}.res img{max-width:160px;border-radius:8px;grid-column:1/-1}
+.ft{border-collapse:collapse;width:100%;font-size:14px}.ft th{text-align:left;font-size:12px;color:var(--mute);font-weight:600;padding:6px;border-bottom:1px solid var(--line)}.ft td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle}.ft td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.ft input{width:80px;min-height:38px;padding:6px}.ft .b{min-height:36px;padding:0 10px}.scroll{overflow-x:auto}
+.chk{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--ink);font-weight:500;min-height:44px}.chk input{width:22px;height:22px;min-height:0;margin:0;accent-color:var(--brick)}
+.cklot{font-size:15px;margin:16px 0 6px;color:var(--brick)}
+.ck{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px}.ck.on{border-color:var(--brick);background:color-mix(in srgb,var(--brick2) 35%,var(--bg))}
+.ckh{display:flex;justify-content:space-between;align-items:center;gap:10px}.ckh>span:first-child{font-size:15px}
+.yn{display:flex;flex:none;border:1px solid var(--line);border-radius:10px;overflow:hidden}.yn button{border:0;background:var(--bg);color:var(--ink);font:600 14px Inter;min-height:40px;min-width:52px;cursor:pointer}.yn button+button{border-left:1px solid var(--line)}.yn button.sel{background:var(--brick);color:#fff}.yn button.sel[data-ckon$="|0"]{background:var(--mute)}
+.ckb{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px;margin-top:8px}.ckb input{min-height:40px;padding:6px 10px}.ckimg{max-width:120px;border-radius:8px;margin:6px 6px 0 0}
+.pvc{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.res.pv{grid-template-columns:minmax(0,1fr) auto}@media(max-width:600px){.res.pv{grid-template-columns:1fr}.pvc{justify-content:flex-start}}
+.empty{text-align:center;padding:40px 16px;color:var(--mute)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.dlg{position:fixed;inset:0;background:rgb(0 0 0/.45);z-index:30;display:none;align-items:center;justify-content:center;padding:16px}
+.dlg.on{display:flex}.dlg>div{background:var(--bg);border-radius:14px;padding:18px;max-width:420px;width:100%}
+.dlg p{margin:0 0 14px}
+@media(max-width:600px){nav{position:fixed;top:auto;bottom:0;left:0;right:0;border-top:1px solid var(--line);border-bottom:0;justify-content:space-around;padding:0 0 env(safe-area-inset-bottom)}nav a{padding:12px 4px;font-size:12px;border-bottom:0;border-top:3px solid transparent}nav a.on{border-color:var(--brick)}.steps li{grid-template-columns:32px minmax(0,1fr);}.steps li input{grid-column:2}.prog{width:44px;height:44px}}
+@media(max-width:600px){.item.tr{grid-template-columns:auto minmax(0,1fr)}.item.tr>span:last-child{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<header><h1 id="titre">ERBM</h1><span class="sub" id="soustitre">Réhabilitation de cités minières</span><span class="sub" id="syncst" style="margin-left:auto"></span><button class="b" data-act="sync" style="min-height:36px">⟳ Synchro</button></header>
+<nav id="nav">
+<a href="#tableau" data-v="tableau">Tableau de bord</a>
+<a href="#logements" data-v="logements">Logements</a>
+<a href="#tiroirs" data-v="tiroirs">Tiroirs</a>
+<a href="#reserves" data-v="reserves">Réserves</a>
+<a href="#reglages" data-v="reglages">Réglages</a>
+</nav>
+<main id="main"><p class="empty">Chargement des données du chantier…</p></main>
+
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+<div class="dlg" id="dlg"><div><p id="dlgTxt"></p><div class="tools" style="margin:0;justify-content:flex-end"><button class="b" id="dlgNo">Annuler</button><button class="b p" id="dlgOk">Confirmer</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+{
+const P={
+ GR:{nom:'GR · site occupé',court:'GR',etapes:['VTE','RDV locataire calé','Travaux en cours','Travaux terminés','VTS / réception','Réserves levées'],
+  lots:['Menuiseries ext. (fenêtres)',"Porte d'entrée",'VMC','Chauffage / chaudière','Électricité (mise en sécurité)','Isolation combles','Sanitaires','Peinture / finitions']},
+ TIR:{nom:'Opération tiroir',court:'Tiroir',etapes:['VTE','Tiroir attribué','Déménagement aller','EDL de sortie','Curage','Travaux TCE','VTS / réception','Réserves levées','Retour locataire'],
+  lots:['Curage / démolition','Gros œuvre / maçonnerie','Couverture / zinguerie','Menuiseries extérieures','Isolation / plâtrerie','Électricité','Plomberie / sanitaires','Chauffage / VMC','Menuiseries intérieures','Revêtements de sol','Peinture','Façade / ravalement','Extérieurs / VRD']}
+};
+const LOTST=['À faire','En cours','Fait','Non prévu'];
+const S={logs:{},tirs:{},cfg:{},bpu:[],view:'tableau',open:null,q:'',fp:'',fe:'',fc:''};
+let readonly=false;
+/* ---------- stockage local + synchro serveur Évolud (action « erbm ») ---------- */
+const LSK='evolud_erbm_v1',ME='erbm';
+let SY={dirty:{},since:0,conf:{},bc:{},dead:{},cfgU:0,bpuU:0,last:0,err:''};
+const blob=id=>id?'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1600':'';
+const driveLink=id=>'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view';
+function dl(filename,data){try{const b=data instanceof Blob?data:new Blob([data],{type:/\.csv$/.test(filename)?'text/csv;charset=utf-8':'application/octet-stream'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);return true}catch(e){return false}}
+const downloads={save:async({filename,data})=>{if(!dl(filename,data))throw {code:'unavailable'};return {status:'saved'}}};
+function toJpeg(file,max=1600){return new Promise((ok,ko)=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.82).split(',')[1])};im.onerror=ko;im.src=fr.result};fr.onerror=ko;fr.readAsDataURL(file)})}
+const assets={upload:async(file)=>{const l=S.open&&S.logs[S.open];const b64=await toJpeg(file);const ug=String((l&&(l.ug||l.num))||'ERBM');const name='ERBM_'+ug+'_'+Date.now()+'.jpg';const j=await api({action:'photo',ug,name,b64,kind:'ERBM',meta:{adresse:l?l.adresse:'',ts:Date.now(),comment:'ERBM'}});return {id:j.fileId,url:j.url}}};
+function conf(){const d=SY.det||{},c=SY.conf||{};return {u:c.u||d.u||'',t:c.t||d.t||'',d:c.d||d.d||SY.dev||'',n:c.n||d.n||''}}
+async function api(body){const c=conf();if(!c.u||!c.t)throw new Error('Connexion au serveur non réglée (Réglages)');const r=await fetch(c.u,{method:'POST',body:JSON.stringify(Object.assign({token:c.t,device:c.d,user:c.n?c.n+' (ERBM)':'ERBM'},body))});const j=await r.json();if(!j.ok)throw new Error(j.error||'erreur serveur');return j}
+function detect(){
+ const out={},seen=new Set();
+ const take=(o)=>{const ks=Object.keys(o);let url=null;for(const k of ks){const v=o[k];if(typeof v==='string'&&/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(v))url=v}
+  if(url){if(!out.u)out.u=url;for(const k of ks){const v=o[k];if(typeof v!=='string')continue;if(/^(t|token|cle|clé|key|cleChantier)$/i.test(k)&&!out.t)out.t=v;if(/^(d|device|deviceId|appareil|dev)$/i.test(k)&&!out.d)out.d=v;if(/^(n|user|nom|userName|utilisateur)$/i.test(k)&&!out.n)out.n=v}}
+  for(const k of ks){const v=o[k];if(typeof v!=='string'||v.length>120)continue;if(/^(token|cle|clé|cleChantier)$/i.test(k)&&!out.t)out.t=v;if(/^(device|deviceId|appareil)$/i.test(k)&&!out.d)out.d=v}};
+ const visit=(o,d)=>{if(o==null||d>6)return;if(typeof o==='string'){if(!out.u){const m=o.match(/https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/);if(m)out.u=m[0]}if(o.length<300000&&(o[0]==='{'||o[0]==='[')){try{visit(JSON.parse(o),d+1)}catch(e){}}return}
+  if(typeof o!=='object'||seen.has(o))return;seen.add(o);try{take(o)}catch(e){}let n=0;for(const k of Object.keys(o)){if(++n>400)break;visit(o[k],d+1)}};
+ try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k==='evolud_k'||k===LSK)continue;const v=localStorage.getItem(k);if(/token|cle|clé/i.test(k)&&v&&v.length<120&&!out.t&&v[0]!=='{')out.t=v;if(/device|appareil/i.test(k)&&v&&v.length<120&&!out.d&&v[0]!=='{')out.d=v;visit(v,0)}}catch(e){}
+ try{if(window.parent&&window.parent!==window&&window.parent.__EVG)visit(window.parent.__EVG,0)}catch(e){}
+ return out}
+let syncing=false,again=false,syncT=null;
+function sched(ms=1500){clearTimeout(syncT);syncT=setTimeout(sync,ms)}
+function setSt(){const e=$('syncst');if(!e)return;const n=Object.keys(SY.dirty).length;e.textContent=SY.err?('⚠ '+SY.err):(syncing?'Synchro…':(n?n+' en attente':(SY.last?'✓ '+new Date(SY.last).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'')));e.style.color=SY.err?'var(--warn)':'var(--mute)'}
+const typing=()=>{const a=document.activeElement;return a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.type!=='file'};
+function recOf(key){
+ const [k,id]=[key.slice(0,1),key.slice(2)];
+ if(k==='L'||k==='T'){const store=k==='L'?S.logs:S.tirs,o=store[id];
+  if(!o){const ts=SY.dead[key];return ts?[{c:ME,id:key,updatedAt:ts,data:{id:key,type:k==='L'?'logement':'tiroir',deleted:true,updatedAt:ts}}]:[]}
+  const u=o._u||Date.now(),d={id:key,type:k==='L'?'logement':'tiroir',updatedAt:u,v:o};
+  if(k==='L'){d.ug=o.ug||'';d.adresse=o.adresse||'';d.cite=o.cite||'';d.parcours=(P[o.parcours]||{}).court||'';d.etape=etat(o);d.montant=Math.round(montant(o)*100)/100}else{d.adresse=(o.num?'N° '+o.num+' ':'')+(o.adresse||'')}
+  return [{c:ME,id:key,updatedAt:u,data:d}]}
+ if(key==='C:cfg')return [{c:ME,id:key,updatedAt:SY.cfgU||Date.now(),data:{id:key,type:'config',updatedAt:SY.cfgU||Date.now(),v:S.cfg}}];
+ if(key==='B:bpu'){const U=SY.bpuU||Date.now(),N=250,n=Math.max(1,Math.ceil(S.bpu.length/N)),out=[];for(let i=0;i<Math.max(n,SY.bpuN||0);i++){const id='B:'+i;out.push({c:ME,id,updatedAt:U,data:{id,type:'bpu',updatedAt:U,i,n,v:i<n?S.bpu.slice(i*N,i*N+N):[]}})}SY.bpuN=n;return out}
+ return []}
+function applyRecs(recs){
+ let ch=false;
+ recs.forEach(r=>{const d=r.data||{},key=String(r.id),k=key.slice(0,1),U=+d.updatedAt||0;
+  if(k==='L'||k==='T'){const store=k==='L'?S.logs:S.tirs,id=key.slice(2),loc=store[id];
+   if(SY.dirty[key]&&((loc&&(loc._u||0)>U)||(SY.dead[key]||0)>U))return;
+   if(d.deleted){if(loc&&(loc._u||0)<=U){delete store[id];ch=true}SY.dead[key]=U;return}
+   if(!loc||(loc._u||0)<U||!SY.dirty[key]){if(!loc||(loc._u||0)!==U){store[id]={...d.v,_u:U};ch=true}}}
+  else if(key==='C:cfg'){if(U>(SY.cfgU||0)&&!SY.dirty[key]){S.cfg={...(d.v||{})};SY.cfgU=U;ch=true}}
+  else if(k==='B'){if(U>(SY.bpuU||0)&&!SY.dirty['B:bpu']){const g=SY.bc[U]||(SY.bc[U]={n:d.n,p:{}});g.p[d.i]=d.v||[]}}});
+ Object.keys(SY.bc).map(Number).sort((a,b)=>b-a).forEach(U=>{const g=SY.bc[U];if(U>(SY.bpuU||0)&&Object.keys(g.p).length>=g.n){let all=[];for(let i=0;i<g.n;i++)all=all.concat(g.p[i]||[]);S.bpu=all;SY.bpuU=U;SY.bpuN=g.n;ch=true}});
+ Object.keys(SY.bc).forEach(U=>{if(+U<=(SY.bpuU||0))delete SY.bc[U]});
+ return ch}
+async function sync(){
+ if(syncing){again=true;return}
+ const c=conf();if(!c.u||!c.t){SY.err='serveur non réglé';setSt();return}
+ syncing=true;SY.err='';setSt();
+ const keys=Object.keys(SY.dirty),sentU={};keys.forEach(k=>{sentU[k]=k==='C:cfg'?SY.cfgU:k==='B:bpu'?SY.bpuU:(((k[0]==='L'?S.logs:S.tirs)[k.slice(2)]||{})._u||SY.dead[k]||0)});
+ const records=[].concat(...keys.map(recOf));
+ try{
+  const j=await api({action:'erbm',since:SY.since||0,records});
+  keys.forEach(k=>{const now=k==='C:cfg'?SY.cfgU:k==='B:bpu'?SY.bpuU:(((k[0]==='L'?S.logs:S.tirs)[k.slice(2)]||{})._u||SY.dead[k]||0);if(now===sentU[k])delete SY.dirty[k]});
+  const ch=applyRecs(j.records||[]);SY.since=j.now||Date.now();SY.last=Date.now();persistLocal();
+  if(ch&&!typing())render();
+ }catch(e){SY.err=String(e&&e.message||e).slice(0,140);if(/non autoris|bloqu/i.test(SY.err))readonly=false}
+ syncing=false;setSt();if(again){again=false;sched(300)}}
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const fdate=d=>d?new Date(d+'T12:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'';
+const days=d=>Math.round((new Date(d+'T12:00')-new Date(today()+'T12:00'))/864e5);
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2200)}
+function ask(t){return new Promise(r=>{$('dlgTxt').textContent=t;$('dlg').classList.add('on');$('dlgOk').onclick=()=>{$('dlg').classList.remove('on');r(true)};$('dlgNo').onclick=()=>{$('dlg').classList.remove('on');r(false)}})}
+
+/* --- calculs --- */
+const etapes=l=>P[l.parcours]?.etapes||[];
+const nbDone=l=>etapes(l).filter((_,i)=>l.et&&l.et[i]).length;
+const curIdx=l=>{const e=etapes(l);for(let i=0;i<e.length;i++)if(!(l.et&&l.et[i]))return i;return e.length};
+const pct=l=>{const n=etapes(l).length;return n?Math.round(nbDone(l)/n*100):0};
+const recu=l=>l.et&&l.et[etapes(l).indexOf('VTS / réception')];
+const resOuv=l=>(l.res||[]).filter(r=>r.etat!=='levée');
+const etat=l=>{const i=curIdx(l),e=etapes(l);return i>=e.length?'Terminé':e[i]};
+function tileColor(l){const p=pct(l);if(p===0)return 'light-dark(#c9c5bf,#45474d)';if(p>=100||recu(l))return 'var(--slate)';const k=[.5,.65,.82,1][Math.min(3,Math.floor(p/25))];return `color-mix(in srgb,var(--brick) ${k*100}%,#e8a58f)`}
+const logArr=()=>Object.entries(S.logs).map(([id,v])=>({id,...v})).sort((a,b)=>(a.cite||'').localeCompare(b.cite||'')||String(a.num||'').localeCompare(String(b.num||''),'fr',{numeric:true}));
+const tirArr=()=>Object.entries(S.tirs).map(([id,v])=>({id,...v})).sort((a,b)=>String(a.num||'').localeCompare(String(b.num||''),'fr',{numeric:true}));
+const occupant=tid=>logArr().find(l=>l.parcours==='TIR'&&l.tir&&l.tir.id===tid&&!(l.et&&l.et[8]));
+const PROVDEF=['Plancher voûtain','Escalier (reprise / remplacement)','Marches','Dallage','Chape / ragréage','Plancher bois','Linteau','Reprise maçonnerie / fissures','Charpente','Plafond / double plafond','Conduit de cheminée','Traitement humidité','Réseaux enterrés','Autre'];
+const provCat=()=>{const t=(S.cfg.provs||'').trim();return (t?t.split(/\r?\n/):PROVDEF).map(x=>{const [n,c]=x.split(';').map(y=>(y||'').trim());return {n,c:c||''}}).filter(x=>x.n)};
+const PST={av:'À valider',ok:'Validée',ko:'Refusée'};
+const INTERV=['Cureur','Maçon','Couvreur','Menuisier ext.','Plaquiste','Électricien','Plombier / chauffagiste','Menuisier int.','Carreleur / sols','Peintre','Façadier','VRD / extérieurs','Escalier (fabricant)','Autre'];
+const GUESS=[[/remplacement de l.escalier|escalier \(fab/i,'Escalier (fabricant)'],[/curage|démol|demol|dépose|depose|parasitaire|tranchée|tranchee/i,'Cureur'],[/voût|vout|dallage|maçon|macon|linteau|chape|fissure|gros œuvre|gros oeuvre|souche|cave|passivation|^go\b/i,'Maçon'],[/charpente|couvert|toiture|zinc|gouttière/i,'Couvreur'],[/fenêtre|fenetre|mext|menuiserie ext|porte d.entrée|porte d.entree|volet|velux|\bpe\b/i,'Menuisier ext.'],[/placo|plaque|cloison|doublage|isol|plafond|trappe|soufflage|portes de distribution/i,'Plaquiste'],[/élec|elec|vmc|tableau|prise|dérivation|derivation|alimentation/i,'Électricien'],[/plomb|sanit|chauff|chaudi|douche|baignoire|wc|lavabo|évier|evier|pompe à chaleur|pac\b/i,'Plombier / chauffagiste'],[/mint|porte int|plinthe|main courante|marche|placard|escalier/i,'Menuisier int.'],[/carrel|sol|faïence|faience|parquet/i,'Carreleur / sols'],[/peint/i,'Peintre'],[/façade|facade|ravalement|enduit/i,'Façadier'],[/vrd|extérieur|exterieur|clôture|cloture|terrasse/i,'VRD / extérieurs']];
+const guessLot=t=>{for(const[re,v]of GUESS)if(re.test(t||''))return v;return 'Autre'};
+const lotOf=x=>x.lot||guessLot([x.type,x.d,x.c].join(' '));
+const lotSel=(attr,i,cur)=>`<select ${attr}="${i}" aria-label="Intervenant" style="width:auto;min-height:38px;padding:4px 8px;font-size:14px">${INTERV.map(v=>`<option ${cur===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
+const escSt=e=>!e?.prevu?'':e.pose?'Posé':e.liv?'Livré':e.cmd?'Commandé':e.cotes?'Cotes prises':'À commander';
+const CURACT=['Démolir','Déposer','Conserver / protéger'];
+const CUREL=['Cloison','Mur / doublage','Plafond','Sol / chape','Conduit de cheminée','Escalier','Placard','Autre'];
+/* modèle de fiche VTE ERBM : Lot ; Libellé ; champs (q, loc, dim, photo, choix:A|B) ; code BPU */
+const MODDEF=`Curage ; Démolition de parasitaire extérieure ; loc ;
+Curage ; Création d'une tranchée gaz pour alimentation chaudière ; q ;
+GO ; Renfort de cave (équerres métalliques) ; q,loc ;
+GO ; Voûtain de cave ; q,loc ;
+GO ; Dallage de cave ; q,loc ;
+GO ; Réparation marches de cave ; q,loc ;
+GO ; Passivation de fer en cave ; q,loc ;
+Mext ; Mise en place d'un velux ; q,loc ;
+Placo ; Cloison RDC (chambre RDC) pour séparation salon / séjour ; q,loc ;
+Placo ; Création de cloison spécifique ; q,loc ;
+Placo ; Dimensionnement spécifique de portes de distribution ; q,loc,dim ;
+Mint ; Remplacement de l'escalier ; loc ;
+Mint ; Remplacement / renfort de marches d'escalier ; q,loc ;
+Électricité ; Mise en place d'une boîte de dérivation ; q,loc ;
+Électricité ; Alimentation spécifique pour la cuisine ; photo ;
+Électricité ; Photo cuisine à l'identique ; photo ;
+Plomberie ; Appareil sanitaire ; choix:Douche 90x90|Baignoire|Douche extra-plate (PMR) ;
+Plomberie ; WC ; choix:WC standard|WC suspendu ;
+Plomberie ; Pompe à chaleur ; ;
+Carrelage ; Carrelage spécifique ; q,loc ;
+Sol souple ; Sols souples SdB étage ; q ;`;
+const LOTMAP={'curage':'Cureur','go':'Maçon','gros oeuvre':'Maçon','gros œuvre':'Maçon','mext':'Menuisier ext.','placo':'Plaquiste','mint':'Menuisier int.','électricité':'Électricien','electricite':'Électricien','plomberie':'Plombier / chauffagiste','carrelage':'Carreleur / sols','sol souple':'Carreleur / sols','peinture':'Peintre','couverture':'Couvreur','façade':'Façadier'};
+const slug=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+const modele=()=>(S.cfg.modele||MODDEF).split(/\r?\n/).map(x=>x.split(';').map(y=>y.trim())).filter(x=>x[0]&&x[1]).map(([lot,lib,f,c])=>{const fl=(f||'').split(',').map(z=>z.trim()).filter(Boolean);const ch=fl.find(z=>z.startsWith('choix:'));return {id:slug(lot+'-'+lib),lot,lib,q:fl.includes('q'),loc:fl.includes('loc'),dim:fl.includes('dim'),photo:fl.includes('photo'),choix:ch?ch.slice(6).split('|').map(z=>z.trim()):null,c:c||''}});
+const chkLines=l=>{const m=bpuMap();return modele().filter(it=>{const v=(l.chk||{})[it.id];return v&&v.on===true&&!it.choix}).map(it=>{const v=l.chk[it.id];const b=v.c?m[v.c]:null;return {src:'VTE',type:it.lib,piece:v.loc||'',c:v.c||'',d:b?.d||'',u:b?.u||'',p:v.c?(+(b?.p)||+v.p||0):0,q:it.q?(+v.q||0):1,com:[v.dim&&'Dim. '+v.dim].filter(Boolean).join(' '),lot:v.lot||LOTMAP[it.lot.toLowerCase()]||guessLot(it.lot+' '+it.lib),photos:v.photos||[]}})};
+const provMt=l=>(l.prov||[]).filter(x=>x.st==='ok').reduce((s,x)=>s+ligneMt(x),0)+(l.vte?.ok?chkLines(l).reduce((s,x)=>s+ligneMt(x),0):0);
+const provAv=l=>(l.prov||[]).filter(x=>x.st!=='ok'&&x.st!=='ko').reduce((s,x)=>s+ligneMt(x),0)+(l.vte?.ok?0:chkLines(l).reduce((s,x)=>s+ligneMt(x),0));
+const eur=n=>(Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const bpuMap=()=>{const m={};S.bpu.forEach(b=>m[b.c]=b);return m};
+const ligneMt=x=>(+x.q||0)*(+x.p||0);
+const base=l=>(l.ft||[]).reduce((s,x)=>s+ligneMt(x),0);
+const montant=l=>base(l)+provMt(l);
+const lname=l=>`${l.ug?'UG '+l.ug+' · ':''}`+`${l.num?'N° '+l.num+' · ':''}${l.adresse||'Sans adresse'}`;
+
+/* --- stockage --- */
+const pend={},busy={};
+function save(coll,id,obj){obj._u=Date.now();S[coll==='logements'?'logs':'tirs'][id]=obj;SY.dirty[(coll==='logements'?'L:':'T:')+id]=1;persistLocal();setSt();sched()}
+function flush(){}
+async function del(coll,id){const k=(coll==='logements'?'L:':'T:')+id;delete S[coll==='logements'?'logs':'tirs'][id];SY.dead[k]=Date.now();SY.dirty[k]=1;persistLocal();setSt();sched()}
+async function saveBpu(){SY.bpuU=Date.now();SY.dirty['B:bpu']=1;persistLocal();setSt();sched()}
+async function saveCfg(){SY.cfgU=Date.now();SY.dirty['C:cfg']=1;persistLocal();setSt();sched(2500)}
+function persistLocal(){try{localStorage.setItem(LSK,JSON.stringify({logs:S.logs,tirs:S.tirs,cfg:S.cfg,bpu:S.bpu,SY:{...SY,det:undefined}}))}catch(e){SY.err='mémoire du téléphone pleine'}}
+function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LSK)||'null');if(d){S.logs=d.logs||{};S.tirs=d.tirs||{};S.cfg=d.cfg||{};S.bpu=d.bpu||[];SY={...SY,...(d.SY||{})}}}catch(e){}if(!SY.dev){SY.dev='ERBM-'+Math.random().toString(36).slice(2,8).toUpperCase()+Date.now().toString(36).slice(-4).toUpperCase();persistLocal()}}
+
+/* --- vues --- */
+function render(){
+ document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===S.view));
+ $('titre').textContent=S.cfg.nom||'ERBM';
+ $('soustitre').textContent=[S.cfg.bailleur&&'Bailleur : '+S.cfg.bailleur,S.cfg.entreprise].filter(Boolean).join(' · ')||'Réhabilitation de cités minières';
+ const m=$('main');const cc=conf();const banner=(!cc.u||!cc.t)?'<div class="note warn">Connexion au serveur Évolud non réglée : les données restent sur ce téléphone. Allez dans Réglages → Connexion.</div>':SY.err?'<div class="note warn">Synchro : '+esc(SY.err)+'</div>':'';
+ m.innerHTML=banner+({tableau:vTableau,logements:vLogements,tiroirs:vTiroirs,reserves:vReserves,reglages:vReglages}[S.view]||vTableau)();
+ if(S.open)renderPanel();
+}
+function vTableau(){
+ const L=logArr();
+ if(!L.length)return `<div class="empty"><h2>Aucun logement pour l'instant</h2><p>Importez la liste des logements du bailleur, ou ajoutez-les un par un.</p><div class="tools" style="justify-content:center"><button class="b p" data-act="new">Ajouter un logement</button><button class="b" data-go="reglages">Importer une liste</button><button class="b" data-act="evimp">Importer depuis Évolud</button></div></div>`;
+ const gr=L.filter(l=>l.parcours==='GR'),ti=L.filter(l=>l.parcours==='TIR');
+ const rec=L.filter(recu).length,ro=L.reduce((s,l)=>s+resOuv(l).length,0);
+ const pva=L.reduce((s,l)=>s+provAv(l),0),pvok=L.reduce((s,l)=>s+provMt(l),0),pvn=L.reduce((s,l)=>s+(l.prov||[]).filter(x=>x.st!=='ok'&&x.st!=='ko').length,0),vteN=L.filter(l=>l.vte?.ok||(l.et&&l.et[0])).length;
+ const mtot=L.reduce((s,l)=>s+montant(l),0),mgr=gr.reduce((s,l)=>s+montant(l),0),mti=ti.reduce((s,l)=>s+montant(l),0),mrec=L.filter(recu).reduce((s,l)=>s+montant(l),0);
+ const libres=tirArr().filter(t=>!occupant(t.id)&&t.dispo!=='non').length;
+ const alerts=[];
+ ti.forEach(l=>{if(l.tir&&l.tir.au&&!(l.et&&l.et[8])){const d=days(l.tir.au);if(d<=14)alerts.push({l,t:d<0?`Retour dépassé de ${-d} j`:`Retour locataire dans ${d} j`,late:d<0,k:d})}});
+ L.forEach(l=>resOuv(l).forEach(r=>{if(r.date&&days(r.date)<-15)alerts.push({l,t:`Réserve ouverte depuis ${-days(r.date)} j : ${r.txt}`,late:true,k:days(r.date)})}));
+ L.forEach(l=>{if(l.esc?.prevu&&!l.esc.cmd)alerts.push({l,t:l.esc.cotes?'Escalier : cotes prises, à commander':'Escalier à faire coter et commander',late:true,k:-999});if((l.vte?.ok||(l.et&&l.et[0]))&&l.tech?.planSt!=='valide')alerts.push({l,t:'VTE faite, plan à valider',late:false,k:50})});
+ alerts.sort((a,b)=>a.k-b.k);
+ const cites={};L.forEach(l=>(cites[l.cite||'Sans cité']??=[]).push(l));
+ const bars=(arr,p)=>P[p].etapes.map((e,i)=>{const n=arr.filter(l=>curIdx(l)===i).length;return `<div class="row"><span>${esc(e)}</span><div class="track"><div class="fill" style="width:${arr.length?n/arr.length*100:0}%"></div></div><span class="n">${n}</span></div>`}).join('')+`<div class="row"><span><b>Terminés</b></span><div class="track"><div class="fill" style="background:var(--slate);width:${arr.length?arr.filter(l=>curIdx(l)>=P[p].etapes.length).length/arr.length*100:0}%"></div></div><span class="n">${arr.filter(l=>curIdx(l)>=P[p].etapes.length).length}</span></div>`;
+ return `<h2>${rec} logement${rec>1?'s':''} réceptionné${rec>1?'s':''} sur ${L.length}</h2>
+ <div class="kpis"><div class="kpi"><b>${gr.length}</b><span>en GR · site occupé</span></div><div class="kpi"><b>${ti.length}</b><span>en opération tiroir</span></div><div class="kpi"><b>${ro}</b><span>réserves ouvertes</span></div><div class="kpi"><b>${libres}</b><span>tiroirs libres sur ${tirArr().length}</span></div></div>
+ <div class="kpis" style="margin-top:-12px"><div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(mtot)}</b><span>montant HT des fiches travaux (BPU)</span></div><div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(mrec)}</b><span>dont logements en VTS / réceptionnés</span></div><div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(mgr)}</b><span>GR · site occupé</span></div><div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(mti)}</b><span>opérations tiroir</span></div></div>
+ <div class="kpis" style="margin-top:-12px"><div class="kpi"><b>${vteN}/${L.length}</b><span>VTE faites</span></div><div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(pvok)}</b><span>provisions validées</span></div><div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(pva)}</b><span>${pvn} provision${pvn>1?'s':''} à valider</span></div><div class="kpi"><b>${L.filter(l=>l.esc?.prevu&&!l.esc.cmd).length}</b><span>escalier(s) à commander</span></div></div>
+ ${Object.entries(cites).map(([c,arr])=>`<div class="cite"><h3>${esc(c)} <span class="sub" style="font:400 14px Inter;color:var(--mute)">· ${arr.filter(recu).length}/${arr.length} réceptionnés</span></h3><div class="tiles">${arr.map(l=>`<button class="tile" data-open="${l.id}" style="background:${tileColor(l)}" title="${esc(lname(l)+' — '+etat(l))}">${esc(l.num||'?')}<i>${l.parcours==='GR'?'GR':'TIR'}</i></button>`).join('')}</div></div>`).join('')}
+ <div class="legend"><span style="--c:light-dark(#c9c5bf,#45474d)">Pas commencé</span><span style="--c:color-mix(in srgb,var(--brick) 50%,#e8a58f)">Début</span><span style="--c:var(--brick)">Bien avancé</span><span style="--c:var(--slate)">Réceptionné</span></div>
+ <div class="two"><div><h3 style="margin-bottom:10px">À surveiller</h3>${alerts.length?`<div class="list">${alerts.slice(0,12).map(a=>`<button class="item" data-open="${a.l.id}"><span class="badge ${a.late?'late':''}">${a.late?'Retard':'Bientôt'}</span><span><span class="t">${esc(lname(a.l))}</span><br><span class="s">${esc(a.t)}</span></span><span></span></button>`).join('')}</div>`:'<p class="note">Rien à signaler : pas de retour locataire sous 14 jours, pas de réserve ancienne.</p>'}</div>
+ <div><h3 style="margin-bottom:6px">Où en sont les GR</h3><div class="bars">${bars(gr,'GR')}</div><h3 style="margin:18px 0 6px">Où en sont les tiroirs</h3><div class="bars">${bars(ti,'TIR')}</div></div></div>`;
+}
+function ring(l){const p=pct(l),r=22,c=2*Math.PI*r;return `<svg class="prog" viewBox="0 0 56 56"><circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--bg2)" stroke-width="6"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${p>=100?'var(--slate)':'var(--brick)'}" stroke-width="6" stroke-dasharray="${c*p/100} ${c}" transform="rotate(-90 28 28)" stroke-linecap="round"/><text x="28" y="32" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor" font-family="Archivo">${p}%</text></svg>`}
+function vLogements(){
+ const all=logArr(),cs=[...new Set(all.map(l=>l.cite||'Sans cité'))];
+ const q=S.q.toLowerCase();
+ const L=all.filter(l=>(!S.fp||l.parcours===S.fp)&&(!S.fc||(l.cite||'Sans cité')===S.fc)&&(!S.fe||etat(l)===S.fe)&&(!q||[l.ug,l.num,l.adresse,l.cite,l.loc?.nom,l.tranche].join(' ').toLowerCase().includes(q)));
+ const ets=[...new Set([...P.GR.etapes,...P.TIR.etapes,'Terminé'])];
+ return `<div class="tools"><input id="q" placeholder="Chercher un UG, une adresse, un locataire" value="${esc(S.q)}"><select id="fp"><option value="">Tous parcours</option><option value="GR" ${S.fp==='GR'?'selected':''}>GR · site occupé</option><option value="TIR" ${S.fp==='TIR'?'selected':''}>Opération tiroir</option></select><select id="fc"><option value="">Toutes cités</option>${cs.map(c=>`<option ${S.fc===c?'selected':''}>${esc(c)}</option>`).join('')}</select><select id="fe"><option value="">Toutes étapes</option>${ets.map(e=>`<option ${S.fe===e?'selected':''}>${esc(e)}</option>`).join('')}</select><button class="b p" data-act="new">+ Logement</button></div>
+ <p class="sub" style="color:var(--mute);font-size:14px">${L.length} logement${L.length>1?'s':''}</p>
+ ${L.length?`<div class="list">${L.map(l=>`<button class="item" data-open="${l.id}">${ring(l)}<span><span class="t">${esc(lname(l))}</span><br><span class="s">${esc(l.cite||'')}${l.loc?.nom?' · '+esc(l.loc.nom):''} · ${esc(etat(l))}${resOuv(l).length?' · '+resOuv(l).length+' réserve(s)':''}${montant(l)?' · '+eur(montant(l)):''}</span></span><span class="badge ${l.parcours==='GR'?'gr':''}">${P[l.parcours]?.court||'?'}</span></button>`).join('')}</div>`:'<p class="empty">Aucun logement ne correspond.</p>'}`;
+}
+function vTiroirs(){
+ const T=tirArr();
+ const enAtt=logArr().filter(l=>l.parcours==='TIR'&&!(l.tir&&l.tir.id));
+ return `<div class="tools"><button class="b p" data-act="newtir">+ Logement tiroir</button></div>
+ <p class="note">Les logements tiroirs accueillent les familles pendant les travaux. L'occupant s'affiche ici dès qu'un tiroir est attribué dans la fiche du logement en travaux.</p>
+ ${T.length?`<div class="list">${T.map(t=>{const o=occupant(t.id);const d=o&&o.tir.au?days(o.tir.au):null;return `<div class="item tr" style="cursor:default"><span class="badge ${o?'':'ok'}">${o?'Occupé':t.dispo==='non'?'Indispo':'Libre'}</span><span><span class="t">${esc((t.num?'N° '+t.num+' · ':'')+(t.adresse||''))}</span><br><span class="s">${esc(t.type||'')}${o?` · ${esc(o.loc?.nom||'Locataire')} (logement ${esc(o.num||o.adresse||'')}) · retour prévu ${o.tir.au?fdate(o.tir.au):'non daté'}${d!==null&&d<0?' — dépassé':''}`:''}${t.note?' · '+esc(t.note):''}</span></span><span style="display:flex;gap:6px;flex-wrap:wrap">${o?`<button class="b" data-open="${o.id}">Voir</button>`:''}<button class="b" data-edittir="${t.id}">Modifier</button></span></div>`}).join('')}</div>`:'<p class="empty">Aucun logement tiroir enregistré.</p>'}
+ ${enAtt.length?`<h3 style="margin:24px 0 10px">En attente d'un tiroir (${enAtt.length})</h3><div class="list">${enAtt.map(l=>`<button class="item" data-open="${l.id}"><span class="badge">Tiroir</span><span><span class="t">${esc(lname(l))}</span><br><span class="s">${esc(l.loc?.nom||'')}</span></span><span></span></button>`).join('')}</div>`:''}`;
+}
+function vReserves(){
+ const R=[];logArr().forEach(l=>(l.res||[]).forEach(r=>R.push({l,r})));
+ const ouv=R.filter(x=>x.r.etat!=='levée').sort((a,b)=>(a.r.date||'').localeCompare(b.r.date||''));
+ const lev=R.filter(x=>x.r.etat==='levée');
+ const row=x=>`<button class="item" data-open="${x.l.id}"><span class="badge ${x.r.etat==='levée'?'ok':''}">${x.r.etat==='levée'?'Levée':esc(fdate(x.r.date))}</span><span><span class="t">${esc(x.r.txt)}</span><br><span class="s">${esc(lname(x.l))}${x.r.lot?' · '+esc(x.r.lot):''}</span></span><span></span></button>`;
+ return `<h2 style="margin-bottom:14px">${ouv.length} réserve${ouv.length>1?'s':''} ouverte${ouv.length>1?'s':''}</h2>${ouv.length?`<div class="list">${ouv.map(row).join('')}</div>`:'<p class="note">Aucune réserve ouverte.</p>'}${lev.length?`<details style="margin-top:20px"><summary style="cursor:pointer;font-weight:600">${lev.length} réserve(s) levée(s)</summary><div class="list" style="margin-top:10px">${lev.map(row).join('')}</div></details>`:''}`;
+}
+function vReglages(){
+ const c=S.cfg;
+ return `<h2 style="margin-bottom:12px">Chantier</h2><div class="grid">
+ <label>Nom du chantier<input data-cfg="nom" value="${esc(c.nom||'')}" placeholder="Ex. Cité des Provinces – tranche 2"></label>
+ <label>Bailleur<input data-cfg="bailleur" value="${esc(c.bailleur||'')}"></label>
+ <label>Entreprise<input data-cfg="entreprise" value="${esc(c.entreprise||'')}"></label>
+ <label>Conducteur de travaux<input data-cfg="cdt" value="${esc(c.cdt||'')}"></label></div>
+ <h2 style="margin:28px 0 8px">Importer les logements d'Évolud</h2>
+ <p style="color:var(--mute);font-size:15px;margin:0 0 8px">Reprend les logements déjà connus d'Évolud (UG, adresse, cité). Choisissez la cité et le parcours, puis importez. Un UG déjà présent n'est jamais importé deux fois.</p>
+ <div class="tools"><button class="b" data-act="evscan">Chercher les logements Évolud</button></div><div id="evres"></div>
+ <h2 style="margin:28px 0 8px">Importer la liste des logements</h2>
+ <p style="color:var(--mute);font-size:15px;margin:0 0 8px">Copiez les lignes depuis Excel et collez-les ici. Colonnes dans l'ordre : Code UG · N° · Adresse · Cité · Tranche · Type · Parcours (GR ou Tiroir) · Locataire · Téléphone. Une ligne d'en-tête est ignorée.</p>
+ <textarea id="imp" placeholder="106743	12	3 rue des Mineurs	Cité Bruno	T1	T3	GR	Mme Martin	06…"></textarea>
+ <div class="tools"><button class="b p" data-act="import">Importer</button></div>
+ <h2 style="margin:28px 0 8px">Modèle de fiche VTE</h2>
+ <p style="color:var(--mute);font-size:15px;margin:0 0 8px">Une ligne par point à vérifier : <code>Lot ; Libellé ; champs ; code BPU</code>. Champs possibles : <code>q</code> quantité, <code>loc</code> localisation, <code>dim</code> dimensions, <code>photo</code>, ou <code>choix:A|B</code> pour une liste. Le lot (Curage, GO, Mext, Placo, Mint, Électricité, Plomberie, Carrelage, Sol souple) décide du corps d'état sur la fiche travaux.</p>
+ <textarea data-cfg="modele" style="min-height:260px;font-size:14px">${esc(S.cfg.modele||MODDEF)}</textarea>
+ <h2 style="margin:28px 0 8px">Autres types de provisions</h2>
+ <p style="color:var(--mute);font-size:15px;margin:0 0 8px">Une provision par ligne. Vous pouvez ajouter son code BPU après un point-virgule, il sera proposé automatiquement : <code>Plancher voûtain;VOUT01</code></p>
+ <textarea data-cfg="provs" style="min-height:180px">${esc(S.cfg.provs||PROVDEF.join('\n'))}</textarea>
+ <h2 style="margin:28px 0 8px">BPU du marché · ${S.bpu.length} code${S.bpu.length>1?'s':''}</h2>
+ <p style="color:var(--mute);font-size:15px;margin:0 0 8px">Copiez le BPU depuis Excel et collez-le ici. Colonnes dans l'ordre : Code · Désignation · Unité · Prix unitaire HT · Intervenant (facultatif, sinon deviné d'après la désignation). Un code déjà présent est mis à jour.</p>
+ <textarea id="bpuimp" placeholder="MEXT01	Fenêtre PVC 2 vantaux	U	780,00"></textarea>
+ <div class="tools"><button class="b p" data-act="bpuimport">Importer le BPU</button>${S.bpu.length?'<button class="b" data-act="bpuview">Voir le BPU</button><button class="b d" data-act="bpuclear">Vider le BPU</button>':''}</div>
+ <div id="bpuview"></div>
+ <h2 style="margin:28px 0 8px">Exporter</h2>
+ <div class="tools"><button class="b" data-act="csv">Tableau d'avancement (CSV pour Excel)</button><button class="b" data-act="csvpv">Provisions VTE (CSV)</button><button class="b" data-act="csvft">Fiches travaux détaillées (CSV)</button><button class="b" data-act="csvres">Liste des réserves (CSV)</button></div>
+ <textarea id="out" readonly style="display:none"></textarea>
+ <h2 style="margin:28px 0 8px">Connexion au serveur Évolud</h2>
+ <p style="color:var(--mute);font-size:15px;margin:0 0 8px">Reprise automatiquement d'Évolud quand c'est possible. Sinon, saisissez l'adresse du serveur et la clé du chantier une seule fois sur ce téléphone.</p>
+ <div class="grid"><label>Adresse du serveur (…/exec)<input id="cfu" value="${esc((SY.conf||{}).u||'')}" placeholder="${esc((SY.det||{}).u?'trouvée dans Évolud':'https://script.google.com/macros/s/…/exec')}"></label><label>Clé du chantier<input id="cft" type="password" value="${esc((SY.conf||{}).t||'')}" placeholder="${(SY.det||{}).t?'trouvée dans Évolud':''}"></label><label>Votre nom<input id="cfn" value="${esc((SY.conf||{}).n||(SY.det||{}).n||'')}"></label></div>
+ <p style="font-size:14px;color:var(--mute)">Code de ce téléphone : <b>${esc(conf().d)}</b>${conf().d===SY.dev?' (à faire autoriser par Saïd dans l\'onglet Appareils si le serveur le demande)':''}</p>
+ <div class="tools"><button class="b p" data-act="cfsave">Enregistrer et tester</button></div>`;
+}
+
+/* --- fiche logement --- */
+function renderPanel(){
+ const id=S.open,l=S.logs[id];if(!l){closePanel();return}
+ if(S.fiche){renderFiche(l);return}
+ const p=P[l.parcours]||P.GR,ci=curIdx(l);
+ const tiroirs=tirArr();
+ $('panel').innerHTML=`<div class="top"><h2>${esc(lname(l))}</h2><button class="b" data-act="close" aria-label="Fermer">Fermer</button></div>
+ <div class="sec"><div class="grid">
+  <label>Code UG<input data-f="ug" value="${esc(l.ug||'')}" inputmode="numeric"></label>
+  <label>N°<input data-f="num" value="${esc(l.num||'')}"></label>
+  <label>Adresse<input data-f="adresse" value="${esc(l.adresse||'')}"></label>
+  <label>Cité<input data-f="cite" value="${esc(l.cite||'')}"></label>
+  <label>Tranche<input data-f="tranche" value="${esc(l.tranche||'')}"></label>
+  <label>Type<input data-f="type" value="${esc(l.type||'')}" placeholder="T3, T4…"></label>
+  <label>Parcours<select data-f="parcours"><option value="GR" ${l.parcours==='GR'?'selected':''}>GR · site occupé</option><option value="TIR" ${l.parcours==='TIR'?'selected':''}>Opération tiroir</option></select></label>
+ </div></div>
+ <div class="sec"><h3>Locataire</h3><div class="grid">
+  <label>Nom<input data-f="loc.nom" value="${esc(l.loc?.nom||'')}"></label>
+  <label>Téléphone<input data-f="loc.tel" value="${esc(l.loc?.tel||'')}" inputmode="tel"></label>
+  <label style="grid-column:1/-1">Disponibilités, contraintes<input data-f="loc.note" value="${esc(l.loc?.note||'')}" placeholder="Ex. absent le mercredi, chien, personne âgée…"></label>
+ </div></div>
+ ${l.parcours==='TIR'?`<div class="sec"><h3>Logement tiroir</h3><div class="grid">
+  <label>Tiroir attribué<select data-f="tir.id"><option value="">— aucun —</option>${tiroirs.map(t=>{const o=occupant(t.id);const busy=o&&o.id!==id;return `<option value="${t.id}" ${l.tir?.id===t.id?'selected':''} ${busy?'disabled':''}>${esc((t.num?'N° '+t.num+' · ':'')+(t.adresse||''))}${busy?' (occupé)':''}</option>`}).join('')}</select></label>
+  <label>Déménagement aller<input type="date" data-f="tir.du" value="${esc(l.tir?.du||'')}"></label>
+  <label>Retour prévu<input type="date" data-f="tir.au" value="${esc(l.tir?.au||'')}"></label>
+ </div>${tiroirs.length?'':'<p class="note" style="margin:10px 0 0">Ajoutez d\'abord les logements tiroirs dans l\'onglet Tiroirs.</p>'}</div>`:''}
+ <div class="sec"><h3>Étapes · ${esc(p.nom)}</h3><ol class="steps">${p.etapes.map((e,i)=>`<li class="${l.et&&l.et[i]?'done':''} ${i===ci?'cur':''}"><button class="ck" data-step="${i}" aria-label="${esc(e)}">${l.et&&l.et[i]?'✓':''}</button><span>${esc(e)}</span><input type="date" data-sd="${i}" value="${esc(l.et&&l.et[i]||'')}" aria-label="Date ${esc(e)}"></li>`).join('')}</ol></div>
+ <div class="sec"><h3>${l.parcours==='GR'?'Prestations':'Corps d\'état'}</h3><p style="margin:0 0 8px;font-size:13px;color:var(--mute)">Touchez un lot pour le faire passer : à faire → en cours → fait → non prévu.</p><div class="lots">${p.lots.map(n=>{const s=(l.lots||{})[n]||0;return `<button class="lot s${s}" data-lot="${esc(n)}"><span>${esc(n)}</span><em>${LOTST[s]}</em></button>`}).join('')}</div></div>
+ <div class="sec" id="vte"><h3>VTE · provisions ${l.vte?.ok?'<span class="badge ok" style="vertical-align:2px">VTE validée</span>':''}</h3>
+  <div class="grid">
+   <label>Date de la VTE<input type="date" data-f="vte.date" value="${esc(l.vte?.date||'')}"></label>
+   <label>Faite par<input data-f="vte.par" value="${esc(l.vte?.par||'')}"></label>
+   <label>Typologie<input data-f="vte.typo" value="${esc(l.vte?.typo||'')}" placeholder="Ex. C310XZ"></label>
+   <label>Variante<input data-f="vte.var" value="${esc(l.vte?.var||'')}" placeholder="Ex. C1A'"></label>
+   <label>Diag amiante<select data-f="vte.am"><option value="">—</option>${['Pas d\'amiante','Présence d\'amiante','En attente du diag'].map(o=>`<option ${l.vte?.am===o?'selected':''}>${o}</option>`).join('')}</select></label>
+   <label>Diag plomb<select data-f="vte.pb"><option value="">—</option>${['Pas de plomb','Présence de plomb','En attente du diag'].map(o=>`<option ${l.vte?.pb===o?'selected':''}>${o}</option>`).join('')}</select></label>
+  </div>
+  ${(()=>{const M=modele(),g={};M.forEach(it=>(g[it.lot]??=[]).push(it));return Object.entries(g).map(([lot,its])=>`<h3 class="cklot">${esc(lot)}</h3>${its.map(it=>{const v=(l.chk||{})[it.id]||{};const on=v.on===true,off=v.on===false;return `<div class="ck ${on?'on':''}"><div class="ckh"><span>${esc(it.lib)}</span>${it.choix?`<select data-ck="${it.id}|choix" style="width:auto;min-height:38px;padding:4px 8px"><option value="">—</option>${it.choix.map(o=>`<option ${v.choix===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`:`<span class="yn"><button class="${on?'sel':''}" data-ckon="${it.id}|1">Oui</button><button class="${off?'sel':''}" data-ckon="${it.id}|0">Non</button></span>`}</div>
+   ${on||(it.choix&&it.photo)?`<div class="ckb">${it.q?`<label>Quantité<input type="number" step="any" min="0" data-ck="${it.id}|q" value="${esc(v.q||'')}"></label>`:''}${it.loc?`<label>Localisation<input data-ck="${it.id}|loc" value="${esc(v.loc||'')}"></label>`:''}${it.dim?`<label>Dimensions<input data-ck="${it.id}|dim" value="${esc(v.dim||'')}" placeholder="Ex. 73 x 204"></label>`:''}<label>Code BPU<input data-ck="${it.id}|c" list="bpulist" value="${esc(v.c??it.c)}" autocomplete="off"></label>${assets?`<label>Photo<input type="file" accept="image/*" data-ckph="${it.id}"></label>`:''}</div>${(v.photos||[]).map(ph=>`<img src="${esc(blob(ph))}" alt="" class="ckimg">`).join('')}`:''}</div>`}).join('')}`).join('')})()}
+  <p style="margin:14px 0 6px;font-size:14px;color:var(--mute)">Autres provisions relevées sur place, hors fiche. Validées : ${eur(provMt(l))} · à valider : ${eur(provAv(l))}</p>
+  ${(l.prov||[]).map((x,i)=>`<div class="res pv ${x.st==='ko'?'lev':''}"><span><b>${esc(x.type)}</b>${x.piece?' · '+esc(x.piece):''}<br><span style="font-size:13px;color:var(--mute)">${x.c?esc(x.c)+' · ':''}${esc(x.d||'')}${x.u?' · '+esc(x.u):''}${x.p?' · '+eur(+x.p):''}</span>${x.com?`<br><span style="font-size:14px">${esc(x.com)}</span>`:''}</span>
+   <span class="pvc"><input type="number" step="any" min="0" data-pvq="${i}" value="${esc(x.q)}" aria-label="Quantité" style="width:80px;min-height:38px;padding:6px"><b class="num" style="white-space:nowrap">${eur(ligneMt(x))}</b>${lotSel('data-pvlot',i,lotOf(x))}<select data-pvst="${i}" style="width:auto;min-height:38px;padding:4px 8px" aria-label="Statut">${Object.entries(PST).map(([k,v])=>`<option value="${k}" ${(x.st||'av')===k?'selected':''}>${v}</option>`).join('')}</select><button class="b d" data-pvdel="${i}" aria-label="Supprimer" style="min-height:38px">✕</button></span>
+   ${(x.photos||[]).map(ph=>`<img src="${esc(blob(ph))}" alt="Photo ${esc(x.type)}">`).join('')}</div>`).join('')}
+  <div class="grid" style="margin-top:10px;background:var(--bg2);padding:12px;border-radius:12px">
+   <label>Provision<select id="pvt">${provCat().map(c=>`<option data-c="${esc(c.c)}">${esc(c.n)}</option>`).join('')}</select></label>
+   <label>Pièce / localisation<input id="pvp" placeholder="Ex. séjour, cave, escalier RDC"></label>
+   <label>Code BPU<input id="pvc" list="bpulist" placeholder="Code ou mot-clé" autocomplete="off"></label>
+   <label>Quantité<input id="pvq" type="number" step="any" min="0" value="1"></label>
+   <label style="grid-column:1/-1">Constat / commentaire<input id="pvm" placeholder="Ex. voûtain fissuré sur 2 travées, à conforter"></label>
+   ${assets?'<label style="grid-column:1/-1">Photos<input type="file" id="pvph" accept="image/*" multiple></label>':''}
+   <div style="grid-column:1/-1"><button class="b p" data-act="addprov">Ajouter la provision</button></div>
+  </div>
+  <div class="tools"><button class="b ${l.vte?.ok?'':'p'}" data-act="vteok">${l.vte?.ok?'Rouvrir la VTE':'Valider la VTE'}</button></div></div>
+<div class="sec" id="tech"><h3>Plan & choix techniques ${l.tech?.planSt==='valide'?'<span class="badge ok" style="vertical-align:2px">Plan validé</span>':''}</h3>
+  <div class="grid">
+   <label>Salle d'eau<select data-f="tech.sde"><option value="">— à décider —</option>${['Douche 90x90','Baignoire','Douche extra-plate (PMR)'].map(o=>`<option ${l.tech?.sde===o?'selected':''}>${o}</option>`).join('')}</select></label>
+   <label style="grid-column:span 2">Consignes pour les techniciens<input data-f="tech.note" value="${esc(l.tech?.note||'')}" placeholder="Ex. cuisine côté jardin, tableau électrique dans l'entrée"></label>
+  </div>
+  <div style="margin-top:12px">${l.tech?.planId?(l.tech.planKind==='pdf'?`<p><a href="${esc(driveLink(l.tech.planId))}" target="_blank" rel="noopener">Ouvrir le plan (PDF)</a></p>`:`<img src="${esc(blob(l.tech.planId))}" alt="Plan du logement" style="max-width:100%;border:1px solid var(--line);border-radius:10px">`)+`<p style="font-size:13px;color:var(--mute);margin:6px 0">${l.tech.planSt==='valide'?'Validé le '+esc(fdate(l.tech.planDate)):'Plan non validé'}</p>`:'<p class="note" style="margin:0">Aucun plan joint.</p>'}</div>
+  <div class="tools">${assets?`<label class="b" style="display:inline-flex;align-items:center;cursor:pointer;color:var(--ink);font-size:15px;font-weight:600">${l.tech?.planId?'Remplacer le plan':'Joindre le plan'}<input type="file" id="planfile" accept="image/*" style="display:none"></label>`:'<span class="note" style="margin:0">Ajout de plan indisponible dans cet affichage.</span>'}${l.tech?.planId?`<button class="b ${l.tech.planSt==='valide'?'':'p'}" data-act="planok">${l.tech.planSt==='valide'?'Repasser en brouillon':'Valider le plan'}</button>`:''}</div></div>
+ <div class="sec"><h3>Consignes de curage</h3>
+  <div class="grid"><label class="chk"><input type="checkbox" data-f="tech.souche" ${l.tech?.souche?'checked':''}> Souche de cheminée à casser</label>${l.tech?.souche?`<label>Où ?<input data-f="tech.soucheLoc" value="${esc(l.tech?.soucheLoc||'')}" placeholder="Ex. toiture côté rue, jusqu'au plancher R+1"></label>`:''}</div>
+  ${(l.cur||[]).map((x,i)=>`<div class="res"><span><b>${esc(x.act)}</b> · ${esc(x.el)}${x.loc?' · '+esc(x.loc):''}${x.note?`<br><span style="font-size:14px;color:var(--mute)">${esc(x.note)}</span>`:''}</span><button class="b d" data-curdel="${i}" aria-label="Supprimer" style="min-height:38px">✕</button></div>`).join('')}
+  <div class="grid" style="margin-top:10px;background:var(--bg2);padding:12px;border-radius:12px">
+   <label>Action<select id="cua">${CURACT.map(o=>`<option>${o}</option>`).join('')}</select></label>
+   <label>Élément<select id="cue">${CUREL.map(o=>`<option>${o}</option>`).join('')}</select></label>
+   <label>Pièce / mur<input id="cul" placeholder="Ex. mur séjour / cuisine"></label>
+   <label style="grid-column:1/-1">Précision<input id="cun" placeholder="Ex. garder le mur porteur, démolir le doublage seulement"></label>
+   <div style="grid-column:1/-1"><button class="b p" data-act="addcur">Ajouter la consigne</button></div></div></div>
+ <div class="sec"><h3>Escalier ${escSt(l.esc)?`<span class="badge ${escSt(l.esc)==='À commander'?'late':escSt(l.esc)==='Posé'?'ok':''}" style="vertical-align:2px">${escSt(l.esc)}</span>`:''}</h3>
+  <label class="chk"><input type="checkbox" data-f="esc.prevu" ${l.esc?.prevu?'checked':''}> Remplacement d'escalier prévu</label>
+  ${l.esc?.prevu?`<p style="font-size:14px;color:var(--mute);margin:8px 0">À lancer dès la VTE : le fabricant vient prendre les cotes, puis on commande.</p><div class="grid">
+   <label>Fabricant<input data-f="esc.fab" value="${esc(l.esc.fab||'')}"></label><label>Téléphone<input data-f="esc.tel" value="${esc(l.esc.tel||'')}" inputmode="tel"></label>
+   <label>Prise de cotes<input type="date" data-f="esc.cotes" value="${esc(l.esc.cotes||'')}"></label><label>Commandé le<input type="date" data-f="esc.cmd" value="${esc(l.esc.cmd||'')}"></label>
+   <label>Livraison prévue<input type="date" data-f="esc.liv" value="${esc(l.esc.liv||'')}"></label><label>Posé le<input type="date" data-f="esc.pose" value="${esc(l.esc.pose||'')}"></label>
+   <label style="grid-column:1/-1">Modèle / remarques<input data-f="esc.note" value="${esc(l.esc.note||'')}" placeholder="Ex. quart tournant bas, sapin, garde-corps inclus"></label></div>`:''}</div>
+ <div class="sec"><h3>Fiche travaux à remettre</h3>
+  <p style="font-size:14px;color:var(--mute);margin:0 0 8px">Reprend les travaux de base, la fiche VTE, les provisions validées, le plan, la salle d'eau, les consignes de curage et l'escalier. Pour un sous-traitant, choisissez son corps d'état : il ne voit que ses lignes, sans les prix.</p>
+  <div class="tools"><select id="fwho" style="flex:1 1 200px;width:auto"><option value="">Tous les corps d'état (avec prix)</option>${INTERV.map(v=>`<option>${esc(v)}</option>`).join('')}</select><button class="b p" data-act="fview">Voir la fiche</button>${downloads?'<button class="b" data-act="fpdf">PDF</button>':''}</div></div>
+ <div class="sec"><h3>Fiche travaux (base plan) · ${eur(base(l))} HT</h3>
+  ${S.bpu.length?'':'<p class="note" style="margin:0 0 10px">Importez d\'abord le BPU dans Réglages pour retrouver les codes et les prix.</p>'}
+  ${(l.ft||[]).length?`<div class="scroll"><table class="ft"><thead><tr><th>Code</th><th>Désignation</th><th>Intervenant</th><th>Qté</th><th>U</th><th>PU HT</th><th>Montant</th><th></th></tr></thead><tbody>${l.ft.map((x,i)=>`<tr><td><b>${esc(x.c)}</b></td><td>${esc(x.d)}</td><td>${lotSel('data-ftlot',i,lotOf(x))}</td><td><input type="number" step="any" min="0" data-ftq="${i}" value="${esc(x.q)}" aria-label="Quantité"></td><td>${esc(x.u)}</td><td class="num">${eur(+x.p||0)}</td><td class="num"><b>${eur(ligneMt(x))}</b></td><td><button class="b d" data-ftdel="${i}" aria-label="Retirer">✕</button></td></tr>`).join('')}</tbody><tfoot><tr><td colspan="6" style="text-align:right">Base plan</td><td class="num">${eur(base(l))}</td><td></td></tr><tr><td colspan="6" style="text-align:right">Provisions validées</td><td class="num">${eur(provMt(l))}</td><td></td></tr><tr><td colspan="6" style="text-align:right"><b>Total HT</b></td><td class="num"><b>${eur(montant(l))}</b></td><td></td></tr></tfoot></table></div>`:'<p style="color:var(--mute);font-size:14px;margin:0">Aucune ligne pour l\'instant.</p>'}
+  <div class="grid" style="margin-top:10px"><label style="grid-column:span 2">Code BPU ou mot-clé<input id="ftc" list="bpulist" placeholder="Ex. MEXT, VMC, trappe…" autocomplete="off"></label><label>Quantité<input id="ftq" type="number" step="any" min="0" value="1"></label></div>
+  <datalist id="bpulist">${S.bpu.map(b=>`<option value="${esc(b.c)}">${esc(b.d)} · ${esc(b.u)} · ${eur(+b.p||0)}</option>`).join('')}</datalist>
+  <div class="tools"><button class="b p" data-act="addft">Ajouter la ligne</button></div></div>
+ <div class="sec"><h3>Réserves (${resOuv(l).length} ouverte${resOuv(l).length>1?'s':''})</h3>
+  ${(l.res||[]).map(r=>`<div class="res ${r.etat==='levée'?'lev':''}"><span><b>${esc(r.txt)}</b><br><span style="font-size:13px;color:var(--mute)">${esc(r.lot||'')} · ${esc(fdate(r.date))}${r.etat==='levée'?' · levée le '+esc(fdate(r.lev)):''}</span></span><span style="display:flex;gap:6px"><button class="b" data-rlev="${r.id}">${r.etat==='levée'?'Rouvrir':'Lever'}</button><button class="b d" data-rdel="${r.id}" aria-label="Supprimer">✕</button></span>${r.photo?`<img src="${esc(blob(r.photo))}" alt="Photo de la réserve">`:''}</div>`).join('')}
+  <div class="grid" style="margin-top:8px"><label>Nouvelle réserve<input id="rtxt" placeholder="Ex. joint silicone baignoire à reprendre"></label><label>Lot<select id="rlot"><option value="">—</option>${p.lots.map(n=>`<option>${esc(n)}</option>`).join('')}</select></label>${assets?'<label>Photo<input type="file" id="rph" accept="image/*"></label>':''}</div>
+  <div class="tools"><button class="b p" data-act="addres">Ajouter la réserve</button></div></div>
+ <div class="sec"><h3>Journal</h3>
+  <div class="tools" style="margin-top:0"><input id="jtxt" placeholder="Ex. RDV calé avec la locataire jeudi 9 h"><button class="b p" data-act="addj">Noter</button></div>
+  ${(l.journal||[]).slice().reverse().map(j=>`<p style="margin:6px 0;font-size:15px"><b style="font-variant-numeric:tabular-nums">${esc(fdate(j.d))}</b> · ${esc(j.t)}</p>`).join('')||'<p style="color:var(--mute);font-size:14px">Rien de noté.</p>'}</div>
+ <div class="sec"><button class="b d" data-act="dellog">Supprimer ce logement</button></div>`;
+}
+function ficheData(l,who){
+ const lines=[...(l.ft||[]).map(x=>({...x,src:'Base'})),...chkLines(l),...(l.prov||[]).filter(x=>x.st==='ok').map(x=>({...x,src:'Provision'}))].map(x=>({...x,lot:lotOf(x)})).filter(x=>!who||x.lot===who);
+ const groups={};lines.forEach(x=>(groups[x.lot]??=[]).push(x));
+ const warn=[];if(!l.vte?.ok)warn.push('VTE non validée');if(l.tech?.planSt!=='valide')warn.push('Plan non validé');if(!l.tech?.sde)warn.push("Choix douche / baignoire non fait");const pa=(l.prov||[]).filter(x=>x.st!=='ok'&&x.st!=='ko').length;if(pa)warn.push(pa+' autre(s) provision(s) encore à valider, non reprises');if(l.esc?.prevu&&!l.esc.cmd)warn.push('Escalier pas encore commandé');
+ const choix=modele().filter(it=>it.choix&&(l.chk||{})[it.id]?.choix).map(it=>it.lib+' : '+l.chk[it.id].choix);
+ return {lines,groups,warn,prix:!who,choix};
+}
+const srcLbl=x=>x.src==='VTE'?'<b>VTE</b> · '+esc(x.type)+(x.piece?' – '+esc(x.piece):'')+'<br>':x.src==='Provision'?'<b>Provision</b> · '+esc(x.type)+(x.piece?' – '+esc(x.piece):'')+'<br>':'';
+function renderFiche(l){
+ const who=S.fiche.who,F=ficheData(l,who);
+ const order=INTERV.filter(v=>F.groups[v]);
+ $('panel').innerHTML=`<div class="top"><h2>Fiche travaux${who?' · '+esc(who):''}</h2><button class="b" data-act="fback">Retour</button></div>
+ <div class="sec"><h3>${esc(lname(l))}</h3><p style="margin:4px 0 0;color:var(--mute)">${esc(l.cite||'')} · ${esc(P[l.parcours]?.nom||'')}${l.vte?.typo?' · Typo '+esc(l.vte.typo):''}${l.vte?.var?' · '+esc(l.vte.var):''}${l.loc?.nom?' · Locataire : '+esc(l.loc.nom)+(l.loc.tel?' ('+esc(l.loc.tel)+')':''):''}</p>${l.loc?.note?`<p style="margin:4px 0 0">Accès : ${esc(l.loc.note)}</p>`:''}<p style="margin:4px 0 0">Amiante : <b>${esc(l.vte?.am||'non renseigné')}</b> · Plomb : <b>${esc(l.vte?.pb||'non renseigné')}</b></p>
+ ${F.warn.length?`<div class="note warn" style="margin:10px 0 0">${F.warn.map(esc).join(' · ')}</div>`:''}</div>
+ <div class="sec"><h3>Choix techniques</h3><p style="margin:0">Salle d'eau : <b>${esc(l.tech?.sde||'à décider')}</b>${F.choix.length?'<br>'+F.choix.map(esc).join('<br>'):''}${l.tech?.note?'<br>'+esc(l.tech.note):''}</p>
+ ${l.tech?.planId?(l.tech.planKind==='pdf'?`<p><a href="${esc(driveLink(l.tech.planId))}" target="_blank" rel="noopener">Ouvrir le plan (PDF)</a></p>`:`<img src="${esc(blob(l.tech.planId))}" alt="Plan" style="max-width:100%;margin-top:10px;border:1px solid var(--line);border-radius:10px">`):''}</div>
+ ${(!who||who==='Cureur'||who==='Maçon'||who==='Couvreur')?`<div class="sec"><h3>Curage</h3>${l.tech?.souche?`<p style="margin:0 0 6px"><b>Souche de cheminée à casser</b>${l.tech.soucheLoc?' : '+esc(l.tech.soucheLoc):''}</p>`:'<p style="margin:0 0 6px">Souche de cheminée : à conserver.</p>'}${(l.cur||[]).length?`<ul style="margin:0;padding-left:20px">${l.cur.map(x=>`<li><b>${esc(x.act)}</b> ${esc(x.el.toLowerCase())}${x.loc?' – '+esc(x.loc):''}${x.note?' ('+esc(x.note)+')':''}</li>`).join('')}</ul>`:'<p style="margin:0;color:var(--mute)">Pas de consigne particulière.</p>'}</div>`:''}
+ ${l.esc?.prevu&&(!who||who==='Escalier (fabricant)'||who==='Cureur'||who==='Menuisier int.')?`<div class="sec"><h3>Escalier · ${esc(escSt(l.esc))}</h3><p style="margin:0">${[l.esc.fab&&'Fabricant : '+esc(l.esc.fab)+(l.esc.tel?' ('+esc(l.esc.tel)+')':''),l.esc.cotes&&'Cotes : '+esc(fdate(l.esc.cotes)),l.esc.cmd&&'Commandé : '+esc(fdate(l.esc.cmd)),l.esc.liv&&'Livraison : '+esc(fdate(l.esc.liv)),l.esc.note&&esc(l.esc.note)].filter(Boolean).join('<br>')||'À commander'}</p></div>`:''}
+ <div class="sec"><h3>Travaux${who?'':' · '+eur(F.lines.reduce((s,x)=>s+ligneMt(x),0))+' HT'}</h3>${order.length?order.map(g=>`<h3 style="font-size:15px;margin:14px 0 4px;color:var(--brick)">${esc(g)}</h3><div class="scroll"><table class="ft"><thead><tr><th>Code</th><th>Désignation</th><th>Qté</th><th>U</th>${F.prix?'<th>Montant</th>':''}</tr></thead><tbody>${F.groups[g].map(x=>`<tr><td>${esc(x.c||'')}</td><td>${srcLbl(x)}${esc(x.d||'')}${x.com?'<br><span style="color:var(--mute)">'+esc(x.com)+'</span>':''}</td><td class="num">${esc(x.q)}</td><td>${esc(x.u||'')}</td>${F.prix?`<td class="num">${eur(ligneMt(x))}</td>`:''}</tr>`).join('')}</tbody></table></div>`).join(''):'<p style="color:var(--mute)">Aucune ligne pour ce corps d\'état.</p>'}</div>`;
+}
+async function fichePdf(l,who){
+ if(!downloads)return toast('Téléchargement indisponible ici');
+ toast('Préparation du PDF…');
+ try{
+  if(!window.jspdf)await new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';sc.onload=ok;sc.onerror=ko;document.head.appendChild(sc)});
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),F=ficheData(l,who);
+  const clean=t=>String(t??'').replace(/[‘’]/g,"'").replace(/[–—]/g,'-').replace(/\u202f|\u00a0/g,' ').replace(/[^\x00-\xFF€]/g,'-');
+  let y=16;const W=180,X=15;
+  const line=(t,o={})=>{doc.setFont('helvetica',o.b?'bold':'normal');doc.setFontSize(o.s||10);const rows=doc.splitTextToSize(clean(t),o.w||W);rows.forEach(rw=>{if(y>282){doc.addPage();y=16}doc.text(rw,o.x||X,y);y+=(o.s||10)*.45});y+=o.gap??1.5};
+  line('Fiche travaux'+(who?' - '+who:''),{s:16,b:true});line(lname(l),{s:12,b:true});
+  line([l.cite,P[l.parcours]?.nom,l.vte?.typo&&'Typo '+l.vte.typo,l.vte?.var,l.loc?.nom&&'Locataire : '+l.loc.nom+(l.loc.tel?' ('+l.loc.tel+')':'')].filter(Boolean).join(' - '));
+  if(l.loc?.note)line('Accès : '+l.loc.note);
+  line('Amiante : '+(l.vte?.am||'non renseigné')+'   -   Plomb : '+(l.vte?.pb||'non renseigné'));
+  if(F.warn.length)line('Attention : '+F.warn.join(' / '),{b:true});
+  y+=2;line('Choix techniques',{s:12,b:true});line("Salle d'eau : "+(l.tech?.sde||'à décider'));F.choix.forEach(t=>line(t));if(l.tech?.note)line(l.tech.note);
+  if(!who||['Cureur','Maçon','Couvreur'].includes(who)){y+=2;line('Curage',{s:12,b:true});line(l.tech?.souche?'Souche de cheminée à casser'+(l.tech.soucheLoc?' : '+l.tech.soucheLoc:''):'Souche de cheminée : à conserver',{b:!!l.tech?.souche});(l.cur||[]).forEach(x=>line('- '+x.act+' '+x.el.toLowerCase()+(x.loc?' - '+x.loc:'')+(x.note?' ('+x.note+')':'')))}
+  if(l.esc?.prevu&&(!who||['Escalier (fabricant)','Cureur','Menuisier int.'].includes(who))){y+=2;line('Escalier - '+escSt(l.esc),{s:12,b:true});[l.esc.fab&&'Fabricant : '+l.esc.fab+(l.esc.tel?' ('+l.esc.tel+')':''),l.esc.cotes&&'Cotes : '+fdate(l.esc.cotes),l.esc.cmd&&'Commandé : '+fdate(l.esc.cmd),l.esc.liv&&'Livraison : '+fdate(l.esc.liv),l.esc.note].filter(Boolean).forEach(t=>line(t))}
+  y+=2;line('Travaux'+(F.prix?' - '+eur(F.lines.reduce((s,x)=>s+ligneMt(x),0))+' HT':''),{s:12,b:true});
+  INTERV.filter(v=>F.groups[v]).forEach(g=>{y+=1;line(g,{b:true,s:11});F.groups[g].forEach(x=>{const t=(x.c?x.c+'  ':'')+(x.src==='VTE'?'[VTE '+x.type+(x.piece?' - '+x.piece:'')+'] ':x.src==='Provision'?'[Provision '+x.type+(x.piece?' - '+x.piece:'')+'] ':'')+(x.d||'')+'  -  '+x.q+' '+(x.u||'')+(F.prix?'  -  '+eur(ligneMt(x)):'')+(x.com?'  ('+x.com+')':'');line('- '+t,{gap:.8})})});
+  if(l.tech?.planId&&l.tech.planKind!=='pdf'){try{const bl=await (await fetch(blob(l.tech.planId))).blob();const du=await new Promise(ok=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.readAsDataURL(bl)});const im=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=du});doc.addPage();doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('Plan'+(l.tech.planSt==='valide'?' validé':' (non validé)'),X,16);const r=Math.min(W/im.width,255/im.height);doc.addImage(du,/png/i.test(bl.type)?'PNG':'JPEG',X,22,im.width*r,im.height*r)}catch(e){line('Plan : à consulter dans l\'appli')}}
+  else if(l.tech?.planId)line('Plan joint séparément (PDF), à consulter dans l\'appli');
+  await downloads.save({filename:`fiche-travaux-${l.ug||l.num||'logement'}${who?'-'+who.replace(/[^\w]+/g,'-'):''}.pdf`,data:doc.output('blob')});toast('PDF prêt');
+ }catch(e){toast(e&&e.code==='declined'?'Téléchargement annulé':'PDF impossible pour le moment')}
+}
+async function uploadPlan(input){const f=input.files?.[0];if(!f||!assets)return;if(readonly)return toast('Lecture seule');toast('Envoi du plan…');try{const a=await assets.upload(f);upd(l=>{l.tech={...(l.tech||{}),planId:a.id,planKind:'img',planSt:'brouillon',planDate:''}});toast('Plan joint')}catch(e){toast('Plan non envoyé')}}
+async function uploadChkPhoto(input){const f=input.files?.[0],id=input.dataset.ckph;if(!f||!assets)return;toast('Envoi de la photo…');try{const a=await assets.upload(f);upd(l=>{l.chk={...(l.chk||{})};l.chk[id]={...(l.chk[id]||{}),photos:[...((l.chk[id]||{}).photos||[]),a.id]}});toast('Photo ajoutée')}catch(e){toast('Photo non envoyée')}}
+function openPanel(id){S.fiche=null;S.open=id;$('sheet').classList.add('on');renderPanel();$('panel').scrollTop=0}
+function closePanel(){S.open=null;S.fiche=null;$('sheet').classList.remove('on');render()}
+function setPath(o,path,v){const k=path.split('.');let t=o;for(let i=0;i<k.length-1;i++){t[k[i]]={...(t[k[i]]||{})};t=t[k[i]]}t[k.at(-1)]=v}
+function upd(fn,rerender=true){const id=S.open;const l=JSON.parse(JSON.stringify(S.logs[id]));fn(l);l.maj=today();save('logements',id,l);if(rerender)renderPanel()}
+
+/* --- actions --- */
+const DEMO=[['900101','1','2 rue de Lens','Cité Saint-Pierre','T1','T3','GR','Mme Lefebvre','06 11 22 33 44'],['900103','3','4 rue de Lens','Cité Saint-Pierre','T1','T3','GR','M. Dubois',''],['900105','5','6 rue de Lens','Cité Saint-Pierre','T1','T4','TIR','Famille Kaci',''],['900107','7','8 rue de Lens','Cité Saint-Pierre','T1','T3','TIR','M. et Mme Roussel',''],['900109','9','10 rue de Lens','Cité Saint-Pierre','T1','T3','GR','Mme Wallart',''],['900102','2','1 rue des Corons','Cité Saint-Pierre','T2','T4','TIR','Mme Delattre',''],['900104','4','3 rue des Corons','Cité Saint-Pierre','T2','T3','GR','M. Caron','']];
+const DEMOBPU=[{c:'EX-VOUT',d:'Confortement plancher voûtain (exemple)',u:'m²',p:165},{c:'EX-MARC',d:'Remplacement marche escalier (exemple)',u:'U',p:95},{c:'EX-DALL',d:'Dallage béton (exemple)',u:'m²',p:72},{c:'EX-MEXT',d:'Menuiserie extérieure PVC (exemple)',u:'U',p:780},{c:'EX-PE',d:"Porte d'entrée (exemple)",u:'U',p:1450},{c:'EX-VMC',d:'Remplacement VMC (exemple)',u:'U',p:620},{c:'EX-TRAP',d:'Création trappe de visite (exemple)',u:'U',p:180},{c:'EX-CUR',d:'Curage complet du logement (exemple)',u:'m²',p:42},{c:'EX-ELEC',d:'Réfection électrique complète (exemple)',u:'Ens',p:6800},{c:'EX-PLB',d:'Plomberie sanitaires complète (exemple)',u:'Ens',p:5200}];
+let EVG=null;
+function isMapUG(o){if(!o||typeof o!=='object'||Array.isArray(o))return false;const k=Object.keys(o);let n=0,ok=0;for(let i=0;i<k.length&&n<60;i++)if(/^\d{5,7}$/.test(k[i])){n++;const v=o[k[i]];if(v&&typeof v==='object'&&('forf' in v||'bdc' in v||'ph' in v||'a' in v))ok++}return n>=3&&ok>=2}
+function fromParts(parts){const best={};parts.forEach(p=>{const m=/^gammaD(\d+)$/.exec(p.id);if(!m)return;const t=p.updatedAt||0;if(!best[m[1]]||t>=best[m[1]].t)best[m[1]]={t,v:p.deleted?'':(typeof p.v==='string'?p.v:'')}});let s='',i=1;while(best[i]&&best[i].v){s+=best[i].v;i++}if(!s)return null;try{const o=JSON.parse(s);return isMapUG(o)?o:null}catch(e){return null}}
+function searchUG(root,max){const seen=new WeakSet(),parts=[];let found=null,nodes=0;(function walk(o,d){if(found||!o||typeof o!=='object'||d>6||++nodes>max)return;if(seen.has(o))return;seen.add(o);if(o.nodeType||o===window)return;if(isMapUG(o)){found=o;return}if(typeof o.id==='string'&&/^gammaD\d+$/.test(o.id)&&('v' in o||o.deleted))parts.push(o);else if(o.data&&typeof o.data.id==='string'&&/^gammaD\d+$/.test(o.data.id))parts.push(o.data);let ks;try{ks=Object.keys(o)}catch(e){return}for(let i=0;i<ks.length&&!found;i++){let v;try{v=o[ks[i]]}catch(e){continue}if(typeof v==='string'&&v.length>50&&v.length<6e6&&/gammaD|"forf"|"bdc"/.test(v)&&(v[0]==='{'||v[0]==='[')){try{walk(JSON.parse(v),d+1)}catch(e){}}else if(v&&typeof v==='object')walk(v,d+1)}})(root,0);return found||(parts.length?fromParts(parts):null)}
+async function chargeEvolud(){
+ try{const w=window.parent!==window?window.parent:null;if(w){const o={};Object.getOwnPropertyNames(w).forEach(k=>{if(/^(webkit|on)/.test(k))return;try{const v=w[k];if(v&&typeof v==='object'&&!(v instanceof w.Node))o[k]=v}catch(e){}});const g=searchUG(o,400000);if(g)return g}}catch(e){}
+ try{const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k==='evolud_k'||k===LSK)continue;o[k]=localStorage.getItem(k)}const g=searchUG(o,400000);if(g)return g}catch(e){}
+ try{if(!indexedDB.databases)return null;const dbs=await indexedDB.databases();for(const info of dbs){if(!info.name)continue;const g=await new Promise(ok=>{let rq;try{rq=indexedDB.open(info.name)}catch(e){return ok(null)}rq.onerror=()=>ok(null);rq.onupgradeneeded=()=>{try{rq.transaction.abort()}catch(e){}ok(null)};rq.onsuccess=()=>{const db=rq.result,names=[...db.objectStoreNames],res={};let n=names.length;if(!n){db.close();return ok(null)}try{const tx=db.transaction(names,'readonly');names.forEach(sn=>{const g=tx.objectStore(sn).getAll();g.onsuccess=()=>{res[sn]=g.result;if(--n===0){db.close();ok(searchUG(res,600000))}};g.onerror=()=>{if(--n===0){db.close();ok(searchUG(res,600000))}}})}catch(e){db.close();ok(null)}}});if(g)return g}}catch(e){}
+ return null}
+function addLog(r,demo){const id=uid();const l={ug:r[0]||'',num:r[1]||'',adresse:r[2]||'',cite:r[3]||'',tranche:r[4]||'',type:r[5]||'',parcours:/tir/i.test(r[6]||'')?'TIR':'GR',loc:{nom:r[7]||'',tel:r[8]||''},et:{},lots:{},res:[],journal:[],maj:today()};if(demo)l.demo=true;save('logements',id,l);return id}
+async function act(a){
+ if(a==='sync'){SY.err='';sync()}
+ if(a==='cfsave'){SY.conf={u:$('cfu').value.trim(),t:$('cft').value.trim(),n:$('cfn').value.trim()};persistLocal();toast('Test de la connexion…');try{await api({action:'erbm',since:Date.now(),records:[]});SY.err='';toast('Connexion OK');sync()}catch(e){SY.err=String(e.message||e);toast(SY.err)}render()}
+ if(a==='evimp'){location.hash='reglages';setTimeout(()=>act('evscan'),50)}
+ if(a==='evscan'){$('evres').innerHTML='<p class="note">Recherche dans les données d\'Évolud…</p>';const G=await chargeEvolud();if(!G){$('evres').innerHTML='<p class="note warn">Logements Évolud introuvables sur ce téléphone. Ouvrez d\'abord Évolud et faites une synchro, ou utilisez l\'import Excel ci-dessous.</p>';return}
+  EVG=G;const have=new Set(logArr().map(l=>String(l.ug)));const L=Object.keys(G).map(ug=>({ug,...G[ug]}));const cites=[...new Set(L.map(x=>x.cite||x.v||'Sans cité'))].sort();
+  $('evres').innerHTML=`<p>${L.length} logements trouvés dans Évolud, dont ${L.filter(x=>!have.has(String(x.ug))).length} pas encore dans l'ERBM.</p><div class="tools"><select id="evc"><option value="">Toutes les cités</option>${cites.map(c=>`<option>${esc(c)}</option>`).join('')}</select><select id="evp"><option value="GR">en GR · site occupé</option><option value="TIR">en opération tiroir</option></select><button class="b p" data-act="evgo">Importer</button></div>`}
+ if(a==='evgo'){if(!EVG)return;const c=$('evc').value,p=$('evp').value,have=new Set(logArr().map(l=>String(l.ug)));let n=0;Object.keys(EVG).forEach(ug=>{const g=EVG[ug]||{};const cite=g.cite||g.v||'Sans cité';if(c&&cite!==c)return;if(have.has(String(ug)))return;addLog([ug,'',[g.a,g.v].filter(Boolean).join(', '),cite,'',g.cl||'',p==='TIR'?'Tiroir':'GR']);n++});toast(n+' logement(s) importé(s)');act('evscan');render()}
+ if(a==='new'){if(readonly)return toast('Lecture seule');const id=addLog(['','','','','','','GR']);render();openPanel(id)}
+ if(a==='close')closePanel();
+ if(a==='newtir'){if(readonly)return toast('Lecture seule');editTir(uid(),true)}
+ if(a==='demo'){if(readonly)return toast('Lecture seule');const ids=DEMO.map(r=>addLog(r,true));const t1=uid(),t2=uid();save('tiroirs',t1,{num:'21',adresse:'21 rue des Fusillés',type:'T4',demo:true});save('tiroirs',t2,{num:'23',adresse:'23 rue des Fusillés',type:'T3',demo:true});
+  const s=(i,f)=>{const l=JSON.parse(JSON.stringify(S.logs[ids[i]]));f(l);save('logements',ids[i],l)};const d=n=>new Date(Date.now()+n*864e5).toISOString().slice(0,10);
+  s(0,l=>{l.et={0:d(-30),1:d(-20),2:d(-12),3:d(-5),4:d(-4)};l.lots={'Menuiseries ext. (fenêtres)':2,'VMC':2,'Chauffage / chaudière':2};l.res=[{id:uid(),txt:'Réglage fenêtre chambre 2',lot:'Menuiseries ext. (fenêtres)',date:d(-4),etat:'ouverte'}]});
+  s(1,l=>{l.et={0:d(-15),1:d(-3)};l.lots={'Menuiseries ext. (fenêtres)':1}});
+  s(2,l=>{l.tir={id:t1,du:d(-60),au:d(9)};l.et={0:d(-80),1:d(-65),2:d(-60),3:d(-59),4:d(-50)};l.lots={'Curage / démolition':2,'Gros œuvre / maçonnerie':2,'Électricité':1,'Plomberie / sanitaires':1}});
+  s(3,l=>{l.tir={id:t2,du:d(-20),au:d(70)};l.et={0:d(-40),1:d(-25),2:d(-20),3:d(-20)};l.lots={'Curage / démolition':1}});
+  s(5,l=>{l.et={0:d(-10)}});
+  s(2,l=>{l.vte={...l.vte,typo:'C310XZ',var:"C1A'"};l.chk={[slug('GO-Voûtain de cave')]:{on:true,q:'18',loc:'cave sous séjour',c:'EX-VOUT'},[slug('GO-Dallage de cave')]:{on:false},[slug('Mint-Remplacement de l\'escalier')]:{on:true,loc:'escalier principal'},[slug('Plomberie-Appareil sanitaire')]:{choix:'Douche 90x90'},[slug('Plomberie-WC')]:{choix:'WC standard'},[slug('Plomberie-Pompe à chaleur')]:{on:false}};l.tech={sde:'Douche 90x90',note:'Cuisine côté jardin, tableau électrique dans l\'entrée',souche:true,soucheLoc:'toiture côté rue, jusqu\'au plancher R+1'};l.cur=[{id:uid(),act:'Démolir',el:'Cloison',loc:'entre cuisine et séjour'},{id:uid(),act:'Conserver / protéger',el:'Mur / doublage',loc:'mur mitoyen côté n° 7',note:'mur porteur'}];l.esc={prevu:true,fab:'Escaliers du Nord (exemple)',cotes:d(-3)};l.prov=[]});
+  if(!S.bpu.length){S.bpu=DEMOBPU.map(x=>({...x,demo:true}));saveBpu()}
+  const bm=bpuMap(),L=c=>({...bm[c]});
+  s(0,l=>{l.ft=[{...L('EX-MEXT'),q:6},{...L('EX-VMC'),q:1},{...L('EX-PE'),q:1}]});s(1,l=>{l.ft=[{...L('EX-MEXT'),q:5},{...L('EX-TRAP'),q:1}];l.vte={date:d(-15),par:'C. Lemaire',am:"Pas d'amiante",pb:'Pas de plomb',ok:true};l.prov=[{id:uid(),type:'Marches',piece:'Escalier',...L('EX-MARC'),q:3,com:'3 marches cassées en partie basse',photos:[],st:'ok',date:d(-15)},{id:uid(),type:'Dallage',piece:'Cave',...L('EX-DALL'),q:12,com:'Dallage affaissé côté soupirail',photos:[],st:'av',date:d(-15)}]});s(2,l=>{l.vte={date:d(-80),par:'C. Lemaire',am:"Présence d'amiante",pb:'Pas de plomb',ok:true,typo:'C310XZ',var:"C1A'"};l.prov=[]});s(2,l=>{l.ft=[{...L('EX-CUR'),q:68},{...L('EX-ELEC'),q:1},{...L('EX-PLB'),q:1},{...L('EX-MEXT'),q:7}]});
+  toast('Exemple chargé');render()}
+ if(a==='cleardemo'){if(!(await ask('Retirer tous les logements et tiroirs d\'exemple ?')))return;for(const[id,l]of Object.entries(S.logs))if(l.demo)await del('logements',id);for(const[id,t]of Object.entries(S.tirs))if(t.demo)await del('tiroirs',id);if(S.bpu.some(b=>b.demo)){S.bpu=S.bpu.filter(b=>!b.demo);await saveBpu()}toast('Exemples retirés');render()}
+ if(a==='import'){if(readonly)return toast('Lecture seule');const txt=$('imp').value.trim();if(!txt)return toast('Collez d\'abord des lignes');let n=0;txt.split(/\r?\n/).forEach((line,i)=>{const c=line.split(line.includes('\t')?'\t':';').map(s=>s.trim());if(!c.join(''))return;if(i===0&&/adresse|parcours|code/i.test(line))return;addLog(c);n++});$('imp').value='';toast(n+' logement(s) importé(s)');render()}
+ if(a==='csv'||a==='csvres'||a==='csvft'||a==='csvpv'){let rows;if(a==='csv'){rows=[['Code UG','N°','Adresse','Cité','Tranche','Type','Parcours','Locataire','Téléphone','Étape en cours','Avancement %','Montant HT','Réserves ouvertes','Tiroir','Retour prévu']];logArr().forEach(l=>{const t=l.tir?.id&&S.tirs[l.tir.id];rows.push([l.ug,l.num,l.adresse,l.cite,l.tranche,l.type,P[l.parcours]?.nom,l.loc?.nom,l.loc?.tel,etat(l),pct(l),String(Math.round(montant(l)*100)/100).replace('.',','),resOuv(l).length,t?(t.num?'N° '+t.num+' ':'')+(t.adresse||''):'',l.tir?.au||''])})}else if(a==='csvpv'){rows=[['Code UG','Adresse','Cité','Parcours','Date','Provision','Pièce','Code BPU','Désignation','Unité','Quantité','PU HT','Montant HT','Statut','Constat']];logArr().forEach(l=>(l.prov||[]).forEach(x=>rows.push([l.ug,l.adresse,l.cite,P[l.parcours]?.court,x.date,x.type,x.piece,x.c,x.d,x.u,String(x.q).replace('.',','),String(x.p).replace('.',','),String(Math.round(ligneMt(x)*100)/100).replace('.',','),PST[x.st||'av'],x.com])))}else if(a==='csvft'){rows=[['Code UG','Adresse','Cité','Parcours','Code BPU','Désignation','Unité','Quantité','PU HT','Montant HT']];logArr().forEach(l=>(l.ft||[]).forEach(x=>rows.push([l.ug,l.adresse,l.cite,P[l.parcours]?.court,x.c,x.d,x.u,String(x.q).replace('.',','),String(x.p).replace('.',','),String(Math.round(ligneMt(x)*100)/100).replace('.',',')])))}else{rows=[['Code UG','N°','Adresse','Cité','Réserve','Lot','Date','État','Levée le']];logArr().forEach(l=>(l.res||[]).forEach(r=>rows.push([l.ug,l.num,l.adresse,l.cite,r.txt,r.lot,r.date,r.etat,r.lev||''])))}
+  const csv='﻿'+rows.map(r=>r.map(v=>{v=String(v??'');return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
+  const name=({csv:'avancement',csvres:'reserves',csvft:'fiches-travaux',csvpv:'provisions-vte'})[a]+'-erbm-'+today()+'.csv';
+  if(downloads){try{await downloads.save({filename:name,data:csv});return}catch(e){}}
+  const o=$('out');o.style.display='block';o.value=csv;o.select();try{await navigator.clipboard.writeText(csv);toast('Copié : collez dans Excel')}catch(e){toast('Sélectionnez le texte et copiez-le')}}
+ if(a==='addres'){const t=$('rtxt').value.trim();if(!t)return toast('Décrivez la réserve');const lot=$('rlot').value;let photo='';const f=$('rph')?.files?.[0];if(f&&assets){try{toast('Envoi de la photo…');photo=(await assets.upload(f)).id}catch(e){toast('Photo non envoyée')}}upd(l=>{l.res=[...(l.res||[]),{id:uid(),txt:t,lot,date:today(),etat:'ouverte',photo}]})}
+ if(a==='bpuimport'){if(readonly)return toast('Lecture seule');const txt=$('bpuimp').value.trim();if(!txt)return toast('Collez d\'abord les lignes du BPU');const m=bpuMap();let n=0;txt.split(/\r?\n/).forEach(line=>{const c=line.split(line.includes('\t')?'\t':';').map(x=>x.trim());if(!c[0])return;const p=parseFloat(String(c[3]||'').replace(/\s|€/g,'').replace(',','.'));if(isNaN(p))return;m[c[0]]={c:c[0],d:c[1]||'',u:c[2]||'',p,lot:INTERV.find(v=>v.toLowerCase()===(c[4]||'').toLowerCase())||(c[4]?guessLot(c[4]):'')};n++});if(!n)return toast('Aucune ligne lisible : vérifiez les colonnes');S.bpu=Object.values(m).sort((a,b)=>a.c.localeCompare(b.c,'fr',{numeric:true}));saveBpu();toast(n+' code(s) BPU importé(s)');render()}
+ if(a==='bpuview'){$('bpuview').innerHTML=`<div class="scroll"><table class="ft"><thead><tr><th>Code</th><th>Désignation</th><th>U</th><th>PU HT</th></tr></thead><tbody>${S.bpu.map(b=>`<tr><td><b>${esc(b.c)}</b></td><td>${esc(b.d)}</td><td>${esc(b.u)}</td><td class="num">${eur(+b.p||0)}</td></tr>`).join('')}</tbody></table></div>`}
+ if(a==='bpuclear'){if(!(await ask('Vider tout le BPU ? Les fiches travaux gardent leurs lignes et leurs prix.')))return;S.bpu=[];await saveBpu();render()}
+ if(a==='addprov'){if(readonly)return toast('Lecture seule');const type=$('pvt').value,v=$('pvc').value.trim(),q=parseFloat(String($('pvq').value).replace(',','.'))||0;let b=null;if(v){const m=bpuMap();b=m[v]||S.bpu.find(x=>x.c.toLowerCase()===v.toLowerCase())||S.bpu.find(x=>(x.c+' '+x.d).toLowerCase().includes(v.toLowerCase()));if(!b&&S.bpu.length)return toast('Code BPU introuvable');if(!b)b={c:v,d:'',u:'',p:0}}
+  const photos=[];const fs=$('pvph')?.files;if(fs&&fs.length&&assets){toast('Envoi des photos…');for(const f of fs){try{photos.push((await assets.upload(f)).id)}catch(e){toast('Une photo n\'est pas partie')}}}
+  upd(l=>{l.prov=[...(l.prov||[]),{id:uid(),type,piece:$('pvp').value.trim(),c:b?.c||'',d:b?.d||'',u:b?.u||'',p:+(b?.p)||0,q,lot:b?.lot||guessLot(type+' '+(b?.d||'')),com:$('pvm').value.trim(),photos,st:'av',date:today()}]});toast('Provision ajoutée')}
+ if(a==='planok'){upd(l=>{const v=l.tech?.planSt!=='valide';l.tech={...(l.tech||{}),planSt:v?'valide':'brouillon',planDate:v?today():''}})}
+ if(a==='addcur'){if(readonly)return toast('Lecture seule');upd(l=>{l.cur=[...(l.cur||[]),{id:uid(),act:$('cua').value,el:$('cue').value,loc:$('cul').value.trim(),note:$('cun').value.trim()}]})}
+ if(a==='fview'){S.fiche={who:$('fwho').value};renderPanel();$('panel').scrollTop=0}
+ if(a==='fback'){S.fiche=null;renderPanel()}
+ if(a==='fpdf'){fichePdf(S.logs[S.open],$('fwho').value)}
+ if(a==='vteok'){if(readonly)return toast('Lecture seule');upd(l=>{const ok=!l.vte?.ok;l.vte={...(l.vte||{}),ok};l.et={...(l.et||{})};if(ok){if(!l.et[0])l.et[0]=l.vte.date||today();if(!l.vte.date)l.vte.date=l.et[0]}else delete l.et[0]});toast('VTE mise à jour')}
+ if(a==='addft'){const v=$('ftc').value.trim(),q=parseFloat(String($('ftq').value).replace(',','.'))||0;if(!v)return toast('Choisissez un code BPU');const m=bpuMap();let b=m[v]||S.bpu.find(x=>x.c.toLowerCase()===v.toLowerCase())||S.bpu.find(x=>(x.c+' '+x.d).toLowerCase().includes(v.toLowerCase()));if(!b){if(S.bpu.length)return toast('Code introuvable dans le BPU');b={c:v,d:'',u:'',p:0}}upd(l=>{l.ft=[...(l.ft||[]),{c:b.c,d:b.d,u:b.u,p:+b.p||0,q,lot:b.lot||guessLot(b.c+' '+b.d)}]})}
+ if(a==='addj'){const t=$('jtxt').value.trim();if(!t)return;upd(l=>{l.journal=[...(l.journal||[]),{d:today(),t}]})}
+ if(a==='dellog'){if(!(await ask('Supprimer définitivement ce logement et tout son suivi ?')))return;const id=S.open;S.open=null;$('sheet').classList.remove('on');await del('logements',id);render()}
+}
+function editTir(id,isNew){
+ const t=S.tirs[id]||{};S.open=null;$('sheet').classList.add('on');
+ $('panel').innerHTML=`<div class="top"><h2>${isNew?'Nouveau logement tiroir':'Logement tiroir'}</h2><button class="b" data-act="close">Fermer</button></div><div class="sec"><div class="grid">
+ <label>N°<input id="tn" value="${esc(t.num||'')}"></label><label>Adresse<input id="ta" value="${esc(t.adresse||'')}"></label><label>Type<input id="tt" value="${esc(t.type||'')}" placeholder="T3, T4…"></label>
+ <label>Disponibilité<select id="td"><option value="">Disponible</option><option value="non" ${t.dispo==='non'?'selected':''}>Indisponible (remise en état…)</option></select></label>
+ <label style="grid-column:1/-1">Remarque<input id="to" value="${esc(t.note||'')}"></label></div>
+ <div class="tools"><button class="b p" id="tsave">Enregistrer</button>${isNew?'':'<button class="b d" id="tdel">Supprimer</button>'}</div></div>`;
+ $('tsave').onclick=()=>{save('tiroirs',id,{...t,num:$('tn').value.trim(),adresse:$('ta').value.trim(),type:$('tt').value.trim(),dispo:$('td').value,note:$('to').value.trim()});$('sheet').classList.remove('on');render();toast('Tiroir enregistré')};
+ if(!isNew)$('tdel').onclick=async()=>{if(occupant(id))return toast('Ce tiroir est occupé');if(await ask('Supprimer ce logement tiroir ?')){await del('tiroirs',id);$('sheet').classList.remove('on');render()}};
+}
+
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-act],[data-open],[data-go],[data-step],[data-lot],[data-rlev],[data-rdel],[data-edittir],[data-ftdel],[data-pvdel],[data-curdel],[data-ckon]');
+ if(e.target===$('sheet')){closePanel();return}
+ if(!t)return;
+ if(t.dataset.act)return act(t.dataset.act);
+ if(t.dataset.open)return openPanel(t.dataset.open);
+ if(t.dataset.go){location.hash=t.dataset.go;return}
+ if(t.dataset.edittir)return editTir(t.dataset.edittir,false);
+ if(readonly&&S.open)return toast('Lecture seule');
+ if(t.dataset.step){const i=+t.dataset.step;upd(l=>{l.et={...(l.et||{})};if(l.et[i])delete l.et[i];else l.et[i]=today()})}
+ if(t.dataset.lot){const n=t.dataset.lot;upd(l=>{l.lots={...(l.lots||{})};l.lots[n]=(((l.lots[n]||0)+1)%4)})}
+ if(t.dataset.ckon){if(readonly)return toast('Lecture seule');const [id,v]=t.dataset.ckon.split('|');const on=v==='1';upd(l=>{l.chk={...(l.chk||{})};const cur=l.chk[id]||{};const it=modele().find(x=>x.id===id);l.chk[id]={...cur,on:cur.on===on?undefined:on,c:cur.c??it?.c??''};if(/remplacement-de-l-escalier/.test(id)&&on&&cur.on!==on)l.esc={...(l.esc||{}),prevu:true}})}
+ if(t.dataset.curdel!==undefined){const i=+t.dataset.curdel;upd(l=>{l.cur=(l.cur||[]).filter((_,k)=>k!==i)})}
+ if(t.dataset.pvdel!==undefined){const i=+t.dataset.pvdel;ask('Supprimer cette provision ?').then(ok=>ok&&upd(l=>{l.prov=(l.prov||[]).filter((_,k)=>k!==i)}))}
+ if(t.dataset.ftdel!==undefined){const i=+t.dataset.ftdel;upd(l=>{l.ft=(l.ft||[]).filter((_,k)=>k!==i)})}
+ if(t.dataset.rlev){const r=t.dataset.rlev;upd(l=>{l.res=(l.res||[]).map(x=>x.id===r?{...x,etat:x.etat==='levée'?'ouverte':'levée',lev:x.etat==='levée'?'':today()}:x)})}
+ if(t.dataset.rdel){const r=t.dataset.rdel;ask('Supprimer cette réserve ?').then(ok=>ok&&upd(l=>{l.res=(l.res||[]).filter(x=>x.id!==r)}))}
+});
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.dataset.f&&S.open){if(readonly)return toast('Lecture seule');const v=t.type==='checkbox'?t.checked:t.value;upd(l=>setPath(l,t.dataset.f,v),t.dataset.f==='parcours'||t.dataset.f==='tir.id'||t.tagName==='SELECT'||t.type==='checkbox'||t.type==='date'&&t.dataset.f.startsWith('esc.'))}
+ if(t.dataset.ftlot!==undefined&&S.open){const i=+t.dataset.ftlot,v=t.value;upd(l=>{l.ft=(l.ft||[]).map((x,k)=>k===i?{...x,lot:v}:x)})}
+ if(t.dataset.pvlot!==undefined&&S.open){const i=+t.dataset.pvlot,v=t.value;upd(l=>{l.prov=(l.prov||[]).map((x,k)=>k===i?{...x,lot:v}:x)})}
+ if(t.dataset.ck&&S.open){if(readonly)return toast('Lecture seule');const [id,k]=t.dataset.ck.split('|');const v=t.value;upd(l=>{l.chk={...(l.chk||{})};l.chk[id]={...(l.chk[id]||{}),[k]:v};if(k==='choix'&&/sanitaire/i.test(id))l.tech={...(l.tech||{}),sde:v}},t.tagName==='SELECT')}
+ if(t.dataset.ckph&&S.open)uploadChkPhoto(t)
+ if(t.id==='planfile'&&S.open)uploadPlan(t)
+ if(t.dataset.sd&&S.open){const i=t.dataset.sd,v=t.value;upd(l=>{l.et={...(l.et||{})};if(v)l.et[i]=v;else delete l.et[i]})}
+ if(t.id==='pvt'){const c=t.selectedOptions[0]?.dataset.c;if(c)$('pvc').value=c}
+ if(t.dataset.pvq!==undefined&&S.open){if(readonly)return toast('Lecture seule');const i=+t.dataset.pvq,q=parseFloat(String(t.value).replace(',','.'))||0;upd(l=>{l.prov=(l.prov||[]).map((x,k)=>k===i?{...x,q}:x)})}
+ if(t.dataset.pvst!==undefined&&S.open){if(readonly)return toast('Lecture seule');const i=+t.dataset.pvst,st=t.value;upd(l=>{l.prov=(l.prov||[]).map((x,k)=>k===i?{...x,st}:x)})}
+ if(t.dataset.ftq!==undefined&&S.open){if(readonly)return toast('Lecture seule');const i=+t.dataset.ftq,q=parseFloat(String(t.value).replace(',','.'))||0;upd(l=>{l.ft=(l.ft||[]).map((x,k)=>k===i?{...x,q}:x)})}
+ if(t.dataset.cfg){S.cfg[t.dataset.cfg]=t.value.trim();saveCfg();render()}
+ if(t.id==='fp'){S.fp=t.value;render()}if(t.id==='fc'){S.fc=t.value;render()}if(t.id==='fe'){S.fe=t.value;render()}
+});
+document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;const pos=e.target.selectionStart;render();const q=$('q');q.focus();q.setSelectionRange(pos,pos)}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('sheet').classList.contains('on'))closePanel();if(e.key==='Enter'&&e.target.id==='jtxt')act('addj');if(e.key==='Enter'&&e.target.id==='rtxt')act('addres')});
+function route(){const h=location.hash.slice(1);S.view=['tableau','logements','tiroirs','reserves','reglages'].includes(h)?h:'tableau';render()}
+addEventListener('hashchange',route);
+
+/* --- démarrage --- */
+loadLocal();SY.det=detect();route();setSt();
+addEventListener('online',()=>sched(500));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sched(300)});
+setInterval(()=>{if(!document.hidden)sync()},60000);
+sync();
+}
+</script>
+</body>
+</html>

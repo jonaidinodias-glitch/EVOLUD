@@ -1,7 +1,8 @@
 /* Évolud – petit bouton rond « Outils » (Logistique + Index INSEE)
    Conçu et développé par Saïd OUFQIR
    Script non chiffré, ajouté à la page par sw.js (comme guide.js) : ne modifie aucune fonction existante.
-   v5.31.9 : boutons intégrés à l'Accueil (à côté de « Brief »), plus aucun bouton flottant. */
+   v5.31.9 : boutons intégrés à l'Accueil (à côté de « Brief »), plus aucun bouton flottant.
+   v5.32.2 : + bouton « ERBM » (VTE ERBM, provisions, fiches travaux, tiroirs) → erbm.html */
 (function () {
   if (window.__evoludLogi) return; window.__evoludLogi = true;
   var F = 'font:600 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;';
@@ -20,7 +21,7 @@
     '#evLogiFrame{flex:1;border:0;width:100%;background:#f3f5f8}';
   document.head.appendChild(css);
 
-  var PAGES = { logi: ['🚚 Logistique & Kitting', 'logistique.html?embed=1'], idx: ['📈 Index INSEE & révision', 'indices.html?embed=1'] };
+  var PAGES = { logi: ['🚚 Logistique & Kitting', 'logistique.html?embed=1'], idx: ['📈 Index INSEE & révision', 'indices.html?embed=1'], erbm: ['🏚️ ERBM · VTE & fiches travaux', 'erbm.html?embed=1'] };
   var wrap = null, cur = null;
   function open(k) {
     k = PAGES[k] ? k : 'logi'; menu.classList.remove('on');
@@ -74,7 +75,7 @@
     if (bal && brief && !bal.__evHid) { bal.__evHid = 1; bal.setAttribute('data-ev-hide', '1');
       var r = document.getElementById('evHideCss') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'evHideCss' }));
       r.textContent = '[data-ev-hide]{display:none!important}' + (bal.id ? '#' + CSS.escape(bal.id) + '{display:none!important}' : ''); }
-    if (!brief || document.getElementById('evChipLogi')) return;
+    if (!brief || document.getElementById('evChipErbm')) return;
     function mk(id, txt, fn) {
       var c = document.createElement('button'); c.type = 'button'; c.id = id; c.textContent = txt;
       c.className = brief.className || ''; var st = brief.getAttribute('style'); if (st) c.setAttribute('style', st);
@@ -83,7 +84,8 @@
       return c;
     }
     var after = brief;
-    [['evChipLogi', '🚚 Logistique', function () { open('logi'); }],
+    [['evChipErbm', '🏚️ ERBM', function () { open('erbm'); }],
+     ['evChipLogi', '🚚 Logistique', function () { open('logi'); }],
      ['evChipIdx', '📈 Index INSEE', function () { open('idx'); }],
      ['evChipBal', '⚖️ Scénarios & MEXT', function () { var x = balance(); if (x) (x.__evLeaf || x).click(); }]].forEach(function (d) {
       if (d[0] === 'evChipBal' && !bal) return;
@@ -94,4 +96,5 @@
   if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
   window.EvoludOuvrirLogistique = function () { open('logi'); };
   window.EvoludOuvrirIndex = function () { open('idx'); };
+  window.EvoludOuvrirErbm = function () { open('erbm'); };
 })();
