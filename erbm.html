@@ -233,24 +233,26 @@ GO ; Voûtain de cave ; q,loc ;
 GO ; Dallage de cave ; q,loc ;
 GO ; Réparation marches de cave ; q,loc ;
 GO ; Passivation de fer en cave ; q,loc ;
-Mext ; Mise en place d'un velux ; q,loc ;
-Placo ; Cloison RDC (chambre RDC) pour séparation salon / séjour ; q,loc ;
-Placo ; Création de cloison spécifique ; q,loc ;
-Placo ; Dimensionnement spécifique de portes de distribution ; q,loc,dim ;
+Mext ; Mise en place d'un velux ; q,loc,choix:55x70=1602505005|55x98=1602505010|78x98=1602505015|78x118=1602505020|78x140=1602505025|114x118=1602505030|134x98=1602505035 ;
+Placo ; Cloison RDC (chambre RDC) pour séparation salon / séjour ; q,loc ; 1300505005
+Placo ; Création de cloison spécifique ; q,loc ; 1300505005
+Placo ; Dimensionnement spécifique de portes de distribution ; q,loc,dim,choix:Passage 60 cm=1301005005|Passage 70 cm=1301005010|Passage 80 cm=1301005015|Passage 90 cm=1301005020 ;
 Mint ; Remplacement de l'escalier ; loc ;
 Mint ; Remplacement / renfort de marches d'escalier ; q,loc ;
 Électricité ; Mise en place d'une boîte de dérivation ; q,loc ;
-Électricité ; Alimentation spécifique pour la cuisine ; photo ;
+Électricité ; Alimentation spécifique pour la cuisine ; q,photo ; 1501035010
 Électricité ; Photo cuisine à l'identique ; photo ;
-Plomberie ; Appareil sanitaire ; choix:Douche 90x90|Baignoire|Douche extra-plate (PMR) ;
-Plomberie ; WC ; choix:WC standard|WC suspendu ;
+Plomberie ; Appareil sanitaire ; choix:Douche 90x90=1400540015|Baignoire=1400535005|Douche extra-plate (PMR)=1400540025 ;
+Plomberie ; WC ; choix:WC standard=1400520005|WC suspendu ;
 Plomberie ; Pompe à chaleur ; ;
 Carrelage ; Carrelage spécifique ; q,loc ;
-Sol souple ; Sols souples SdB étage ; q ;`;
+Sol souple ; Sols souples SdB étage ; q ; 1702505005`;
 const LOTMAP={'curage':'Cureur','go':'Maçon','gros oeuvre':'Maçon','gros œuvre':'Maçon','mext':'Menuisier ext.','placo':'Plaquiste','mint':'Menuisier int.','électricité':'Électricien','electricite':'Électricien','plomberie':'Plombier / chauffagiste','carrelage':'Carreleur / sols','sol souple':'Carreleur / sols','peinture':'Peintre','couverture':'Couvreur','façade':'Façadier'};
 const slug=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
-const modele=()=>(S.cfg.modele||MODDEF).split(/\r?\n/).map(x=>x.split(';').map(y=>y.trim())).filter(x=>x[0]&&x[1]).map(([lot,lib,f,c])=>{const fl=(f||'').split(',').map(z=>z.trim()).filter(Boolean);const ch=fl.find(z=>z.startsWith('choix:'));return {id:slug(lot+'-'+lib),lot,lib,q:fl.includes('q'),loc:fl.includes('loc'),dim:fl.includes('dim'),photo:fl.includes('photo'),choix:ch?ch.slice(6).split('|').map(z=>z.trim()):null,c:c||''}});
-const chkLines=l=>{const m=bpuMap();return modele().filter(it=>{const v=(l.chk||{})[it.id];return v&&v.on===true&&!it.choix}).map(it=>{const v=l.chk[it.id];const b=v.c?m[v.c]:null;return {src:'VTE',type:it.lib,piece:v.loc||'',c:v.c||'',d:b?.d||'',u:b?.u||'',p:v.c?(+(b?.p)||+v.p||0):0,q:it.q?(+v.q||0):1,com:[v.dim&&'Dim. '+v.dim].filter(Boolean).join(' '),lot:v.lot||LOTMAP[it.lot.toLowerCase()]||guessLot(it.lot+' '+it.lib),photos:v.photos||[]}})};
+const modele=()=>(S.cfg.modele||MODDEF).split(/\r?\n/).map(x=>x.split(';').map(y=>y.trim())).filter(x=>x[0]&&x[1]).map(([lot,lib,f,c])=>{const fl=(f||'').split(',').map(z=>z.trim()).filter(Boolean);const ch=fl.find(z=>z.startsWith('choix:'));return {id:slug(lot+'-'+lib),lot,lib,q:fl.includes('q'),loc:fl.includes('loc'),dim:fl.includes('dim'),photo:fl.includes('photo'),choix:ch?ch.slice(6).split('|').map(z=>z.split('=')[0].trim()):null,chc:ch?Object.fromEntries(ch.slice(6).split('|').map(z=>z.split('=')).filter(z=>z[1]).map(z=>[z[0].trim(),z[1].trim()])):{},c:c||''}});
+let DEFM=null;const defIt=id=>{if(!DEFM){DEFM={};const k=S.cfg.modele;S.cfg.modele='';modele().forEach(it=>DEFM[it.id]=it);if(k===undefined)delete S.cfg.modele;else S.cfg.modele=k}return DEFM[id]||{}};
+const chkCode=(it,v)=>{v=v||{};if(v.c)return v.c;if(it.choix){if(!v.choix)return '';return it.chc[v.choix]||defIt(it.id).chc?.[v.choix]||''}return it.c||defIt(it.id).c||''};
+const chkLines=l=>{const m=bpuMap();return modele().filter(it=>{const v=(l.chk||{})[it.id];return v&&(it.choix?!!v.choix:v.on===true)}).map(it=>{const v=l.chk[it.id],cd=chkCode(it,v);const b=cd?m[cd]:null;const qq=(v.q===undefined||v.q===null||v.q==='')?((b?.u||'').toUpperCase()==='UN'||!it.q?1:0):(+v.q||0);return {src:'VTE',type:it.lib+(v.choix?' · '+v.choix:''),piece:v.loc||'',c:cd,d:b?.d||'',u:b?.u||'',p:cd?(+(b?.p)||+v.p||0):0,q:it.q?qq:1,com:[v.dim&&'Dim. '+v.dim].filter(Boolean).join(' '),lot:v.lot||LOTMAP[it.lot.toLowerCase()]||guessLot(it.lot+' '+it.lib),photos:v.photos||[]}})};
 const provMt=l=>(l.prov||[]).filter(x=>x.st==='ok').reduce((s,x)=>s+ligneMt(x),0)+(l.vte?.ok?chkLines(l).reduce((s,x)=>s+ligneMt(x),0):0);
 const provAv=l=>(l.prov||[]).filter(x=>x.st!=='ok'&&x.st!=='ko').reduce((s,x)=>s+ligneMt(x),0)+(l.vte?.ok?0:chkLines(l).reduce((s,x)=>s+ligneMt(x),0));
 const eur=n=>(Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
@@ -430,7 +432,7 @@ function renderPanel(){
    <label>Diag plomb<select data-f="vte.pb"><option value="">—</option>${['Pas de plomb','Présence de plomb','En attente du diag'].map(o=>`<option ${l.vte?.pb===o?'selected':''}>${o}</option>`).join('')}</select></label>
   </div>
   ${(()=>{const M=modele(),g={};M.forEach(it=>(g[it.lot]??=[]).push(it));return Object.entries(g).map(([lot,its])=>`<h3 class="cklot">${esc(lot)}</h3>${its.map(it=>{const v=(l.chk||{})[it.id]||{};const on=v.on===true,off=v.on===false;return `<div class="ck ${on?'on':''}"><div class="ckh"><span>${esc(it.lib)}</span>${it.choix?`<select data-ck="${it.id}|choix" style="width:auto;min-height:38px;padding:4px 8px"><option value="">—</option>${it.choix.map(o=>`<option ${v.choix===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`:`<span class="yn"><button class="${on?'sel':''}" data-ckon="${it.id}|1">Oui</button><button class="${off?'sel':''}" data-ckon="${it.id}|0">Non</button></span>`}</div>
-   ${on||(it.choix&&it.photo)?`<div class="ckb">${it.q?`<label>Quantité<input type="number" step="any" min="0" data-ck="${it.id}|q" value="${esc(v.q||'')}"></label>`:''}${it.loc?`<label>Localisation<input data-ck="${it.id}|loc" value="${esc(v.loc||'')}"></label>`:''}${it.dim?`<label>Dimensions<input data-ck="${it.id}|dim" value="${esc(v.dim||'')}" placeholder="Ex. 73 x 204"></label>`:''}<label>Code BPU<input data-ck="${it.id}|c" list="bpulist" value="${esc(v.c??it.c)}" autocomplete="off"></label>${assets?`<label>Photo<input type="file" accept="image/*" data-ckph="${it.id}"></label>`:''}</div>${(v.photos||[]).map(ph=>`<img src="${esc(blob(ph))}" alt="" class="ckimg">`).join('')}`:''}</div>`}).join('')}`).join('')})()}
+   ${on||(it.choix&&(it.photo||v.choix))?`<div class="ckb">${it.q?`<label>Quantité<input type="number" step="any" min="0" data-ck="${it.id}|q" value="${esc(v.q||'')}"></label>`:''}${it.loc?`<label>Localisation<input data-ck="${it.id}|loc" value="${esc(v.loc||'')}"></label>`:''}${it.dim?`<label>Dimensions<input data-ck="${it.id}|dim" value="${esc(v.dim||'')}" placeholder="Ex. 73 x 204"></label>`:''}<label>Code BPU<input data-ck="${it.id}|c" list="bpulist" value="${esc(v.c||'')}" placeholder="${esc(chkCode(it,{choix:v.choix})||'—')}" autocomplete="off"></label>${assets?`<label>Photo<input type="file" accept="image/*" data-ckph="${it.id}"></label>`:''}</div>${(v.photos||[]).map(ph=>`<img src="${esc(blob(ph))}" alt="" class="ckimg">`).join('')}`:''}</div>`}).join('')}`).join('')})()}
   <p style="margin:14px 0 6px;font-size:14px;color:var(--mute)">Autres provisions relevées sur place, hors fiche. Validées : ${eur(provMt(l))} · à valider : ${eur(provAv(l))}</p>
   ${(l.prov||[]).map((x,i)=>`<div class="res pv ${x.st==='ko'?'lev':''}"><span><b>${esc(x.type)}</b>${x.piece?' · '+esc(x.piece):''}<br><span style="font-size:13px;color:var(--mute)">${x.c?esc(x.c)+' · ':''}${esc(x.d||'')}${x.u?' · '+esc(x.u):''}${x.p?' · '+eur(+x.p):''}</span>${x.com?`<br><span style="font-size:14px">${esc(x.com)}</span>`:''}</span>
    <span class="pvc"><input type="number" step="any" min="0" data-pvq="${i}" value="${esc(x.q)}" aria-label="Quantité" style="width:80px;min-height:38px;padding:6px"><b class="num" style="white-space:nowrap">${eur(ligneMt(x))}</b>${lotSel('data-pvlot',i,lotOf(x))}<select data-pvst="${i}" style="width:auto;min-height:38px;padding:4px 8px" aria-label="Statut">${Object.entries(PST).map(([k,v])=>`<option value="${k}" ${(x.st||'av')===k?'selected':''}>${v}</option>`).join('')}</select><button class="b d" data-pvdel="${i}" aria-label="Supprimer" style="min-height:38px">✕</button></span>
