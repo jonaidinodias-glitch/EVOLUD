@@ -45,6 +45,7 @@ main{padding:20px max(4vw,16px) 100px;max-width:1240px;margin:0 auto}
 .bars .track{height:12px;background:var(--bg2);border-radius:6px;overflow:hidden}
 .bars .fill{height:100%;background:var(--brick);border-radius:6px}
 .bars .n{text-align:right;font-variant-numeric:tabular-nums}
+.bars.fin .row{grid-template-columns:minmax(0,13em) minmax(0,1fr) 8.5em}
 .list{display:flex;flex-direction:column;gap:8px}
 .item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
 .item:hover{border-color:var(--brick)}
@@ -111,6 +112,7 @@ label>input,label>select,label>textarea{margin-top:4px}
 <a href="#logements" data-v="logements">Logements</a>
 <a href="#tiroirs" data-v="tiroirs">Tiroirs</a>
 <a href="#reserves" data-v="reserves">Réserves</a>
+<a href="#finances" data-v="finances">Finances</a>
 <a href="#reglages" data-v="reglages">Réglages</a>
 </nav>
 <main id="main"><p class="empty">Chargement des données du chantier…</p></main>
@@ -274,8 +276,37 @@ function render(){
  $('titre').textContent=S.cfg.nom||'ERBM';
  $('soustitre').textContent=[S.cfg.bailleur&&'Bailleur : '+S.cfg.bailleur,S.cfg.entreprise].filter(Boolean).join(' · ')||'Réhabilitation de cités minières';
  const m=$('main');const cc=conf();const banner=(!cc.u||!cc.t)?'<div class="note warn">Connexion au serveur Évolud non réglée : les données restent sur ce téléphone. Allez dans Réglages → Connexion.</div>':SY.err?'<div class="note warn">Synchro : '+esc(SY.err)+'</div>':'';
- m.innerHTML=banner+({tableau:vTableau,logements:vLogements,tiroirs:vTiroirs,reserves:vReserves,reglages:vReglages}[S.view]||vTableau)();
+ m.innerHTML=banner+({tableau:vTableau,logements:vLogements,tiroirs:vTiroirs,reserves:vReserves,finances:vFinances,reglages:vReglages}[S.view]||vTableau)();
  if(S.open)renderPanel();
+}
+
+/* --- vue Finances --- */
+const finLines=l=>[...(l.ft||[]),...(l.vte?.ok?chkLines(l):[]),...(l.prov||[]).filter(x=>x.st==='ok')];
+function finStats(arr){const o={n:arr.length,ch:0,eng:0,av:0,rec:0,vte:0};arr.forEach(l=>{const m=montant(l);if(m>0)o.ch++;o.eng+=m;o.av+=provAv(l);if(recu(l))o.rec+=m;if(l.vte?.ok||(l.et&&l.et[0]))o.vte++});o.moy=o.ch?o.eng/o.ch:0;return o}
+function vFinances(){
+ const L=logArr();if(!L.length)return '<p class="empty">Aucun logement.</p>';
+ const T=finStats(L),bud=parseFloat(String(S.cfg.budget||'').replace(/\s|€/g,'').replace(',','.'))||0;
+ const proj=T.moy*T.n,pc=v=>bud?Math.round(v/bud*1000)/10+' %':'—';
+ const grp=(key)=>{const g={};L.forEach(l=>{const k=key(l)||'—';(g[k]=g[k]||[]).push(l)});return Object.entries(g).sort((a,b)=>a[0].localeCompare(b[0],'fr',{numeric:true}))};
+ const table=(titre,rows)=>`<h3 style="margin:22px 0 8px">${titre}</h3><div class="scroll"><table class="ft"><thead><tr><th></th><th>Logts</th><th>Chiffrés</th><th class="num">Engagé HT</th><th class="num">Provisions à valider</th><th class="num">Réceptionné HT</th><th class="num">Moyenne / logt chiffré</th></tr></thead><tbody>${rows.map(([k,arr])=>{const o=finStats(arr);return `<tr><td><b>${esc(k)}</b></td><td>${o.n}</td><td>${o.ch}</td><td class="num">${eur(o.eng)}</td><td class="num">${eur(o.av)}</td><td class="num">${eur(o.rec)}</td><td class="num">${eur(o.moy)}</td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${T.n}</b></td><td><b>${T.ch}</b></td><td class="num"><b>${eur(T.eng)}</b></td><td class="num"><b>${eur(T.av)}</b></td><td class="num"><b>${eur(T.rec)}</b></td><td class="num"><b>${eur(T.moy)}</b></td></tr></tbody></table></div>`;
+ const lots={};L.forEach(l=>finLines(l).forEach(x=>{const k=lotOf(x);lots[k]=(lots[k]||0)+ligneMt(x)}));
+ const lotE=Object.entries(lots).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]),lmax=lotE.length?lotE[0][1]:1;
+ const top=L.filter(l=>montant(l)>0).sort((a,b)=>montant(b)-montant(a)).slice(0,10);
+ return `<div class="tools"><label style="display:flex;gap:8px;align-items:center;font-size:14px">Budget du marché HT<input data-cfg="budget" value="${esc(S.cfg.budget||'')}" placeholder="ex. 2 500 000" inputmode="decimal" style="width:160px"></label><button class="b" data-act="csvfin">Export finances (CSV)</button></div>
+ <div class="kpis">
+ <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(T.eng)}</b><span>engagé HT (fiches + provisions validées)${bud?' · '+pc(T.eng)+' du budget':''}</span></div>
+ <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(T.av)}</b><span>provisions à valider</span></div>
+ <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(T.rec)}</b><span>réceptionné HT (VTS faite)</span></div>
+ <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(T.eng-T.rec)}</b><span>reste à réaliser sur l'engagé</span></div>
+ <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(T.moy)}</b><span>moyenne par logement chiffré (${T.ch}/${T.n})</span></div>
+ <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${T.ch?eur(proj):'—'}</b><span>projection ${T.n} logements à cette moyenne${bud&&T.ch?' · '+pc(proj)+' du budget':''}</span></div>
+ </div>
+ ${T.ch?'':'<p class="note">Aucun montant pour l\'instant : les montants apparaissent dès qu\'une fiche travaux ou une provision validée porte un code BPU.</p>'}
+ ${table('Par parcours',grp(l=>P[l.parcours]?.nom))}
+ ${table('Par tranche / commande',grp(l=>l.tranche))}
+ ${table('Par étape',grp(l=>etat(l)))}
+ <h3 style="margin:22px 0 8px">Par corps d'état</h3>${lotE.length?`<div class="bars fin">${lotE.map(([k,v])=>`<div class="row"><span>${esc(k)}</span><div class="track"><div class="fill" style="width:${v/lmax*100}%"></div></div><span class="n">${eur(v)}</span></div>`).join('')}</div>`:'<p class="note">Pas encore de lignes chiffrées.</p>'}
+ <h3 style="margin:22px 0 8px">Les 10 logements les plus chers</h3>${top.length?`<div class="list">${top.map(l=>`<button class="item" data-open="${l.id}"><span class="badge">${P[l.parcours]?.court||''}</span><span><span class="t">${esc(lname(l))}</span><br><span class="s">${esc(etat(l))}${provAv(l)?' · '+eur(provAv(l))+' à valider':''}</span></span><span><b>${eur(montant(l))}</b></span></button>`).join('')}</div>`:'<p class="note">Rien de chiffré.</p>'}`;
 }
 function vTableau(){
  const L=logArr();
@@ -544,6 +575,7 @@ async function act(a){
   toast('Exemple chargé');render()}
  if(a==='cleardemo'){if(!(await ask('Retirer tous les logements et tiroirs d\'exemple ?')))return;for(const[id,l]of Object.entries(S.logs))if(l.demo)await del('logements',id);for(const[id,t]of Object.entries(S.tirs))if(t.demo)await del('tiroirs',id);if(S.bpu.some(b=>b.demo)){S.bpu=S.bpu.filter(b=>!b.demo);await saveBpu()}toast('Exemples retirés');render()}
  if(a==='import'){if(readonly)return toast('Lecture seule');const txt=$('imp').value.trim();if(!txt)return toast('Collez d\'abord des lignes');let n=0,m=0,seul=0;const byUg={};Object.entries(S.logs).forEach(([id,l])=>{if(l.ug)byUg[String(l.ug)]=id});txt.split(/\r?\n/).forEach((line,i)=>{const c=line.split(line.includes('\t')?'\t':';').map(s=>s.trim());if(!c.join(''))return;if(i===0&&/adresse|parcours|code/i.test(line))return;if(c.length<3)seul++;const id=c[0]&&byUg[String(c[0])];if(id){const l=S.logs[id],k=['ug','num','adresse','cite','tranche','type'];k.forEach((f,j)=>{if(c[j])l[f]=c[j]});if(c[6])l.parcours=/tir/i.test(c[6])?'TIR':'GR';l.loc={nom:c[7]||l.loc?.nom||'',tel:c[8]||l.loc?.tel||''};l.maj=today();save('logements',id,l);m++}else{const nid=addLog(c);if(c[0])byUg[String(c[0])]=nid;n++}});$('imp').value='';toast(n+' importé(s), '+m+' mis à jour'+(seul?' — attention : '+seul+' ligne(s) avec une seule colonne, copiez bien de A à I':''));render()}
+ if(a==='csvfin'){const rows=[['Code UG','N°','Adresse','Cité','Tranche','Type','Parcours','Étape','Base fiche HT','Provisions validées HT','Provisions à valider HT','Total engagé HT','Réceptionné']];const f=n=>String(Math.round(n*100)/100).replace('.',',');logArr().forEach(l=>rows.push([l.ug,l.num,l.adresse,l.cite,l.tranche,l.type,P[l.parcours]?.court,etat(l),f(base(l)),f(provMt(l)),f(provAv(l)),f(montant(l)),recu(l)?'oui':'non']));const csv='\ufeff'+rows.map(r=>r.map(v=>{v=String(v??'');return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');const name='finances-erbm-'+today()+'.csv';if(downloads){try{await downloads.save({filename:name,data:csv});return}catch(e){}}if(!dl(name,csv))toast('Export impossible');return}
  if(a==='csv'||a==='csvres'||a==='csvft'||a==='csvpv'){let rows;if(a==='csv'){rows=[['Code UG','N°','Adresse','Cité','Tranche','Type','Parcours','Locataire','Téléphone','Étape en cours','Avancement %','Montant HT','Réserves ouvertes','Tiroir','Retour prévu']];logArr().forEach(l=>{const t=l.tir?.id&&S.tirs[l.tir.id];rows.push([l.ug,l.num,l.adresse,l.cite,l.tranche,l.type,P[l.parcours]?.nom,l.loc?.nom,l.loc?.tel,etat(l),pct(l),String(Math.round(montant(l)*100)/100).replace('.',','),resOuv(l).length,t?(t.num?'N° '+t.num+' ':'')+(t.adresse||''):'',l.tir?.au||''])})}else if(a==='csvpv'){rows=[['Code UG','Adresse','Cité','Parcours','Date','Provision','Pièce','Code BPU','Désignation','Unité','Quantité','PU HT','Montant HT','Statut','Constat']];logArr().forEach(l=>(l.prov||[]).forEach(x=>rows.push([l.ug,l.adresse,l.cite,P[l.parcours]?.court,x.date,x.type,x.piece,x.c,x.d,x.u,String(x.q).replace('.',','),String(x.p).replace('.',','),String(Math.round(ligneMt(x)*100)/100).replace('.',','),PST[x.st||'av'],x.com])))}else if(a==='csvft'){rows=[['Code UG','Adresse','Cité','Parcours','Code BPU','Désignation','Unité','Quantité','PU HT','Montant HT']];logArr().forEach(l=>(l.ft||[]).forEach(x=>rows.push([l.ug,l.adresse,l.cite,P[l.parcours]?.court,x.c,x.d,x.u,String(x.q).replace('.',','),String(x.p).replace('.',','),String(Math.round(ligneMt(x)*100)/100).replace('.',',')])))}else{rows=[['Code UG','N°','Adresse','Cité','Réserve','Lot','Date','État','Levée le']];logArr().forEach(l=>(l.res||[]).forEach(r=>rows.push([l.ug,l.num,l.adresse,l.cite,r.txt,r.lot,r.date,r.etat,r.lev||''])))}
   const csv='﻿'+rows.map(r=>r.map(v=>{v=String(v??'');return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
   const name=({csv:'avancement',csvres:'reserves',csvft:'fiches-travaux',csvpv:'provisions-vte'})[a]+'-erbm-'+today()+'.csv';
@@ -613,7 +645,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;const pos=e.target.selectionStart;render();const q=$('q');q.focus();q.setSelectionRange(pos,pos)}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('sheet').classList.contains('on'))closePanel();if(e.key==='Enter'&&e.target.id==='jtxt')act('addj');if(e.key==='Enter'&&e.target.id==='rtxt')act('addres')});
-function route(){const h=location.hash.slice(1);S.view=['tableau','logements','tiroirs','reserves','reglages'].includes(h)?h:'tableau';render()}
+function route(){const h=location.hash.slice(1);S.view=['tableau','logements','tiroirs','reserves','finances','reglages'].includes(h)?h:'tableau';render()}
 addEventListener('hashchange',route);
 
 /* --- démarrage --- */
