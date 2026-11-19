@@ -287,14 +287,27 @@ const finLines=l=>[...(l.ft||[]),...(l.vte?.ok?chkLines(l):[]),...(l.prov||[]).f
 function finStats(arr){const o={n:arr.length,ch:0,eng:0,av:0,rec:0,vte:0};arr.forEach(l=>{const m=montant(l);if(m>0)o.ch++;o.eng+=m;o.av+=provAv(l);if(recu(l))o.rec+=m;if(l.vte?.ok||(l.et&&l.et[0]))o.vte++});o.moy=o.ch?o.eng/o.ch:0;return o}
 function vFinances(){
  const L=logArr();if(!L.length)return '<p class="empty">Aucun logement.</p>';
- const T=finStats(L),bud=parseFloat(String(S.cfg.budget||'').replace(/\s|€/g,'').replace(',','.'))||0;
+ const T=finStats(L),num=k=>parseFloat(String(S.cfg[k]||'').replace(/\s|€/g,'').replace(',','.'))||0;
+ const mA=num('mATH'),mG=num('mGR'),fA=num('fATH'),fG=num('fGR'),bud=(mA+mG)||num('budget'),fac=fA+fG;
+ const LA=L.filter(l=>l.parcours==='TIR'),LG=L.filter(l=>l.parcours==='GR'),SA=finStats(LA),SG=finStats(LG);
+ const pcs=(v,b)=>b?(Math.round(v/b*1000)/10).toLocaleString('fr-FR')+' %':'—';
+ const mrow=(nom,m,f,St)=>`<tr><td><b>${nom}</b></td><td>${St.n}</td><td class="num">${eur(m)}</td><td class="num">${St.n&&m?eur(m/St.n):'—'}</td><td class="num">${eur(St.eng)}</td><td class="num">${St.ch?eur(St.moy):'—'}</td><td class="num">${St.ch&&m&&St.n?pcs(St.moy-m/St.n,m/St.n).replace(/^(?!-)/,'+'):'—'}</td><td class="num">${eur(f)}</td><td class="num">${pcs(f,m)}</td><td class="num">${eur(m-f)}</td></tr>`;
+ const marche=`<h3 style="margin:8px 0 8px">Marché ${esc(S.cfg.mNom||'')}</h3><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">
+ <label>Marché HT tiroirs (ATH)<input data-cfg="mATH" value="${esc(S.cfg.mATH||'')}" inputmode="decimal"></label>
+ <label>Marché HT GR<input data-cfg="mGR" value="${esc(S.cfg.mGR||'')}" inputmode="decimal"></label>
+ <label>Facturé cumulé HT ATH<input data-cfg="fATH" value="${esc(S.cfg.fATH||'')}" inputmode="decimal"></label>
+ <label>Facturé cumulé HT GR<input data-cfg="fGR" value="${esc(S.cfg.fGR||'')}" inputmode="decimal"></label>
+ <label>Situation n°<input data-cfg="sitN" value="${esc(S.cfg.sitN||'')}"></label>
+ <label>Arrêtée au<input data-cfg="sitD" value="${esc(S.cfg.sitD||'')}" placeholder="30/11/2026"></label></div>
+ ${bud?`<div class="scroll" style="margin-top:12px"><table class="ft"><thead><tr><th></th><th>Logts</th><th class="num">Marché HT</th><th class="num">Marché / logt</th><th class="num">Engagé VTE HT</th><th class="num">Engagé moyen / logt</th><th class="num">Écart / marché</th><th class="num">Facturé HT</th><th class="num">% facturé</th><th class="num">Reste à facturer</th></tr></thead><tbody>${mrow('Tiroirs (ATH)',mA,fA,SA)}${mrow('GR · site occupé',mG,fG,SG)}${mrow('Total',bud,fac,T)}</tbody></table></div>
+ <p class="note" style="margin-top:8px">${fac?`Situation ${esc(S.cfg.sitN||'')}${S.cfg.sitD?' au '+esc(S.cfg.sitD):''} : <b>${pcs(fac,bud)}</b> du marché facturé. `:''}« Écart / marché » compare le coût moyen des logements déjà chiffrés en VTE au prix moyen d'un logement dans le marché : au-dessus de 0 %, les logements coûtent plus que prévu.</p>`:''}`;
  const proj=T.moy*T.n,pc=v=>bud?Math.round(v/bud*1000)/10+' %':'—';
  const grp=(key)=>{const g={};L.forEach(l=>{const k=key(l)||'—';(g[k]=g[k]||[]).push(l)});return Object.entries(g).sort((a,b)=>a[0].localeCompare(b[0],'fr',{numeric:true}))};
  const table=(titre,rows)=>`<h3 style="margin:22px 0 8px">${titre}</h3><div class="scroll"><table class="ft"><thead><tr><th></th><th>Logts</th><th>Chiffrés</th><th class="num">Engagé HT</th><th class="num">Provisions à valider</th><th class="num">Réceptionné HT</th><th class="num">Moyenne / logt chiffré</th></tr></thead><tbody>${rows.map(([k,arr])=>{const o=finStats(arr);return `<tr><td><b>${esc(k)}</b></td><td>${o.n}</td><td>${o.ch}</td><td class="num">${eur(o.eng)}</td><td class="num">${eur(o.av)}</td><td class="num">${eur(o.rec)}</td><td class="num">${eur(o.moy)}</td></tr>`}).join('')}<tr><td><b>Total</b></td><td><b>${T.n}</b></td><td><b>${T.ch}</b></td><td class="num"><b>${eur(T.eng)}</b></td><td class="num"><b>${eur(T.av)}</b></td><td class="num"><b>${eur(T.rec)}</b></td><td class="num"><b>${eur(T.moy)}</b></td></tr></tbody></table></div>`;
  const lots={};L.forEach(l=>finLines(l).forEach(x=>{const k=lotOf(x);lots[k]=(lots[k]||0)+ligneMt(x)}));
  const lotE=Object.entries(lots).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]),lmax=lotE.length?lotE[0][1]:1;
  const top=L.filter(l=>montant(l)>0).sort((a,b)=>montant(b)-montant(a)).slice(0,10);
- return `<div class="tools"><label style="display:flex;gap:8px;align-items:center;font-size:14px">Budget du marché HT<input data-cfg="budget" value="${esc(S.cfg.budget||'')}" placeholder="ex. 2 500 000" inputmode="decimal" style="width:160px"></label><button class="b" data-act="csvfin">Export finances (CSV)</button></div>
+ return `${marche}<div class="tools" style="margin-top:12px"><button class="b" data-act="csvfin">Export finances (CSV)</button></div>
  <div class="kpis">
  <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(T.eng)}</b><span>engagé HT (fiches + provisions validées)${bud?' · '+pc(T.eng)+' du budget':''}</span></div>
  <div class="kpi"><b style="font-size:clamp(20px,4vw,26px)">${eur(T.av)}</b><span>provisions à valider</span></div>
