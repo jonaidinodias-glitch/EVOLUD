@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<!-- Évolud Chantier – fiche travaux lue depuis un QR code collé dans le logement · conçu et développé par Saïd OUFQIR
+     Aucune donnée n'est stockée ici : tout le contenu est dans le QR code lui-même (après le #), rien n'est envoyé au serveur. -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#1F3864">
+<title>Travaux du logement · Évolud</title>
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#eef2f8,#111418);--card:light-dark(#fff,#1a1e24);--ink:light-dark(#1d2433,#e9edf3);--mut:light-dark(#5b667a,#9aa5b5);--line:light-dark(#e2e7f0,#2a313b);--navy:#1F3864;--ok:light-dark(#1b5e20,#7fd18a);--okb:light-dark(#dff3e0,#16301a);--todo:light-dark(#a34a00,#f0b45a);--todob:light-dark(#fde9d7,#3a2a14);--ko:light-dark(#C00000,#ff8a8a);--kob:light-dark(#fbe0e0,#3a1616)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{background:var(--navy);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 16px}
+header .ug{font-size:13px;opacity:.8;letter-spacing:.5px}
+header h1{margin:2px 0 0;font-size:20px;line-height:1.2}
+header .d{font-size:12px;opacity:.8;margin-top:6px}
+main{max-width:720px;margin:0 auto;padding:12px 12px 40px}
+.card{background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);animation:in .35s ease both}
+.card h2{margin:0 0 8px;font-size:15px;color:light-dark(var(--navy),#9fb8e6);display:flex;justify-content:space-between;align-items:center}
+.it{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+.it:first-of-type{border-top:0}
+.b{flex:none;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.ok{background:var(--okb);color:var(--ok)}.todo{background:var(--todob);color:var(--todo)}.ko{background:var(--kob);color:var(--ko)}
+.t{flex:1}.p{font-size:12.5px;color:var(--mut)}
+.prog{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:10px}.prog i{display:block;height:100%;background:#7fd18a}
+.warn{background:var(--kob);color:var(--ko);font-weight:700}
+.empty{text-align:center;padding:40px 16px;color:var(--mut)}
+footer{text-align:center;font-size:11.5px;color:var(--mut);margin-top:16px}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.card{animation:none}}
+</style>
+</head>
+<body>
+<header><div class="ug" id="ug">ÉVOLUD · TRAVAUX DU LOGEMENT</div><h1 id="adr">Chargement…</h1><div class="d" id="dt"></div></header>
+<main id="m"></main>
+<script>
+(function () {
+  'use strict';
+  var m = document.getElementById('m');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function bytes(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function lire() {
+    var h = location.hash.replace(/^#/, '');
+    if (h.indexOf('z=') === 0) return new Response(new Blob([bytes(h.slice(2))]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text().then(JSON.parse);
+    return Promise.resolve(JSON.parse(new TextDecoder().decode(bytes(h.indexOf('d=') === 0 ? h.slice(2) : h))));
+  }
+  var BADGE = { x: ['ok', '✔ Fait'], o: ['todo', 'À faire'], r: ['todo', 'RDV pris'], c: ['todo', 'En cours'], b: ['ko', '⛔ Bloqué'] };
+  var AM = { neg: ['ok', '✅ Amiante négatif'], nd: ['ko', '❌ Non diagnostiqué'], pos: ['ko', '☣️ Amiante'], '': ['todo', '❔ À vérifier'] };
+  var ISO = { oui: 'isolation présente', part: 'isolation partielle', non: 'pas d\'isolation' };
+  lire().then(afficher, function () { afficher(null); });
+  function afficher(d) {
+  if (!d || !d.u) { document.getElementById('adr').textContent = 'QR code illisible'; m.innerHTML = '<div class="empty">Ce QR code ne contient pas de fiche travaux Évolud.<br>Demandez une nouvelle étiquette au conducteur de travaux.</div>'; return; }
+  document.title = 'UG ' + d.u + ' · Travaux';
+  document.getElementById('ug').textContent = 'ÉVOLUD · UG ' + d.u;
+  document.getElementById('adr').textContent = d.a || ('Logement ' + d.u);
+  document.getElementById('dt').textContent = 'État au ' + (d.d || '?') + (d.c ? ' · Conducteur de travaux : ' + d.c : '');
+  var h2 = '', tot = 0, fait = 0;
+  if (d.w) h2 += '<div class="card warn">⚠️ ' + esc(d.w) + '</div>';
+  (d.g || []).forEach(function (g) {
+    var n = 0, f = 0; g[1].forEach(function (t) { n++; if (t[1] === 'x') f++; }); tot += n; fait += f;
+    h2 += '<div class="card"><h2><span>' + esc(g[0]) + '</span><span class="p">' + f + '/' + n + '</span></h2>' + g[1].map(function (t) { var b = BADGE[t[1]] || BADGE.o; return '<div class="it"><span class="t">' + esc(t[0]) + (t[2] ? '<div class="p">' + esc(t[2]) + '</div>' : '') + '</span><span class="b ' + b[0] + '">' + b[1] + '</span></div>'; }).join('') + '</div>';
+  });
+  if (d.tr && d.tr.length) {
+    h2 += '<div class="card"><h2><span>🛡️ Trappes de contrôle isolation 30×30</span></h2>' + d.tr.map(function (t) { var a = AM[t[1]] || AM['']; var pose = t[2] === 'p'; return '<div class="it"><span class="t">' + esc(t[0]) + (pose && t[3] ? '<div class="p">Constat : ' + esc(ISO[t[3]] || t[3]) + (t[4] ? ' · ' + esc(t[4]) + ' cm' : '') + '</div>' : '') + (!pose && t[1] !== 'neg' ? '<div class="p" style="color:var(--ko);font-weight:700">Ne pas percer avant diagnostic amiante</div>' : '') + '</span><span class="b ' + (pose ? 'ok' : a[0]) + '">' + (pose ? '🔳 Posée' : a[1]) + '</span></div>'; }).join('') + '</div>';
+  }
+  if (!tot && !(d.tr && d.tr.length)) h2 += '<div class="card empty">Aucun travail enregistré pour ce logement à la date d\'impression.</div>';
+  if (tot) h2 = '<div class="card"><h2><span>Avancement</span><span>' + fait + ' / ' + tot + '</span></h2><div class="prog"><i style="width:' + Math.round(fait / tot * 100) + '%"></i></div></div>' + h2;
+  h2 += '<footer>Liste figée au moment de l\'impression de l\'étiquette.<br>Bouygues Bâtiment Nord-Est · Évolud Chantier – conçu et développé par Saïd OUFQIR</footer>';
+  m.innerHTML = h2;
+  }
+})();
+</script>
+</body>
+</html>

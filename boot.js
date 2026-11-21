@@ -1,5 +1,5 @@
 /* Évolud Chantier – chargeur chiffré · conçu et développé par Saïd OUFQIR
-   v5.9.0 : modules pen (pénalités détaillées) , etat (état complet) , gam (mise à jour Gamma quotidienne) , pano (visite 360°) et vr (maquette 3D, VR, réalité mixte) · v5.8.1 : le code, les données et les plans sont chiffrés (AES-256-GCM) ; plans regroupés en paquets.
+   v6.0 : modules optionnels (v6 : trappes isolation + amiante) · v5.9.0 : modules pen (pénalités détaillées) , etat (état complet) , gam (mise à jour Gamma quotidienne) , pano (visite 360°) et vr (maquette 3D, VR, réalité mixte) · v5.8.1 : le code, les données et les plans sont chiffrés (AES-256-GCM) ; plans regroupés en paquets.
    Sans la clé de l'application (transmise dans le lien d'installation), rien n'est lisible. */
 (function () {
   'use strict';
@@ -58,6 +58,18 @@
     document.getElementById('kgo').onclick = function () { var v = (document.getElementById('kk').value || '').trim(); if (!/^[A-Za-z0-9_-]{40,}$/.test(v)) return; try { localStorage.setItem(LS, v); } catch (e) {} location.reload(); };
   }
 
+  // v6.0 : modules optionnels chargés APRÈS l'appli (s'ils manquent ou échouent, Évolud fonctionne exactement comme avant)
+  var OPT = ['v6'];
+  function optionnels() {
+    OPT.reduce(function (p, n) {
+      return p.then(function () {
+        return dec(n + '.js').then(function (ab) {
+          return new Promise(function (ok) { var s = document.createElement('script'); s.src = URL.createObjectURL(new Blob([ab], { type: 'text/javascript' })); s.dataset.f = n; s.onload = s.onerror = function () { ok(); }; document.body.appendChild(s); });
+        }).catch(function (e) { console.warn('module optionnel ' + n + ' absent', e); });
+      });
+    }, Promise.resolve());
+  }
+
   var done;
   window.EVX_READY = new Promise(function (r) { done = r; });
   if (!getK()) return ask();
@@ -68,7 +80,7 @@
       s.src = URL.createObjectURL(new Blob([ab], { type: 'text/javascript' })); s.dataset.f = SCRIPTS[i];
       document.body.appendChild(s); last = s;
     });
-    last.onload = function () { done(); };
+    last.onload = function () { done(); optionnels(); };
   }).catch(function (e) {
     console.warn(e);
     if (e && (e.name === 'OperationError' || e.name === 'DataError')) { try { localStorage.removeItem(LS); } catch (x) {} keyP = null; cache = {}; return ask('⚠️ Clé incorrecte. Vérifiez le lien reçu ou la clé saisie.'); }
