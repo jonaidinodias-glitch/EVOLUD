@@ -59,7 +59,7 @@
   }
 
   // v6.0 : modules optionnels chargés APRÈS l'appli (s'ils manquent ou échouent, Évolud fonctionne exactement comme avant)
-  var OPT = ['v6'];
+  var OPT = ['v6', 'v7'];  // v6.18 : 🗺️ plan dynamique
   function optionnels() {
     OPT.reduce(function (p, n) {
       return p.then(function () {
