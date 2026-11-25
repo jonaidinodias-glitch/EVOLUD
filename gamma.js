@@ -110,7 +110,7 @@ function readDossier(id) {   // v5.28.3 : champs lus par leur nom (nom_locataire
 }
 /* v6.18 : colonnes Codes / Cotraitant / TVA / Lot des bons de commande (lues par le titre des colonnes, où qu'elles soient sur la page) */
 var nK = function (s) { return String(s || '').toLowerCase().replace(/[’']/g, "'").normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '').slice(0, 60); };
-var tvaN = function (s) { s = String(s || '').trim(); if (!s) return ''; var n = num(s); if (!n) return s; return /%/.test(s) || n > 1 ? Math.round(n * 10) / 1000 : n; };
+var tvaN = function (s) { s = String(s || '').trim(); if (!s) return ''; var n = num(s.replace(/%/g, '').trim()); if (!n) return s; return /%/.test(s) || n > 1 ? Math.round(n * 10) / 1000 : n; };
 function colsOf(tab) {
   var hr = tab.querySelector('thead tr') || [].slice.call(tab.querySelectorAll('tr')).filter(function (r) { return r.querySelector('th'); })[0];
   if (!hr) return null;
@@ -158,6 +158,48 @@ function readVTE(id) {
       else if (c.length >= 5 && !/Delta/i.test(t0)) L.push(addX([txt(c[0]).slice(0, 160), num(txt(c[1])), txt(c[2]), num(txt(c[3])), num(txt(c[4]))], X, c));
     });
     return { tot: Math.round(tot * 100) / 100, cible: cible, sec: sec, l: L, x: 1 };
+  }).catch(function () { return null; });
+}
+/* v6.18.1 : bon de commande Gamma – index.php?module=visualisation_bdc&id_ug=…&commande=…
+   colonnes : ARTICLE (« code - désignation ») | PRIX UNITAIRE | UNITÉ | QTÉ | TOTAL HT | TVA | TOTAL TTC | CEE (+ COTRAITANT / LOT si Gamma les affiche) */
+var BST = { noLink: 0, codes: 0 };
+/* cotraitants du chantier (Saïd) : VMC → GDS, soufflage → ISOWECK, le reste → BBNE (si Gamma ne l'indique pas) */
+function cotrOf(a) { a = String(a || '').toLowerCase(); return /insufflation|soufflage|flocons/.test(a) ? 'ISOWECK' : /vmc|ventilation|entr[ée]es d.air|extracteur|bouche/.test(a) ? 'GDS' : 'BBNE'; }
+function mergeBDC(R, M) {   // ajoute [code, cotraitant, TVA, lot, CEE] aux lignes du bon déjà lu
+  var put = function (r) { if (r.length > 5 && r.slice(5).join('') !== '') return r; var v = M[nK(r[0]) + '|' + Number(r[1] || 0).toFixed(2)] || M[nK(r[0])]; return v ? r.slice(0, 5).concat(v) : r; };
+  R.l = (R.l || []).map(put); (R.sec || []).forEach(function (x) { x[3] = (x[3] || []).map(put); }); R.cmd = M.__cmd; return R;
+}
+function bdcLinks(doc, raw, id) {
+  var S = {}, re = /module=visualisation_bdc[^"'\s<>]*?commande=(\d+)/gi, m;
+  [].slice.call(doc ? doc.querySelectorAll('a[href*="visualisation_bdc"],[onclick*="visualisation_bdc"],[data-href*="visualisation_bdc"]') : []).forEach(function (a) { var h = (a.getAttribute('href') || '') + ' ' + (a.getAttribute('onclick') || '') + ' ' + (a.getAttribute('data-href') || ''); var k = h.match(/commande=(\d+)/); if (k) S[k[1]] = 1; });
+  while (raw && (m = re.exec(raw))) S[m[1]] = 1;
+  return Object.keys(S);
+}
+function readBDC(id, doc) {
+  var cmds = bdcLinks(doc, doc && doc.documentElement ? doc.documentElement.innerHTML : '', id);
+  var getCmds = cmds.length ? Promise.resolve(cmds) : fetch(BASE + '?module=dossier&id_ug=' + id, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (raw) { return bdcLinks(null, raw, id); }).catch(function () { return []; });
+  return getCmds.then(function (C) {
+    if (!C.length) { BST.noLink++; return null; }
+    return Promise.all(C.map(function (c) { return getDoc(BASE + '?module=visualisation_bdc&id_ug=' + id + '&commande=' + c).catch(function () { return null; }); })).then(function (D) {
+      var M = { __cmd: C.join(',') }, n = 0;
+      D.forEach(function (d) { if (!d) return;
+        [].slice.call(d.querySelectorAll('table')).forEach(function (tab) {
+          var o = colsOf(tab); if (!o || !o.H) return; var H = o.H, f = function (re) { for (var i = 0; i < H.length; i++) if (re.test(H[i])) return i; return -1; };
+          var iA = f(/article|d[ée]signation/), iP = f(/prix/), iT = f(/tva/), iC = f(/cee/), iCo = f(/co-?\s*traitant|entreprise/), iL = f(/^lots?\b/);
+          if (iA < 0 || iP < 0) return;
+          try { localStorage.setItem('evolud_dbg_bdc2', H.join(' | ').slice(0, 300)); } catch (e) { }
+          var pend = '';
+          [].slice.call(tab.querySelectorAll('tbody tr, tr')).forEach(function (tr) { var c = tr.cells; if (!c || !c.length || tr.querySelector('th')) return;
+            var g = function (i) { return i >= 0 && c[i] ? txt(c[i]) : ''; }, a = g(iA), pu = g(iP);
+            if (c.length <= iP || !pu) { if (/^\d{8,12}\s*-/.test(txt(tr))) pend = txt(tr); return; }   // article seul sur sa ligne : rattaché à la ligne suivante
+            if (!/^\d{8,12}\s*-/.test(a) && pend) a = pend; pend = '';
+            var mm = a.match(/^(\d{8,12})\s*-\s*(.*)$/); if (!mm) return;
+            var v = [mm[1], g(iCo) || cotrOf(mm[2]), tvaN(g(iT)), g(iL), g(iC)];
+            M[nK(mm[2]) + '|' + num(pu).toFixed(2)] = v; M[nK(mm[2])] = M[nK(mm[2])] || v; n++; });
+        }); });
+      if (n) BST.codes++;
+      return n ? M : null;
+    });
   }).catch(function () { return null; });
 }
 
@@ -223,7 +265,7 @@ function run() {
     });
     // mémoire des bons de commande déjà lus (sur cet appareil) : on ne relit que les nouveaux logements,
     // ceux dont l'étape Gamma a changé, et une petite partie des plus anciens (contrôle tournant)
-    var KC = 'evolud_bdc_cache_v3'   /* v6.18 : relecture unique de tous les bons pour les colonnes Codes / Cotraitant / TVA / Lot */, cache = {}; try { cache = JSON.parse(localStorage.getItem(KC) || '{}') || {}; } catch (e) { cache = {}; }
+    var KC = 'evolud_bdc_cache_v3', cache = {}; try { cache = JSON.parse(localStorage.getItem(KC) || '{}') || {}; } catch (e) { cache = {}; }
     var sig = function (o) { return (o.ph || []).map(function (p) { return p[0] + ':' + p[1]; }).join('|') + '#' + o.sc + '#' + o.forf; };
     var now0 = Date.now(), old = [], todo = ids.filter(function (ug) { var c = cache[ug]; if (!c || c.sig !== sig(L[ug])) return true; if (c.bdc && (c.bdc.sec || []).length && !(c.bdc.sec || []).some(function (x) { return x && x[3] && x[3].length; })) return true; /* v5.14 : relire une fois pour avoir le détail des lignes par rubrique */ if (now0 - (c.at || 0) > 14 * 864e5) old.push(ug); return false; });
     old.sort(function (a, b) { return (cache[a].at || 0) - (cache[b].at || 0); }); todo = todo.concat(old.slice(0, 30));
@@ -231,7 +273,12 @@ function run() {
     stats.cache = ids.length - todo.length;
     msg('3/4 – Bons de commande : ' + todo.length + ' à lire' + (stats.cache ? ' (' + stats.cache + ' déjà connus)' : '') + '…', 22);
     return pool(todo, 4, function (ug) { return readVTE(L[ug].id); }, function (d, n) { msg('3/4 – Bons de commande : <b>' + d + ' / ' + n + '</b>' + (stats.cache ? ' · ' + stats.cache + ' déjà connus' : ''), 22 + 58 * d / n); })
-      .then(function (B) { Object.keys(B).forEach(function (ug) { cache[ug] = { sig: sig(L[ug]), bdc: B[ug] || null, at: Date.now() }; }); try { localStorage.setItem(KC, JSON.stringify(cache)); } catch (e) { } return B; });
+      .then(function (B) { Object.keys(B).forEach(function (ug) { cache[ug] = { sig: sig(L[ug]), bdc: B[ug] || null, at: Date.now() }; }); try { localStorage.setItem(KC, JSON.stringify(cache)); } catch (e) { }
+        // v6.18.1 : on complète UNIQUEMENT les bons qui n'ont pas encore leurs codes (page « bon de commande »), une seule fois par logement – rien d'autre n'est relu
+        var need = ids.filter(function (ug) { var c = cache[ug], b = c && c.bdc; return b && !b.cx && (b.l || []).length && !(b.l || []).some(function (r) { return r.length > 5; }); });
+        if (!need.length) return B;
+        return pool(need, 6, function (ug) { return readBDC(L[ug].id, null).then(function (M) { var b = cache[ug].bdc; b.cx = 1; if (M) mergeBDC(b, M); return b; }); }, function (d, n) { msg('3/4 – Codes / TVA des bons de commande : <b>' + d + ' / ' + n + '</b>', 22 + 58 * d / n); })
+          .then(function (E) { Object.keys(E).forEach(function (ug) { if (E[ug]) { cache[ug].bdc = E[ug]; L[ug].bdc = E[ug]; } }); try { localStorage.setItem(KC, JSON.stringify(cache)); } catch (e) { } return B; }); });
   }).then(function (B) {
     Object.keys(B).forEach(function (ug) { if (B[ug]) L[ug].bdc = B[ug]; });
     // v5.24 : coordonnées des locataires (page Dossier) – lues une fois puis gardées en mémoire, contrôle tous les 30 jours
@@ -274,7 +321,7 @@ function run() {
     });
   }).then(function (B) {
     stats.res = 0; stats.resO = 0; Object.keys(L).forEach(function (ug) { (L[ug].res || []).forEach(function (r) { stats.res++; if (!r[2]) stats.resO++; }); });
-    Object.keys(L).forEach(function (ug) { if (L[ug].bdc) { stats.bdc++; if ((L[ug].bdc.l || []).some(function (r) { return r.length > 5; })) stats.bdcX = (stats.bdcX || 0) + 1; } });
+    stats.bdcLien = BST.codes; stats.bdcSansLien = BST.noLink; Object.keys(L).forEach(function (ug) { if (L[ug].bdc) { stats.bdc++; if ((L[ug].bdc.l || []).some(function (r) { return r.length > 5; })) stats.bdcX = (stats.bdcX || 0) + 1; } });
     msg('4/4 – Envoi vers Évolud…', 82);
     var s = JSON.stringify(L), parts = [], SZ = 30000;
     for (var i = 0; i < s.length; i += SZ) parts.push(s.slice(i, i + SZ));
@@ -288,7 +335,7 @@ function run() {
     return seq.then(function () { return api({ action: 'sync', since: now, records: [{ c: 'params', id: 'gammaMaj', updatedAt: Date.now(), data: { id: 'gammaMaj', v: meta, updatedAt: Date.now(), by: by } }] }); }).then(function () { return stats; })
       .catch(function (e) { e.data = s; e.meta = meta; throw e; });
   }).then(function (st) {
-    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande' + (st.bdc ? ' (' + (st.bdcX || 0) + ' avec codes / cotraitant / TVA / lot)' : '') + (st.bdc && !st.bdcX ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_bdc') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">Codes / cotraitant / TVA / lot non trouvés sur les bons de commande : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + ' · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.res ? ' · ' + st.res + ' réserves (' + st.resO + ' non validées)' : '') + '<div style="font-size:11px;color:#888;margin-top:4px">v6.18 · ' + (st.rec || 0) + ' logements réceptionnés dans Gamma' + (!st.rec && st.ph3 ? ' – étapes réception lues : ' + Object.keys(st.ph3).slice(0, 6).join(' / ').replace(/[<>]/g, '') : '') + '</div>' + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
+    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande' + (st.bdc ? ' (' + (st.bdcX || 0) + ' avec codes / cotraitant / TVA / lot)' : '') + (st.bdc && !st.bdcX ? (function () { var d = ''; try { d = (localStorage.getItem('evolud_dbg_bdc2') || localStorage.getItem('evolud_dbg_bdc') || '') + (BST.noLink ? ' · ' + BST.noLink + ' sans lien vers le bon de commande' : ''); } catch (e) { } return '<br><span style="font-size:11px;color:#a33">Codes / cotraitant / TVA / lot non trouvés sur les bons de commande : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + ' · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.res ? ' · ' + st.res + ' réserves (' + st.resO + ' non validées)' : '') + '<div style="font-size:11px;color:#888;margin-top:4px">v6.18.1 · ' + (st.rec || 0) + ' logements réceptionnés dans Gamma' + (!st.rec && st.ph3 ? ' – étapes réception lues : ' + Object.keys(st.ph3).slice(0, 6).join(' / ').replace(/[<>]/g, '') : '') + '</div>' + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
     btn('Fermer', close, true);
   }).catch(function (e) {
     if (e.message === 'LOGIN') { msg('⚠️ Tu n\'es pas connecté à Gamma. Connecte-toi puis touche à nouveau le bouton.', 100); btn('Fermer', close, true); return; }
