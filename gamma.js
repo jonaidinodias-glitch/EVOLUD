@@ -91,6 +91,22 @@ function fieldAfter(doc, re) {   // v5.24.4 : la page Dossier répète les champ
   }
   return '';
 }
+/* v6.19 : étapes datées de la fiche dossier (« Etape 4 : Visite d'entrée – Visite terminée le 13/11/2026 par … ») → historique / preuves dans Évolud */
+function etapesOf(doc) {
+  var root = doc.body || doc.documentElement, w = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT), n, C = [];
+  while ((n = w.nextNode())) { var p = n.parentElement && n.parentElement.tagName; if (p === 'SCRIPT' || p === 'STYLE' || p === 'OPTION') continue; var t = (n.textContent || '').replace(/\s+/g, ' ').trim(); if (t) C.push(t); }
+  var out = [], cur = null, seen = {}, DT = /\b(\d{2})\/(\d{2})\/(\d{4})(?:\s+(?:à|a)\s+(\d{1,2})[h:](\d{2}))?/;
+  C.forEach(function (t) {
+    var h = t.match(/^Etape\s+(actuelle\s+)?(\d+)\s*:\s*(.*)$/i);
+    if (h) { cur = { n: +h[2], lab: h[3].replace(/\s+(?:r[ée]alis[ée]e?|termin[ée]e?|valid[ée]e?)\s+le\s+.*$/i, '').slice(0, 90) };
+      if (h[1]) { out.push([cur.n, cur.lab, 'étape actuelle', '']); cur = null; return; } }
+    if (!cur) return;
+    if (!/(r[ée]alis|termin|valid|effectu|fait|r[ée]ceptionn|lev[ée]|planifi|d[ée]pos)[a-zà-ÿ]*\s+le\s+\d{2}\/\d{2}\/\d{4}/i.test(t)) return;
+    var m = t.match(DT), k = cur.n + '|' + t; if (!m || seen[k]) return; seen[k] = 1;
+    out.push([cur.n, cur.lab, t.slice(0, 160), m[3] + '-' + m[2] + '-' + m[1] + (m[4] ? 'T' + ('0' + m[4]).slice(-2) + ':' + m[5] : '')]);
+  });
+  return out.slice(0, 30);
+}
 function readDossier(id) {   // v5.28.3 : champs lus par leur nom (nom_locataire, telephone_locataire…) – l'étiquette est APRÈS la case dans Gamma
   return fetch(BASE + '?module=dossier&id_ug=' + id, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error('Gamma ' + r.status); return r.text(); }).then(function (raw) {
     var doc = parser.parseFromString(raw, 'text/html');
@@ -104,7 +120,7 @@ function readDossier(id) {   // v5.28.3 : champs lus par leur nom (nom_locataire
     var docs = [], re = /<td>\s*([^<]{2,60}?)\s*<\/td>\s*<td>\s*<a href="\.?\/?(fichiers\/[^"]+)"[^>]*>[^<]*<\/a>\s*<\/td>\s*<td>\s*(?:<span[^>]*>\s*(Oui|Non)\s*<\/span>)?\s*<\/td>/gi, mm;
     while ((mm = re.exec(raw)) && docs.length < 40) docs.push([mm[1].trim(), mm[2], mm[3] || '']);
     var D = { mi: num(val('montant_travaux')), mc: num(val('montant_commande')), sc: val('scenario_cible'), deb: val('date_rdv_travaux'), fin: val('date_fin_travaux'), docs: docs,
-      am: /Pr[ée]sence amiante ou plomb dans l'UG/i.test(raw) };
+      am: /Pr[ée]sence amiante ou plomb dans l'UG/i.test(raw), et: etapesOf(doc) };
     return (n || t || docs.length) ? [n.slice(0, 60), t.slice(0, 20), m.slice(0, 80), D] : null;
   }).catch(function () { return null; });
 }
@@ -284,7 +300,9 @@ function run() {
     // v5.24 : coordonnées des locataires (page Dossier) – lues une fois puis gardées en mémoire, contrôle tous les 30 jours
     var KL = 'evolud_loc_cache_v4', lc = {}; try { lc = JSON.parse(localStorage.getItem(KL) || '{}') || {}; } catch (e) { lc = {}; }
     var cand = Object.keys(L).filter(function (ug) { var o = L[ug]; return o.id && (o.bdc || o.deb || o.vteRdv); });
-    var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5 || (c.v && (!c.v[0] || !c.v[3])); }).slice(0, 450);   // v5.28.3 : relecture des noms manquants et des dossiers sans documents   // v5.24.3 : on relit les dossiers où le nom manque
+    var todoL = cand.filter(function (ug) { var c = lc[ug]; return !c || (Date.now() - (c.at || 0)) > 30 * 864e5 || (c.v && (!c.v[0] || !c.v[3])); }).slice(0, 450);
+    /* v6.19 : étapes datées – complétées petit à petit (120 dossiers par jour au maximum), rien d'autre n'est relu */
+    todoL = todoL.concat(cand.filter(function (ug) { var c = lc[ug]; return c && c.v && c.v[3] && !c.v[3].et && todoL.indexOf(ug) < 0; }).slice(0, 120));   // v5.28.3 : relecture des noms manquants et des dossiers sans documents   // v5.24.3 : on relit les dossiers où le nom manque
     cand.forEach(function (ug) { if (lc[ug] && lc[ug].v) { L[ug].loc = lc[ug].v.slice(0, 3); if (lc[ug].v[3]) L[ug].dos = lc[ug].v[3]; } });
     stats.loc = cand.filter(function (u) { return L[u].loc; }).length; stats.nom = cand.filter(function (u) { return L[u].loc && L[u].loc[0]; }).length;
     if (!todoL.length) return B;
@@ -335,7 +353,7 @@ function run() {
     return seq.then(function () { return api({ action: 'sync', since: now, records: [{ c: 'params', id: 'gammaMaj', updatedAt: Date.now(), data: { id: 'gammaMaj', v: meta, updatedAt: Date.now(), by: by } }] }); }).then(function () { return stats; })
       .catch(function (e) { e.data = s; e.meta = meta; throw e; });
   }).then(function (st) {
-    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande' + (st.bdc ? ' (' + (st.bdcX || 0) + ' avec codes / cotraitant / TVA / lot)' : '') + (st.bdc && !st.bdcX ? (function () { var d = ''; try { d = (localStorage.getItem('evolud_dbg_bdc2') || localStorage.getItem('evolud_dbg_bdc') || '') + (BST.noLink ? ' · ' + BST.noLink + ' sans lien vers le bon de commande' : ''); } catch (e) { } return '<br><span style="font-size:11px;color:#a33">Codes / cotraitant / TVA / lot non trouvés sur les bons de commande : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + ' · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.res ? ' · ' + st.res + ' réserves (' + st.resO + ' non validées)' : '') + '<div style="font-size:11px;color:#888;margin-top:4px">v6.18.1 · ' + (st.rec || 0) + ' logements réceptionnés dans Gamma' + (!st.rec && st.ph3 ? ' – étapes réception lues : ' + Object.keys(st.ph3).slice(0, 6).join(' / ').replace(/[<>]/g, '') : '') + '</div>' + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
+    msg('✅ <b>Mise à jour terminée</b> (' + TODAY.split('-').reverse().join('/') + ' à ' + HEURE + ')<br>' + st.log + ' logements · ' + st.bdc + ' bons de commande' + (st.bdc ? ' (' + (st.bdcX || 0) + ' avec codes / cotraitant / TVA / lot)' : '') + (st.bdc && !st.bdcX ? (function () { var d = ''; try { d = (localStorage.getItem('evolud_dbg_bdc2') || localStorage.getItem('evolud_dbg_bdc') || '') + (BST.noLink ? ' · ' + BST.noLink + ' sans lien vers le bon de commande' : ''); } catch (e) { } return '<br><span style="font-size:11px;color:#a33">Codes / cotraitant / TVA / lot non trouvés sur les bons de commande : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + ' · ' + st.trav + ' dates de travaux · ' + st.vte + ' RDV VTE' + (st.vts ? ' · ' + st.vts + ' VTS' : '') + (st.loc ? ' · ' + st.loc + ' locataires' : '') + (st.res ? ' · ' + st.res + ' réserves (' + st.resO + ' non validées)' : '') + '<div style="font-size:11px;color:#888;margin-top:4px">v6.19 · ' + (st.rec || 0) + ' logements réceptionnés dans Gamma' + (!st.rec && st.ph3 ? ' – étapes réception lues : ' + Object.keys(st.ph3).slice(0, 6).join(' / ').replace(/[<>]/g, '') : '') + '</div>' + (st.loc && st.nom < st.loc ? (function () { var d = ''; try { d = localStorage.getItem('evolud_dbg_nom') || ''; } catch (e) { } return '<br><span style="font-size:11px;color:#a33">' + (st.loc - (st.nom || 0)) + ' noms de locataires non trouvés (sur ' + st.loc + ') : fais une capture de ce cadre pour Claude</span><br><code style="font-size:9px;word-break:break-all">' + d.replace(/</g, '‹').slice(0, 400) + '</code>'; })() : '') + '<br><span style="font-size:13px;color:#56627a">L\'appli se met à jour chez tout le monde à la prochaine synchro (⟳). Inutile de refaire aujourd\'hui.</span>', 100);
     btn('Fermer', close, true);
   }).catch(function (e) {
     if (e.message === 'LOGIN') { msg('⚠️ Tu n\'es pas connecté à Gamma. Connecte-toi puis touche à nouveau le bouton.', 100); btn('Fermer', close, true); return; }
