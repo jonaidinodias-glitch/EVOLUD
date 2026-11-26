@@ -248,9 +248,14 @@ var hasApp = function () { try { return typeof routes !== 'undefined' && typeof 
 var pill = function (t, fg, bg) { return '<span class="pill" style="background:' + bg + ';color:' + fg + ';white-space:nowrap">' + t + '</span>'; };
 
 var PJ = null;
-function pdfjs() {   // lecteur PDF : dossier pdfjs/ ou, à défaut, à la racine du site
+function polyfills() {   // iPhone (Safari) : ReadableStream n'est pas « itérable » → pdf.js plante (« undefined is not a function »)
+  try { if (typeof ReadableStream !== 'undefined' && !ReadableStream.prototype[Symbol.asyncIterator]) ReadableStream.prototype[Symbol.asyncIterator] = async function* () { var r = this.getReader(); try { for (;;) { var x = await r.read(); if (x.done) return; yield x.value; } } finally { try { r.releaseLock(); } catch (e) { } } }; } catch (e) { }
+  try { if (!Promise.withResolvers) Promise.withResolvers = function () { var a, b, p = new Promise(function (x, y) { a = x; b = y; }); return { promise: p, resolve: a, reject: b }; }; } catch (e) { }
+}
+function pdfjs() {   // lecteur PDF : à la racine du site (ou dossier pdfjs/) ; tourne dans la page (pas de « worker ») pour profiter des correctifs iPhone
   if (PJ) return Promise.resolve(PJ);
-  var go = function (d) { return import(BASE + d + 'pdf.min.mjs').then(function (m) { m.GlobalWorkerOptions.workerSrc = BASE + d + 'pdf.worker.min.mjs'; PJ = m; return m; }); };
+  polyfills();
+  var go = function (d) { return import(BASE + d + 'pdf.worker.min.mjs').then(function () { return import(BASE + d + 'pdf.min.mjs'); }).then(function (m) { m.GlobalWorkerOptions.workerSrc = BASE + d + 'pdf.worker.min.mjs'; PJ = m; return m; }); };
   return go('').catch(function () { return go('pdfjs/'); });
 }
 
