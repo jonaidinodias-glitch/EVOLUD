@@ -59,17 +59,18 @@ function famille(titre, ligne) {
 function piece(r) {
   r = nrm(r).replace(/\b(rdc|1er ss|1er|2eme|ss)\b/g, '').replace(/\s+/g, ' ').trim();
   const M = [[/^chambre n.?\s?1|^chambre 1/, 'CH1'], [/^chambre n.?\s?2|^chambre 2/, 'CH2'], [/^chambre n.?\s?3|^chambre 3/, 'CH3'], [/^chambre/, 'CH1'],
-    [/salle de bain|salle d.?eau|^sdb/, 'SDB'], [/esc.* r\s?\+\s?1|escalier.*etage/, 'ESC1'], [/esc.* r\s?-\s?1|cave/, 'ESC0'], [/^esc/, 'ESC1'],
+    [/salle de bain|salle d.?eau|^sdb/, 'SDB'], [/esc.* r\s?\+\s?1|escalier.*etage/, 'ESC1'], [/esc.*(r\s?-\s?1|sous.?sol)|cave/, 'ESC0'], [/^esc/, 'ESC1'],
     [/degagement n.?\s?2/, 'DGT2'], [/^degagement|^couloir/, 'DGT'], [/^salon|^sejour|^salle a manger/, 'SEJ'], [/^cuisine/, 'CUI'], [/^wc|toilette/, 'WC'],
-    [/^palier/, 'PAL'], [/^exterieur/, 'EXT'], [/^comble/, 'COMB'], [/^entree|^hall/, 'ENT'], [/^garage/, 'GAR'], [/^cave/, 'CAVE']];
+    [/^palier/, 'PAL'], [/^exterieur/, 'EXT'], [/^comble/, 'COMB'], [/^entree|^hall/, 'ENT'], [/^facade/, 'EXT'], [/^sous.?sol|^cave/, 'CAVE'], [/^garage/, 'GAR'], [/^cave/, 'CAVE']];
   for (const [re, k] of M) if (re.test(r)) return k;
   return r.toUpperCase().slice(0, 12) || '?';
 }
 const NOMP = { CH1: 'Chambre 1', CH2: 'Chambre 2', CH3: 'Chambre 3', SDB: 'SDB', ESC1: 'Escalier', ESC0: 'Escalier cave', DGT: 'Dégagement', DGT2: 'Dégagement 2', SEJ: 'Séjour', CUI: 'Cuisine', WC: 'WC', PAL: 'Palier', EXT: 'Extérieur', COMB: 'Combles', ENT: 'Entrée', GAR: 'Garage', CAVE: 'Cave' };
-const NOMF = { tresse: 'Tresses de radiateur', pv: 'Pare-vapeur combles', plinthe: 'Colle de plinthes', carrelage: 'Colle de carrelage', faience: 'Colle de faïence', appui: 'Appui de fenêtre', allege: 'Allège Glasal', imposte: 'Imposte Glasal', linteau: 'Linteau', seuil: 'Seuil', mastic: 'Mastic de vitrage', portemaco: 'Joint de porte', jointDO: "Joint d'assemblage fenêtre", jointMaco: 'Joint dormant / maçonnerie', lambris: 'Lambris', plafond: 'Plafond', plafond2: 'Plafond (2ᵉ couche)', mur: 'Mur (enduit)', bois: 'Sol bois', vmc: 'Conduit ventilation', toiture: 'Couverture', autre: 'Autre' };
+const NOMF = { tresse: 'Tresses de radiateur', pv: 'Pare-vapeur combles', plinthe: 'Colle de plinthes', carrelage: 'Colle de carrelage', faience: 'Colle de faïence', appui: 'Appui de fenêtre', allege: 'Allège Glasal', imposte: 'Imposte Glasal', linteau: 'Linteau', seuil: 'Seuil', mastic: 'Mastic de vitrage', portemaco: 'Joint de porte', jointDO: "Joint d'assemblage fenêtre", jointMaco: 'Joint dormant / maçonnerie', lambris: 'Lambris', plafond: 'Plafond', plafond2: 'Plafond (2ᵉ couche)', mur: 'Mur (enduit)', bois: 'Sol bois', vmc: 'Conduit ventilation', toiture: 'Couverture', solsouple: 'Sol souple', autre: 'Autre' };
 
 /* ---------- 3. lecture du rapport ---------- */
 function analyser(pages) {
+  if (estETI(pages)) return analyserETI(pages);
   const LP = pages.map(lignes), all = [].concat(...LP.map((L, i) => L.map(l => Object.assign({ p: i }, l))));
   const txt = all.map(l => l.t).join('\n');
   const R = { ug: '', adr: '', ville: '', date: '', desc: '', scen: '', sondages: [], posZ: [], titres: {}, aucun: false };
@@ -124,6 +125,83 @@ function analyser(pages) {
   });
   R.sondages.forEach(s => { s.pos = R.posZ.indexOf(s.z) >= 0; });
   return R;
+}
+/* ---------- 3 bis. rapports ETI-DIAG (et logiciels du même type) : un tableau par ZPSO, localisations multiples ---------- */
+function estETI(pages) { return pages.some(W => W.some(w => /^ZPSO-\d{3}/.test(w.t))); }
+function analyserETI(pages) {
+  const LP = pages.map(lignes), all = [].concat(...LP.map((L, i) => L.map(l => Object.assign({ p: i }, l))));
+  const txt = all.map(l => l.t).join('\n');
+  const R = { ug: '', adr: '', ville: '', date: '', desc: '', scen: '', sondages: [], posZ: [], titres: {}, aucun: false, fmt: 'ETI' };
+  let m = txt.match(/Rue\s*:\s*\.*\s*([^\n]+)/i); if (m) R.adr = m[1].replace(/^\.+\s*/, '').trim();
+  m = txt.match(/Code postal, ville\s*:\s*\.*\s*\d{5}\s+([^\n(]+)/i); if (m) R.ville = m[1].trim();
+  m = txt.match(/Date du rep[ée]rage\s*:?\s*(\d{2}\/\d{2}\/\d{4})/i); if (m) R.date = m[1];
+  const iD = all.findIndex(l => /Descriptif des travaux/i.test(l.t));
+  if (iD >= 0) { const d = []; for (let i = iD + 1; i < Math.min(all.length, iD + 12); i++) { const t = all[i].t.trim(); if (!t || /^\d+(\.\d+)*\s+[A-ZÉ]/.test(t) || /Rapport DDT|Rep[ée]rage Amiante/.test(t)) { if (d.length) break; else continue; } d.push(t); } R.desc = d.join(' ').replace(/\s+/g, ' ').trim(); }
+  m = (R.desc + ' ' + txt).match(/simulation\s*n?°?\s*(\d{1,2})/i); if (m) R.scen = m[1];
+  // zone du tableau 5.0 (liste complète)
+  let on = false; const rows = [], blocs = []; let xId = null;
+  LP.forEach((L, p) => {
+    L.forEach(l => {
+      if (/^\s*5\.0\b|Liste des mat[ée]riaux reconnus visuellement/i.test(l.t)) { on = true; return; }
+      if (on && /^\s*5\.1\b|Liste des mat[ée]riaux ou produits contenant de l.amiante,/i.test(l.t)) { on = false; return; }
+      if (!on || /Rapport DDT|ETI-DIAG|RCS\s*:|Rep[ée]rage Amiante - Travaux|Localisation\s+Identifiant/i.test(l.t)) return;
+      const id = l.w.findIndex(w => /^Identifiant:?$/.test(w.t) || /^ZPSO-\d{3}/.test(w.t));
+      const k = id >= 0 ? l.w.findIndex(w => /^ZPSO-\d{3}/.test(w.t)) : -1;
+      if (k >= 0) { const w = l.w[k]; if (xId == null || w.x < xId + 60) xId = Math.min(xId == null ? 1e9 : xId, l.w[id].x);
+        const rest = l.w.slice(k).map(x => x.t).join(' ');
+        rows.push({ p, y: l.y, z: w.t.slice(0, 8), ids: rest, desc: '', com: l.t, gauche: l.w.slice(0, id).map(x => x.t).join(' ') }); }
+      else {
+        const r = rows[rows.length - 1];
+        const dI = l.w.findIndex(w => /^Description:?$/.test(w.t));
+        if (dI >= 0 && r) { r.desc = l.w.slice(dI + 1).map(x => x.t).join(' ').replace(/\s*(Absence|Pr[ée]sence|Mat[ée]riau ou produit|\(Apr[èe]s|\(Sur ).*$/i, '').trim(); if (r.p === p) r.yd = l.y; r.com += ' ' + l.t;
+          const g = l.w.slice(0, dI).map(x => x.t).join(' '); if (g) blocs.push({ p, y: l.y, t: g }); }
+        else { if (r) r.com += ' ' + l.t; const lim = xId != null ? xId - 4 : 200; const g = l.w.filter(w => w.x < lim).map(x => x.t).join(' '); if (g && /[a-z]/i.test(g)) blocs.push({ p, y: l.y, t: g }); }
+      }
+      const r = rows[rows.length - 1]; if (r && r.gauche) { blocs.push({ p: r.p, y: r.y, t: r.gauche }); r.gauche = ''; }
+    });
+  });
+  // regroupe les lignes de localisation qui se suivent (« ...; Rez-de-chaussée » + « - Salon; ... »)
+  const B = []; blocs.sort((a, b) => a.p - b.p || a.y - b.y).forEach(b => { const q = B[B.length - 1];
+    if (q && q.p === b.p && b.y - q.y1 < 16 && (/^[-–]/.test(b.t) || /[;\-–]\s*$/.test(q.t) || /(Rez-de-chauss[ée]e|[ée]tage|Sous-?Sol|Sous)\s*$/i.test(q.t) || /^(chauss[ée]e|Sol|sol)\b/.test(b.t))) { q.t += ' ' + b.t; q.y1 = b.y; q.n++; }
+    else B.push({ p: b.p, y0: b.y, y1: b.y, t: b.t, n: 1 }); });
+  // chaque bloc va à la ligne ZPSO la plus proche ; les lignes sans bloc héritent du précédent
+  rows.forEach(r => { r.ym = r.yd ? (r.y + r.yd) / 2 : r.y; r.loc = null; });
+  B.forEach(b => { const c = (b.y0 + b.y1) / 2, near = f => { let best = null, d = 1e9; rows.forEach(r => { if (r.p !== b.p || !f(r)) return; const e = Math.abs(r.ym - c); if (e < d) { d = e; best = r; } }); return [best, d]; };
+    let [best, d] = near(r => !r.loc); if (!best || d > 40) best = near(() => true)[0];
+    const t = b.t.replace(/\s+/g, ' ').replace(/\s*-\s*$/, ''); if (best && !best.loc) best.loc = t; else if (best) best.loc += '; ' + t; });
+  let cur = '';
+  rows.forEach(r => { if (r.loc) cur = r.loc; const loc = r.loc || cur, c = nrm(r.com);
+    const pos = /presence d.amiante/.test(c) && !/absence d.amiante/.test(c.replace(/presence d.amiante.*$/, ''));
+    if (pos && R.posZ.indexOf(r.z) < 0) R.posZ.push(r.z); R.titres[r.z] = r.desc;
+    const P = (r.ids.match(/\bP\d{3}\b/g) || []);
+    const pieces = loc.split(/;\s*/).map(x => x.replace(/^.*?\s[-–]\s/, '').replace(/^[-–]\s*/, '').trim()).filter(Boolean);
+    const nat = /par nature|justificatif/.test(c);
+    (pieces.length ? pieces : ['?']).forEach((pc, i) => R.sondages.push({ s: r.z + (pieces.length > 1 ? '/' + (i + 1) : ''), z: r.z, piece: pc, k: piece(pc), fam: familleETI(r.desc, pc), m: nat || !P.length ? 'D' : (i === 0 ? 'P' : 'H'), pos }));
+  });
+  R.aucun = !R.posZ.length;
+  return R;
+}
+function familleETI(desc, pc) {
+  const d = nrm(desc), p = nrm(pc);
+  if (/entre fen.*structure|fenetres? et (la )?structure|dormant/.test(d)) return 'jointMaco';
+  if (/entre porte.*structure|porte/.test(d)) return 'portemaco';
+  if (/joint d.?assemblage/.test(d)) return 'jointDO';
+  if (/joint de vitrage|mastic/.test(d)) return 'mastic';
+  if (/appuis? de fen/.test(d)) return 'appui';
+  if (/allege|glasal/.test(d)) return 'allege';
+  if (/linteau/.test(d)) return 'linteau';
+  if (/seuil/.test(d)) return 'seuil';
+  if (/colle de carrelage/.test(d)) return 'carrelage';
+  if (/colle de plinthe/.test(d)) return 'plinthe';
+  if (/faience/.test(d)) return 'faience';
+  if (/tresse|radiateur/.test(d)) return 'tresse';
+  if (/pare.?vapeur|comble/.test(d)) return 'pv';
+  if (/conduit|gaine|ventilation/.test(d)) return 'vmc';
+  if (/tuile|ardoise|couverture|toiture|plaque.*fibre/.test(d)) return 'toiture';
+  if (/calicot|plafond|faux.?plafond/.test(d)) return 'plafond';
+  if (/enduit|peinture|plaques? de platre/.test(d)) return /facade|exterieur/.test(p) ? 'mur' : 'mur';
+  if (/revetement souple|dalle.*sol|sol souple|sous-couche/.test(d)) return 'solsouple';
+  return 'autre';
 }
 /* étiquettes de pièce fusionnées sur plusieurs lignes : l'étiquette est au milieu de son groupe de sondages */
 function assigner(sy, ly, carry) {
@@ -184,11 +262,12 @@ function complement(R) {
   const pieces = {}; S.forEach(s => { pieces[s.k] = 1; });
   if (T.baies) {
     const fen = ['SEJ', 'CUI', 'SDB', 'CH1', 'CH2', 'CH3'].filter(k => pieces[k]);
-    const sansFen = fen.filter(k => !S.some(s => s.k === k && ['mastic', 'jointDO', 'appui', 'allege', 'imposte', 'linteau'].indexOf(s.fam) >= 0));
+    const parFacade = S.some(s => s.k === 'EXT' && ['mastic', 'jointDO', 'jointMaco', 'appui', 'allege', 'imposte'].indexOf(s.fam) >= 0);   // rapports qui sondent les fenêtres côté façade
+    const sansFen = parFacade ? [] : fen.filter(k => !S.some(s => s.k === k && ['mastic', 'jointDO', 'appui', 'allege', 'imposte', 'linteau'].indexOf(s.fam) >= 0));
     if (sansFen.length) items.push('Fenêtres non sondées : ' + sansFen.map(k => NOMP[k] || k).join(', ') + ' (mastic, joints, appui)');
     if (!has('jointMaco')) items.push('Joints dormant / maçonnerie des fenêtres');
     const fenAvec = fen.filter(k => sansFen.indexOf(k) < 0);
-    const sansAppui = fenAvec.filter(k => !S.some(s => s.k === k && (s.fam === 'appui' || s.fam === 'allege')) && ['CH1', 'CH2', 'CH3', 'SEJ'].indexOf(k) >= 0);
+    const sansAppui = parFacade ? [] : fenAvec.filter(k => !S.some(s => s.k === k && (s.fam === 'appui' || s.fam === 'allege')) && ['CH1', 'CH2', 'CH3', 'SEJ'].indexOf(k) >= 0);
     if (sansAppui.length) items.push('Appui de fenêtre : ' + sansAppui.map(k => NOMP[k] || k).join(', '));
     if (!has('linteau')) items.push('Linteaux');
     if (!has('jointDO')) items.push("Joints d'assemblage des fenêtres");
