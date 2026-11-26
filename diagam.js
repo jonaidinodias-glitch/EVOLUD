@@ -250,14 +250,26 @@ function colonnes(R) {
 }
 
 /* ---------- 5. travaux du scénario → diag complémentaire ---------- */
-function travaux(R) {
-  const d = nrm(R.desc), sc = +R.scen || 0;
+function travauxTexte(txt, sc) {
+  const d = nrm(txt); sc = +sc || 0;
   const T = { combles: /comble/.test(d), rampants: /rampant/.test(d), vmc: /\bvmc\b|ventilation/.test(d), portes: /porte/.test(d), baies: /baie|fenetre|menuiserie/.test(d), murFroid: /mur.{0,3}froid/.test(d) };
   if (sc === 13 || sc === 14) T.murFroid = true;
   return T;
 }
-function complement(R) {
-  const T = travaux(R), S = R.sondages, has = (f, k) => S.some(s => s.fam === f && (!k || s.k === k));
+function travaux(R) { return travauxTexte(R.desc, R.scen); }
+/* travaux d'après les tâches / prestations du logement dans Évolud */
+function travauxTaches(noms) {
+  const T = { combles: false, rampants: false, vmc: false, portes: false, baies: false, murFroid: false }, n = noms.map(nrm).join(' | ');
+  if (/souffl|trappe.*(bp|bs)|creation trappe|comble|plafond droit/.test(n)) T.combles = true;
+  if (/rampant/.test(n)) T.rampants = true;
+  if (/vmc|vmr|ventil/.test(n)) T.vmc = true;
+  if (/\bpe\b|porte d.?entree|porte bs|porte/.test(n)) T.portes = true;
+  if (/mext|menuiserie|fenetre|chassis|baie/.test(n)) T.baies = true;
+  if (/mur.{0,3}froid/.test(n)) T.murFroid = true;
+  return T;
+}
+function complement(R, Tx) {
+  const T = Tx || travaux(R), S = R.sondages, has = (f, k) => S.some(s => s.fam === f && (!k || s.k === k));
   const items = [], impacts = [];
   const pieces = {}; S.forEach(s => { pieces[s.k] = 1; });
   if (T.baies) {
@@ -298,10 +310,16 @@ function resume(R) {
   const ou = {}; amiante.forEach(s => { const f = NOMF[s.fam] || s.fam; (ou[f] = ou[f] || []).push(NOMP[s.k] || s.k); });
   return { v: 1, ug: R.ug, adr: R.adr, ville: R.ville, date: R.date, desc: R.desc, scen: R.scen, n: R.sondages.length,
     am: amiante.length ? 'OUI' : 'NON', ou: Object.keys(ou).map(f => f + ' : ' + [...new Set(ou[f])].join(', ')),
-    compl: c.besoin, items: c.items, impacts: c.impacts, cols: col.out, at: Date.now() };
+    compl: c.besoin, items: c.items, impacts: c.impacts, cols: col.out, at: Date.now(),
+    S: R.sondages.map(s => [s.z, s.k, s.fam, s.m, s.pos ? 1 : 0]) };
 }
 
-const API = { lirePdf, analyser, colonnes, complement, resume, famille, piece, NOMP, NOMF, MAP };
+function reanalyser(r, Tx) {   // refait l'analyse depuis le résumé stocké (sans le PDF), avec les travaux actuels du logement
+  const R = { desc: r.desc || '', scen: r.scen || '', sondages: (r.S || []).map(x => ({ z: x[0], k: x[1], fam: x[2], m: x[3], pos: !!x[4] })) };
+  if (!R.sondages.length) return { items: r.items || [], impacts: r.impacts || [], besoin: r.compl, T: null };
+  return complement(R, Tx);
+}
+const API = { reanalyser, travauxTexte, travauxTaches, lirePdf, analyser, colonnes, complement, resume, famille, piece, NOMP, NOMF, MAP };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.EvoludDiagCore = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -356,8 +374,49 @@ function allUgs() { var s = {}; Object.keys(local()).forEach(function (u) { s[u]
 function lienEnLigne(ug) { try { var d = ((window.EVOLUD_DIAGS || {}).diags || {})[ug]; return (d && d.docs && d.docs.amiante) || []; } catch (e) { return []; } }
 function infoLog(ug) { try { if (typeof SEEDMAP !== 'undefined' && SEEDMAP[ug]) { var s = SEEDMAP[ug], l = log(ug) || {}; return { a: l.a || s.a || s.adresse || '', v: l.v || s.v || s.ville || '', sc: l.sc || s.sc || s.scen || '' }; } } catch (e) { } return {}; }
 
+/* ---------- serveur Évolud : envoi du PDF dans le Drive (dossier du logement) ---------- */
+function conf() {
+  var o = { url: '', token: '', device: '', user: '' }, seen = 0;
+  var scan = function (v, d) { if (d > 3 || v == null || seen > 4000) return; seen++;
+    if (typeof v === 'string') { if (!o.url && /^https:\/\/script\.google(usercontent)?\.com\/.+\/exec/.test(v)) o.url = v; else if (!o.token && /^EVD-[A-Za-z0-9]{3,}-/.test(v) && !/^EVD-QR-/.test(v)) o.token = v; else if (!o.device && /^dev-[a-z0-9]{6,}$/i.test(v)) o.device = v;
+      else if (d === 0 && /^[\[{]/.test(v) && v.length < 20000) { try { scan(JSON.parse(v), 1); } catch (e) { } } return; }
+    if (typeof v === 'object') Object.keys(v).slice(0, 60).forEach(function (k) { scan(v[k], d + 1); }); };
+  try { if (typeof cfg === 'function') scan(cfg(), 1); } catch (e) { }
+  try { for (var i = 0; i < localStorage.length && !(o.url && o.token && o.device); i++) { var v = localStorage.getItem(localStorage.key(i)); if (v && v.length < 20000) scan(v, 0); } } catch (e) { }
+  try { o.user = (typeof ME !== 'undefined' && ME && ME.nom) || ''; } catch (e) { }
+  return o;
+}
+function b64(ab) { var u = new Uint8Array(ab), s = '', k = 0x8000; for (var i = 0; i < u.length; i += k) s += String.fromCharCode.apply(null, u.subarray(i, i + k)); return btoa(s); }
+function versDrive(ug, ab, name, adr) {
+  var c = conf(); if (!c.url || !c.token) return Promise.reject(new Error('serveur non trouvé'));
+  var nom = 'DIAG_AMIANTE_' + ug + '_' + String(name || 'diag.pdf').replace(/[^\w.-]+/g, '_').replace(/(\.pdf)?$/i, '.pdf');
+  return fetch(c.url, { method: 'POST', body: JSON.stringify({ token: c.token, device: c.device, user: c.user, action: 'photo', ug: String(ug), name: nom, mime: 'application/pdf', kind: 'DIAG', b64: b64(ab), meta: { adresse: adr || '', ts: Date.now(), comment: 'Diag amiante' } }) })
+    .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok || !j.url) throw new Error(j.error || 'envoi refusé'); return j.url; });
+}
+
+/* ---------- travaux actuels du logement (tâches / VTE / scénario Gamma) ---------- */
+var KS = 'evolud_diagam_scen_v1';
+function scMap() { var M = {}; try { M = JSON.parse(localStorage.getItem(KS) || '{}') || {}; } catch (e) { }
+  allUgs().forEach(function (u) { var r = resOf(u); if (r && r.scen && r.desc && !M[r.scen]) M[r.scen] = r.desc; }); return M; }
+function apprendre(r) { if (!r || !r.scen || !r.desc) return; try { var M = JSON.parse(localStorage.getItem(KS) || '{}') || {}; M[r.scen] = r.desc; localStorage.setItem(KS, JSON.stringify(M)); } catch (e) { } }
+function scenActuel(ug) { var v = ''; try { var g = window.GAMMA && window.GAMMA[ug]; if (g && g.sc) v = g.sc; } catch (e) { } try { if (!v) { var l = log(ug) || {}; v = l.sc || l.scen || ''; } } catch (e) { } try { if (!v && typeof SEEDMAP !== 'undefined' && SEEDMAP[ug]) v = SEEDMAP[ug].sc || SEEDMAP[ug].scen || ''; } catch (e) { } return String(v || ''); }
+function nomsTaches(ug) { var N = [];
+  try { if (typeof tachesOf === 'function') (tachesOf(ug) || []).forEach(function (t) { if (t && !t.deleted && t.prest) N.push(t.prest); }); } catch (e) { }
+  try { if (typeof vteOf === 'function') { var v = vteOf(ug); if (v && v.prest) Object.keys(v.prest).forEach(function (k) { if (!/^(np|non|annul)/i.test(String(v.prest[k]))) N.push(k); }); } } catch (e) { }
+  return N; }
+function travauxActuels(ug, r) {
+  var sc = scenActuel(ug), N = nomsTaches(ug), M = scMap(), T = null, src = '';
+  if (N.length) { T = C.travauxTaches(N); src = 'tâches du logement'; }
+  if (sc && M[sc]) { var T2 = C.travauxTexte(M[sc], sc); if (T) Object.keys(T2).forEach(function (k) { T[k] = T[k] || T2[k]; }); else T = T2; src = (src ? src + ' + ' : '') + 'scénario ' + sc; }
+  else if (sc && (+sc === 13 || +sc === 14) && T) { T.murFroid = true; }
+  if (!T) { T = C.travauxTexte((r && r.desc) || '', (r && r.scen) || ''); src = 'travaux écrits dans le diag'; }
+  return { T: T, src: src, sc: sc };
+}
+function analyseActuelle(ug, r) { var w = travauxActuels(ug, r), a = C.reanalyser(r, w.T); return { items: a.items, impacts: a.impacts, compl: a.besoin, src: w.src, sc: w.sc, change: !!(w.sc && r.scen && String(w.sc) !== String(r.scen)), T: w.T }; }
+var NOMT = { combles: 'combles', rampants: 'rampants', vmc: 'VMC', portes: 'portes', baies: 'fenêtres', murFroid: 'mur(s) froid(s)' };
+
 /* ---------- analyse d'un fichier ---------- */
-function analyseFichier(file, ugHint) {
+function analyseFichier(file, ugHint, onEtape) {
   return file.arrayBuffer().then(function (ab) {
     return pdfjs().then(function (pj) { return C.lirePdf(pj, new Uint8Array(ab.slice(0))); }).then(function (pages) {
       var R = C.analyser(pages);
@@ -366,29 +425,37 @@ function analyseFichier(file, ugHint) {
       var ug = String(ugHint || R.ug || fromName || ''); if (!ug) { ug = prompt('UG non trouvée dans le rapport « ' + file.name + ' ». Numéro d\'UG ?') || ''; }
       if (!/^\d{5,7}$/.test(ug)) throw new Error('UG inconnue pour ' + file.name);
       R.ug = ug; if (!R.adr || !R.ville) { var il = infoLog(ug); R.adr = R.adr || il.a || ''; R.ville = R.ville || il.v || ''; } var res = C.resume(R); res.file = file.name;
-      saveRes(ug, res);
-      return putPdf(ug, new Blob([ab], { type: 'application/pdf' }), file.name).then(function () { return res; });
+      var old = resOf(ug); if (old && old.url) res.url = old.url;
+      apprendre(res); saveRes(ug, res);
+      return putPdf(ug, new Blob([ab], { type: 'application/pdf' }), file.name).then(function () {
+        if (typeof onEtape === 'function') onEtape('☁️ Envoi du PDF dans le Drive…');
+        return versDrive(ug, ab, file.name, res.adr).then(function (u) { res.url = u; saveRes(ug, res); res._drive = 'ok'; return res; })
+          .catch(function (e) { res._drive = e.message || String(e); return res; });
+      });
     });
   });
 }
 
 /* ---------- carte dans la fiche logement ---------- */
 function carte(ug) {
-  var r = resOf(ug), on = lienEnLigne(ug);
+  var r0 = resOf(ug), on = lienEnLigne(ug), A = r0 ? analyseActuelle(ug, r0) : null, r = r0 ? Object.assign({}, r0, { items: A.items, impacts: A.impacts, compl: A.compl }) : null;
+  if (r0 && r0.url && on.indexOf(r0.url) < 0) on = [r0.url].concat(on);
   var tete = !r ? pill('non analysé', '#555', '#eceff3') : (r.am === 'OUI' ? pill('☣️ Amiante présent', '#C00000', '#fbe0e0') : pill('✔ Pas d\'amiante', '#1b5e20', '#dff3e0')) + ' ' +
     (r.compl === 'OUI' ? pill('Diag complémentaire : OUI', '#a34a00', '#fde9d7') : r.compl === 'NON' ? pill('Diag complet', '#1b5e20', '#dff3e0') : pill('Complément à vérifier', '#7a5b00', '#fff3c4'));
   var h = '<div class="card" id="dgaC" style="border-left:5px solid ' + (!r ? '#9aa5b4' : r.am === 'OUI' ? 'var(--red,#C00000)' : r.compl === 'OUI' ? 'var(--orange,#e8792b)' : 'var(--green,#2e7d32)') + '">' +
     '<div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 class="grow" style="margin:0;flex:1">☢️ Diag amiante</h3>' + tete + '</div>';
   if (r) {
     h += '<div class="small mut" style="margin:6px 0">Repérage du ' + E(r.date || '?') + (r.scen ? ' · scénario ' + E(r.scen) : '') + ' · ' + r.n + ' sondages' + (r.file ? ' · ' + E(r.file) : '') + '</div>';
-    if (r.desc) h += '<div class="small"><b>Travaux prévus :</b> ' + E(r.desc) + '</div>';
+    if (r.desc) h += '<div class="small"><b>Travaux écrits dans le diag :</b> ' + E(r.desc) + '</div>';
+    h += '<div class="small" style="margin-top:4px"><b>Analyse faite selon :</b> ' + E(A.src) + ' → ' + Object.keys(NOMT).filter(function (k) { return A.T && A.T[k]; }).map(function (k) { return NOMT[k]; }).join(', ') + '</div>';
+    if (A.change) h += '<div class="small" style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff3c4;color:#7a5b00"><b>⚠️ Scénario changé :</b> le diag a été fait pour le scénario ' + E(r0.scen) + ', le logement est maintenant en scénario ' + E(A.sc) + '. L\'analyse ci-dessous est refaite pour le scénario ' + E(A.sc) + '.</div>';
     if (r.ou && r.ou.length) h += '<div class="small" style="margin-top:6px;color:#C00000"><b>Amiante :</b><br>' + r.ou.map(E).join('<br>') + '</div>';
     if (r.impacts && r.impacts.length) h += '<div class="small" style="margin-top:6px"><b>Impact sur les travaux :</b><ul style="margin:4px 0 0 18px;padding:0">' + r.impacts.map(function (t) { return '<li>' + E(t) + '</li>'; }).join('') + '</ul></div>';
     if (r.items && r.items.length) h += '<div class="small" style="margin-top:6px"><b>Diag complémentaire (' + E(r.compl) + ') – à faire sonder :</b><ul style="margin:4px 0 0 18px;padding:0">' + r.items.map(function (t) { return '<li>' + E(t) + '</li>'; }).join('') + '</ul></div>';
   } else h += '<div class="small mut" style="margin:6px 0">Importe le PDF du rapport de repérage amiante : l\'appli dit s\'il y a de l\'amiante, où, l\'impact sur les travaux du scénario et s\'il faut un diag complémentaire.</div>';
   h += '<div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' +
-    '<button class="btn sm" data-dga="open" style="display:none">📄 Ouvrir le diag</button><button class="btn sm sec" data-dga="dl" style="display:none">⬇️ Télécharger</button>' +
-    on.map(function (u, i) { return '<a class="btn sm sec" href="' + E(u) + '" target="_blank" rel="noopener">🌐 Rapport en ligne' + (on.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('') +
+    '<button class="btn sm" data-dga="open" style="display:none">📄 Ouvrir le diag (téléphone)</button><button class="btn sm sec" data-dga="dl" style="display:none">⬇️ Télécharger</button>' +
+    on.map(function (u, i) { return '<a class="btn sm sec" href="' + E(u) + '" target="_blank" rel="noopener">' + (r0 && u === r0.url ? '📄 Diag (Drive)' : '🌐 Rapport en ligne' + (on.length > 1 ? ' ' + i : '')) + '</a>'; }).join('') +
     '<label class="btn sm sec" style="cursor:pointer;margin:0">📥 ' + (r ? 'Remplacer le PDF' : 'Importer le PDF du diag') + '<input type="file" accept="application/pdf,.pdf" data-dga="imp" style="display:none"></label>' +
     '<a class="btn sm sec" href="#/diagam">📊 Tous les diags</a></div><div class="small mut" data-dga="msg" style="margin-top:6px"></div></div>';
   return h;
@@ -402,7 +469,7 @@ function lierCarte(ug) {
     d.onclick = function () { var a = document.createElement('a'); a.href = u; a.download = p.name || ('Diag_amiante_' + ug + '.pdf'); document.body.appendChild(a); a.click(); a.remove(); }; });
   var inp = Q('[data-dga="imp"]', c);
   inp.onchange = function () { var f = inp.files && inp.files[0]; if (!f) return; msg.textContent = '⏳ Lecture du rapport…';
-    analyseFichier(f, ug).then(function (r) { T('☢️ Diag analysé : amiante ' + r.am + ' · complément ' + r.compl); var n = document.createElement('div'); n.innerHTML = carte(ug); c.replaceWith(n.firstElementChild); lierCarte(ug); })
+    analyseFichier(f, ug, function (m) { msg.textContent = m; }).then(function (r) { T('☢️ Diag analysé : amiante ' + r.am + (r._drive === 'ok' ? ' · rangé dans le Drive' : ' · Drive : ' + r._drive)); var n = document.createElement('div'); n.innerHTML = carte(ug); c.replaceWith(n.firstElementChild); lierCarte(ug); })
       .catch(function (e) { msg.textContent = e.message === 'annulé' ? '' : '⚠️ ' + (e.message || e); }); };
 }
 function poserCarte(ug) {
@@ -416,12 +483,12 @@ function poserCarte(ug) {
 var F = { q: '', f: '' };
 function page() {
   var app = Q('#app'); if (!app) return;
-  var U = allUgs(), R = U.map(function (u) { return { ug: u, r: resOf(u) }; }).filter(function (x) { return x.r; });
+  var U = allUgs(), R = U.map(function (u) { var r0 = resOf(u); if (!r0) return null; var A = analyseActuelle(u, r0); return { ug: u, r: Object.assign({}, r0, { items: A.items, impacts: A.impacts, compl: A.compl }), A: A }; }).filter(Boolean);
   var nA = R.filter(function (x) { return x.r.am === 'OUI'; }).length, nC = R.filter(function (x) { return x.r.compl === 'OUI'; }).length;
   app.innerHTML = '<div class="card"><h2 style="margin:0 0 6px">☢️ Diags amiante</h2><div class="small mut">' + R.length + ' rapport(s) analysé(s) · <b style="color:#C00000">' + nA + ' avec amiante</b> · <b style="color:#a34a00">' + nC + ' diag(s) complémentaire(s) à demander</b></div>' +
     '<div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><label class="btn" style="cursor:pointer;margin:0">📥 Importer des PDF de diags<input id="dgaF" type="file" accept="application/pdf,.pdf" multiple style="display:none"></label>' +
     '<button class="btn sec" id="dgaX">📊 Excel (Synt. Logements allégés + compléments)</button></div><div id="dgaP" class="small" style="margin-top:8px"></div>' +
-    '<div class="small mut" style="margin-top:6px">L\'UG est lue dans le rapport (sinon dans le nom du fichier). Le PDF reste sur ce téléphone ; l\'analyse est partagée avec l\'équipe via la fiche du logement.</div></div>' +
+    '<div class="small mut" style="margin-top:6px">L\'UG est lue dans le rapport (sinon dans le nom du fichier). Le PDF est rangé dans le Drive (dossier du logement) : toute l\'équipe peut l\'ouvrir. L\'analyse suit le scénario actuel du logement et se refait seule s\'il change.</div></div>' +
     '<div class="card"><input id="dgaQ" placeholder="🔎 UG, adresse, matériau…" value="' + E(F.q) + '" style="width:100%"><div class="seg" style="margin-top:8px">' + [['', 'Tous'], ['am', '☣️ Amiante'], ['co', '📝 Complément'], ['ok', '✔ OK']].map(function (x) { return '<button type="button" data-ff="' + x[0] + '" class="' + (F.f === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div></div><div id="dgaL"></div>';
   liste(R);
   Q('#dgaQ').oninput = function () { F.q = this.value; liste(R); };
@@ -429,8 +496,8 @@ function page() {
   Q('#dgaX').onclick = function () { excel(R); };
   Q('#dgaF').onchange = function () {
     var fs = [].slice.call(this.files || []), P = Q('#dgaP'), ok = 0, ko = [];
-    fs.reduce(function (p, f, i) { return p.then(function () { P.innerHTML = '⏳ ' + (i + 1) + ' / ' + fs.length + ' : ' + E(f.name); return analyseFichier(f).then(function () { ok++; }).catch(function (e) { ko.push(f.name + ' (' + (e.message || e) + ')'); }); }); }, Promise.resolve())
-      .then(function () { T('☢️ ' + ok + ' diag(s) analysé(s)'); page(); if (ko.length) Q('#dgaP').innerHTML = '⚠️ Non lus : ' + ko.map(E).join(', '); });
+    fs.reduce(function (p, f, i) { return p.then(function () { P.innerHTML = '⏳ ' + (i + 1) + ' / ' + fs.length + ' : ' + E(f.name); return analyseFichier(f, null, function (m) { P.innerHTML = '⏳ ' + (i + 1) + ' / ' + fs.length + ' : ' + E(f.name) + ' – ' + E(m); }).then(function (r) { ok++; if (r._drive !== 'ok') ko.push(f.name + ' (analysé, mais pas rangé dans le Drive : ' + r._drive + ')'); }).catch(function (e) { ko.push(f.name + ' (' + (e.message || e) + ')'); }); }); }, Promise.resolve())
+      .then(function () { T('☢️ ' + ok + ' diag(s) analysé(s)'); page(); if (ko.length) Q('#dgaP').innerHTML = '⚠️ À vérifier : ' + ko.map(E).join(', '); });
   };
 }
 function liste(R) {
@@ -440,11 +507,11 @@ function liste(R) {
   Q('#dgaL').innerHTML = L.map(function (x) { var r = x.r;
     return '<div class="card" style="border-left:5px solid ' + (r.am === 'OUI' ? '#C00000' : r.compl === 'OUI' ? '#e8792b' : '#2e7d32') + '"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="flex:1">' + E(x.ug) + ' – ' + E(r.adr) + (r.ville ? ', ' + E(r.ville) : '') + '</b>' +
       (r.am === 'OUI' ? pill('☣️ Amiante', '#C00000', '#fbe0e0') : pill('✔ Sans amiante', '#1b5e20', '#dff3e0')) + (r.compl === 'OUI' ? pill('Complément', '#a34a00', '#fde9d7') : '') + '</div>' +
-      '<div class="small mut">' + E(r.date) + (r.scen ? ' · scén. ' + E(r.scen) : '') + ' · ' + E(r.desc || '') + '</div>' +
+      '<div class="small mut">' + E(r.date) + (r.scen ? ' · scén. diag ' + E(r.scen) : '') + (x.A && x.A.sc ? ' · scén. actuel ' + E(x.A.sc) : '') + ' · analyse selon ' + E(x.A ? x.A.src : '') + '</div>' + (x.A && x.A.change ? '<div class="small" style="color:#7a5b00">⚠️ Scénario changé depuis le diag : analyse refaite</div>' : '') +
       (r.ou && r.ou.length ? '<div class="small" style="color:#C00000;margin-top:4px">' + r.ou.map(E).join(' · ') + '</div>' : '') +
       (r.items && r.items.length ? '<div class="small" style="margin-top:4px"><b>À sonder :</b> ' + r.items.map(E).join(' ; ') + '</div>' : '') +
       '<div style="margin-top:6px"><a class="btn sm sec" href="#/logement/' + E(x.ug) + '">🏠 Logement</a> <button class="btn sm sec" data-op="' + E(x.ug) + '">📄 Diag</button></div></div>'; }).join('') || '<div class="card small mut">Aucun diag pour ce filtre.</div>';
-  [].slice.call(document.querySelectorAll('[data-op]')).forEach(function (b) { b.onclick = function () { getPdf(b.dataset.op).then(function (p) { if (p) window.open(URL.createObjectURL(p.blob), '_blank'); else { var on = lienEnLigne(b.dataset.op); if (on.length) window.open(on[0], '_blank'); else T('PDF non présent sur ce téléphone'); } }); }; });
+  [].slice.call(document.querySelectorAll('[data-op]')).forEach(function (b) { b.onclick = function () { getPdf(b.dataset.op).then(function (p) { if (p) window.open(URL.createObjectURL(p.blob), '_blank'); else { var rr = resOf(b.dataset.op), on = (rr && rr.url ? [rr.url] : []).concat(lienEnLigne(b.dataset.op)); if (on.length) window.open(on[0], '_blank'); else T('PDF non présent sur ce téléphone'); } }); }; });
 }
 
 /* ---------- export Excel (sans bibliothèque) ---------- */
@@ -507,6 +574,14 @@ function brancher() {
   try { var h = location.hash; if (/^#\/(logement|diagam|plus)\b/.test(h) && typeof render === 'function') render(); } catch (e) { }
   return true;
 }
+/* iPhone : après le sélecteur de fichiers ou le clavier, Safari laisse parfois la barre du bas « flotter » au milieu de l'écran.
+   On force Safari à recaler l'affichage (aucun effet ailleurs). */
+(function () {
+  var recale = function () { setTimeout(function () { try { var y = window.scrollY; window.scrollTo(window.scrollX, y + 1); window.scrollTo(window.scrollX, y); } catch (e) { } }, 60); };
+  ['focusout', 'change'].forEach(function (ev) { document.addEventListener(ev, recale, true); });
+  window.addEventListener('focus', recale); window.addEventListener('pageshow', recale); document.addEventListener('visibilitychange', function () { if (!document.hidden) recale(); });
+  if (window.visualViewport) { var h0 = window.visualViewport.height; window.visualViewport.addEventListener('resize', function () { var h = window.visualViewport.height; if (h > h0 - 2) recale(); h0 = h; }); }
+})();
 window.EvoludDiag = { analyseFichier: analyseFichier, resOf: resOf, page: page, getPdf: getPdf };
 (window.EVX_READY || Promise.resolve()).then(function () { var n = 0; (function t() { if (brancher() || ++n > 120) return; setTimeout(t, 500); })(); });
 })();
