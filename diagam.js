@@ -248,7 +248,11 @@ var hasApp = function () { try { return typeof routes !== 'undefined' && typeof 
 var pill = function (t, fg, bg) { return '<span class="pill" style="background:' + bg + ';color:' + fg + ';white-space:nowrap">' + t + '</span>'; };
 
 var PJ = null;
-function pdfjs() { if (PJ) return Promise.resolve(PJ); return import(BASE + 'pdfjs/pdf.min.mjs').then(function (m) { m.GlobalWorkerOptions.workerSrc = BASE + 'pdfjs/pdf.worker.min.mjs'; PJ = m; return m; }); }
+function pdfjs() {   // lecteur PDF : dossier pdfjs/ ou, à défaut, à la racine du site
+  if (PJ) return Promise.resolve(PJ);
+  var go = function (d) { return import(BASE + d + 'pdf.min.mjs').then(function (m) { m.GlobalWorkerOptions.workerSrc = BASE + d + 'pdf.worker.min.mjs'; PJ = m; return m; }); };
+  return go('').catch(function () { return go('pdfjs/'); });
+}
 
 /* ---------- PDF gardés sur le téléphone ---------- */
 function idb() { return new Promise(function (ok, ko) { var r = indexedDB.open('evolud_diagam', 1); r.onupgradeneeded = function () { r.result.createObjectStore('pdf'); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { ko(r.error); }; }); }
