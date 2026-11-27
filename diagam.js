@@ -713,3 +713,35 @@ function ajoutMotif() { try { var s = document.getElementById('armo'); if (s && 
 var n = 0; (function t() { var ok = brancherDelais(); if (!ok && ++n < 240) return setTimeout(t, 500); try { if (ok && /^#\/(home)?$/.test(location.hash || '#/home') && typeof render === 'function') render(); } catch (e) { } })();
 try { var tm = null; new MutationObserver(function () { if (tm) return; tm = setTimeout(function () { tm = null; ajoutMotif(); }, 300); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) { }
 })();
+
+/* Évolud – ✅ tâches au réel (v1.0) · conçu et développé par Saïd OUFQIR
+ * Les tâches notées « oui » dans le planning Excel (ou logement en VTS SR / VTS AR) sont clôturées automatiquement,
+ * sans clic : elles passent en « déposée Gamma » (déjà faites et déclarées), donc elles ne remplissent pas le SAS Gamma.
+ * Trace dans l'historique de la tâche (date de réalisation d'après l'Excel). Seul un conducteur le déclenche (évite les doublons).
+ */
+(function () {
+'use strict';
+if (window.__evReel) return; window.__evReel = 1;
+var enCours = false;
+function cloturer() {
+  if (enCours) return; enCours = true;
+  try {
+    var f = window.EVO_XLDONE; if (typeof f !== 'function' || typeof upsert !== 'function' || !window.ME) return;
+    if (typeof can === 'function' && !can('conducteur')) return;
+    var X = f() || []; if (!X.length) return;
+    var fd = function (d) { return d ? d.split('-').reverse().join('/') : ''; }, n = 0;
+    X.forEach(function (p) { var t = p[0], d = p[1];
+      if (!t || ['terminee', 'gamma'].indexOf(t.statut) >= 0) return;
+      t.statut = 'gamma'; t.motif = ''; t.doneSrc = 'xl'; t.doneAt = d ? new Date(d + 'T12:00:00').getTime() : Date.now(); t.gammaAt = t.gammaAt || t.doneAt; t.doneBy = ME.id;
+      t.rdvLog = (t.rdvLog || []).concat([{ ts: Date.now(), par: ME.id, type: 'cloture', txt: 'Clôturée automatiquement : réalisée d\'après le planning Excel' + (d ? ' (le ' + fd(d) + ')' : '') }]);
+      upsert('taches', t); n++; });
+    if (!n) return;
+    try { if (typeof toast === 'function') toast('✅ ' + n + ' tâche(s) clôturée(s) d\'après le planning Excel', 5000); } catch (e) { }
+    try { if (typeof render === 'function') render(); } catch (e) { }
+  } catch (e) { console.warn('tâches au réel', e); }
+  finally { enCours = false; }
+}
+setTimeout(cloturer, 8000); setInterval(cloturer, 120000);
+window.addEventListener('hashchange', function () { setTimeout(cloturer, 1500); });
+window.EvoludReel = { cloturer: cloturer };
+})();
