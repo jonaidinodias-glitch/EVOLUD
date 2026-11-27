@@ -664,3 +664,47 @@ function brancher() {
 window.EvoludDiag = { analyseFichier: analyseFichier, resOf: resOf, page: page, getPdf: getPdf, carte: carte, poserCarte: poserCarte };
 (window.EVX_READY || Promise.resolve()).then(function () { var n = 0; (function t() { if (brancher() || ++n > 120) { setTimeout(menagePdf, 3000); return; } setTimeout(t, 500); })(); });
 })();
+
+/* Évolud – ⏱️ délais réels (v1.0) · conçu et développé par Saïd OUFQIR
+ * Accueil « Délai en danger » : les jours couverts par une période neutralisée (attente diag client, arrêt double plafond,
+ * locataire absent/refus, attente validation du bon de commande…) ne comptent plus comme retard Bouygues.
+ * Chaque carte affiche le retard réel + les jours neutralisés avec leurs motifs et dates (preuve face au client).
+ * + nouveau motif d'arrêt : « Attente validation bon de commande client ».
+ */
+(function () {
+'use strict';
+if (window.__evDelais) return; window.__evDelais = 1;
+var iso = function (d) { return d.toISOString().slice(0, 10); };
+var moins = function (j, n) { var d = new Date(j + 'T12:00:00'); d.setDate(d.getDate() - n); return iso(d); };
+var fr = function (j) { return j ? String(j).slice(0, 10).split('-').reverse().join('/') : ''; };
+var jour = function () { try { if (typeof today === 'function') return today(); } catch (e) { } return iso(new Date()); };
+function motifs(ug, a, b) {
+  var G = []; try { G = window.gelsOf ? gelsOf(ug) : []; } catch (e) { }
+  var M = {}; G.forEach(function (g) { if (!g || !g[0]) return; var x = g[0], y = g[1] || b; if (y <= a || x >= b) return; var k = g[2] || 'période neutralisée'; (M[k] = M[k] || []).push(fr(x) + '→' + fr(y)); });
+  return Object.keys(M).map(function (k) { return k + ' ' + M[k].join(', '); }).join(' ; ') || 'période neutralisée';
+}
+function brancherDelais() {
+  var R0 = window.EVO_RISQUE; if (!R0) return false; if (R0.__dl) return true;
+  var w = function (ug) {
+    var r = R0(ug); if (!r || !r.R || typeof window.gelDays !== 'function') return r;
+    try {
+      var td = jour(), s = r.s, R = [];
+      r.R.forEach(function (t) {
+        var m = String(t).match(/^(limite de démarrage|fin Gamma) dépassée de (\d+) j/); if (!m) { R.push(t); return; }
+        var n = +m[2], a = moins(td, n), gel = Math.min(n, Math.max(0, gelDays(ug, a, td) || 0)), reel = n - gel, pen = /^limite/.test(m[1]) ? ' (pénalités)' : '';
+        if (!gel) { R.push(t); return; }
+        if (reel <= 0) { s -= 35; R.push(m[1] + ' : ' + n + ' j de retard, tous neutralisés (' + motifs(ug, a, td) + ')'); }
+        else R.push(m[1] + ' dépassée de ' + reel + ' j réels' + pen + ' · ' + gel + ' j neutralisés : ' + motifs(ug, a, td));
+      });
+      r.R = R; r.s = Math.max(0, Math.min(100, s));
+    } catch (e) { console.warn('délais réels', e); }
+    return r.s ? r : null;
+  };
+  w.__dl = 1; window.EVO_RISQUE = w; return true;
+}
+/* motif d'arrêt supplémentaire dans la carte « Arrêt de chantier » de la fiche logement */
+var MOTIF = 'Attente validation bon de commande client';
+function ajoutMotif() { try { var s = document.getElementById('armo'); if (s && ![].some.call(s.options, function (o) { return o.text === MOTIF; })) { var o = document.createElement('option'); o.text = MOTIF; s.appendChild(o); } } catch (e) { } }
+var n = 0; (function t() { var ok = brancherDelais(); if (!ok && ++n < 240) return setTimeout(t, 500); try { if (ok && /^#\/(home)?$/.test(location.hash || '#/home') && typeof render === 'function') render(); } catch (e) { } })();
+try { var tm = null; new MutationObserver(function () { if (tm) return; tm = setTimeout(function () { tm = null; ajoutMotif(); }, 300); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) { }
+})();
