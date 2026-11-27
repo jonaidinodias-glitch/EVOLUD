@@ -726,7 +726,7 @@ var enCours = false;
 function cloturer() {
   if (enCours) return; enCours = true;
   try {
-    var f = window.EVO_XLDONE; if (typeof f !== 'function' || typeof upsert !== 'function' || !window.ME) return;
+    var f = window.EVO_XLDONE; if (typeof f !== 'function' || typeof upsert !== 'function' || typeof ME === 'undefined' || !ME) return;
     if (typeof can === 'function' && !can('conducteur')) return;
     var X = f() || []; if (!X.length) return;
     var fd = function (d) { return d ? d.split('-').reverse().join('/') : ''; }, n = 0;
