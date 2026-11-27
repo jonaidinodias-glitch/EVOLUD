@@ -780,12 +780,32 @@ function boite() {
     app.insertAdjacentHTML('afterbegin', h);
     var b = document.getElementById('evXlB'); if (b) b.onclick = function () {
       var M = document.getElementById('evXlM');
-      try { var d = charger(); if (typeof toast === 'function') toast('📊 Planning Excel du ' + frd(d.X.R.le) + ' chargé'); var c = document.getElementById('evXl'); if (c) c.remove(); if (typeof render === 'function') render(); }
-      catch (x) { if (M) M.textContent = '⚠️ ' + (x.message || x); }
+      if (M) M.textContent = '⏳ Récupération…'; recup(true).then(function () { var e2 = etat(); if (M) M.textContent = plusRecent(e2) ? '⚠️ Toujours incomplet (' + e2.ok + '/' + (e2.m ? e2.m.n : 0) + ' morceaux). Vérifie le réseau et réessaie.' : '✅ À jour'; var c = document.getElementById('evXl'); if (c && !plusRecent(e2)) c.remove(); });
     };
   } catch (x) { console.warn('planning état', x); }
 }
 var t = null; try { new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = null; boite(); }, 400); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (x) { }
 window.addEventListener('hashchange', function () { setTimeout(boite, 600); });
-window.EvoludPlanning = { etat: etat, charger: charger };
+/* v1.1 : récupération AUTOMATIQUE, sans bouton. Si le téléphone a raté les morceaux du planning (synchro croisée avec le PC),
+ * on redemande au serveur uniquement les changements récents (depuis l'envoi du planning − 15 min) et on assemble. */
+var enCours = false, derniere = 0;
+function plusRecent(e) { return e.m && String(e.m.le || '').slice(0, 10) > String(e.ici || '').slice(0, 10); }
+async function recup(force) {
+  if (enCours) return; enCours = true;
+  try {
+    var e = etat();
+    if (e.m && !plusRecent(e) && !force) return;
+    if (e.m && !e.manque.length) { var d0 = charger(); if (typeof toast === 'function') toast('📊 Planning Excel du ' + frd(d0.X.R.le) + ' chargé'); try { if (typeof render === 'function') render(); } catch (x) { } return; }
+    if (typeof api !== 'function' || typeof DB === 'undefined') return;
+    if (Date.now() - derniere < 55000 && !force) return; derniere = Date.now();
+    var mm = DB.params && DB.params.xldMeta, t0 = (mm && mm.updatedAt) || (Date.now() - 48 * 3600e3);
+    var j = await api({ action: 'sync', since: t0 - 15 * 60e3, records: [] }), n = 0;
+    (j && j.records || []).forEach(function (x) { if (x && x.c === 'params' && /^xld/.test(String(x.id)) && x.data) { var cur = DB.params[x.id]; if (!cur || !cur._dirty) { DB.params[x.id] = x.data; n++; } } });
+    if (n) { try { if (typeof persist === 'function') persist(); } catch (x) { } }
+    e = etat(); if (plusRecent(e) && !e.manque.length) { var d = charger(); if (typeof toast === 'function') toast('📊 Planning Excel du ' + frd(d.X.R.le) + ' récupéré du serveur'); try { if (typeof render === 'function') render(); } catch (x) { } }
+  } catch (x) { console.warn('récup planning', x); }
+  finally { enCours = false; }
+}
+setTimeout(function () { recup(true); }, 12000); setInterval(function () { recup(false); }, 30000);
+window.EvoludPlanning = { etat: etat, charger: charger, recup: recup };
 })();
