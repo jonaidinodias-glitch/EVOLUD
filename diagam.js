@@ -670,6 +670,7 @@ window.EvoludDiag = { analyseFichier: analyseFichier, resOf: resOf, page: page, 
  * locataire absent/refus, attente validation du bon de commande…) ne comptent plus comme retard Bouygues.
  * Chaque carte affiche le retard réel + les jours neutralisés avec leurs motifs et dates (preuve face au client).
  * + nouveau motif d'arrêt : « Attente validation bon de commande client ».
+ * v1.1 : logements « Annulé » du planning Excel retirés des priorités ; motif « bloquant » du planning affiché sur la carte.
  */
 (function () {
 'use strict';
@@ -686,7 +687,11 @@ function motifs(ug, a, b) {
 function brancherDelais() {
   var R0 = window.EVO_RISQUE; if (!R0) return false; if (R0.__dl) return true;
   var w = function (ug) {
-    var r = R0(ug); if (!r || !r.R || typeof window.gelDays !== 'function') return r;
+    var X = window.EVO_XLD || {};
+    try { if ((X.A || []).indexOf(String(ug)) >= 0 || /^annul/i.test(((X.D || {})[ug] || [])[0] || '')) return null; } catch (e) { }   // logement annulé (planning Excel) : jamais en priorité
+    var r = R0(ug); if (!r || !r.R) return r;
+    try { var q = (X.Q || {})[ug], bl = q && q[0]; if (bl && r.R.length && String(r.R[r.R.length > 1 ? 1 : 0]).indexOf('bloquant Excel') < 0) { var i = r.R.length > 1 ? 1 : 0; r.R[i] = r.R[i] + ' · bloquant Excel : ' + String(bl).slice(0, 90); } } catch (e) { }   // motif noté dans le planning (ex. dératisation débloquée le…)
+    if (typeof window.gelDays !== 'function') return r;
     try {
       var td = jour(), s = r.s, R = [];
       r.R.forEach(function (t) {
