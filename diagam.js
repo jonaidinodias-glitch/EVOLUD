@@ -1,3 +1,47 @@
+/* Évolud – 🧠 garde-mémoire (v1.0) · conçu et développé par Saïd OUFQIR
+ * Sur iPhone, la mémoire locale d'un site (localStorage) est limitée à ~5 Mo : quand elle est pleine, plus rien ne s'enregistre
+ * (« mémoire du téléphone saturée »), même s'il reste de la place sur le téléphone.
+ * Ce garde : 1) demande à Safari de ne jamais effacer les données de l'appli ; 2) au démarrage et à chaque blocage,
+ * retire les miniatures (aperçus) des photos gardées en mémoire — les vraies photos restent dans le Drive — puis réessaie l'enregistrement.
+ * Rien d'autre n'est touché : cotes, VTE, tâches, photos en attente d'envoi sont conservées.
+ */
+(function () {
+'use strict';
+if (window.__evGarde) return; window.__evGarde = 1;
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }
+var LS; try { LS = window.localStorage; } catch (e) { return; } if (!LS || typeof Storage === 'undefined') return;
+var orig = Storage.prototype.setItem;
+var reThumb = /"thumb"\s*:\s*"data:image\/[^"]*"/g;
+var estQuota = function (e) { return !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014 || /quota|exceeded/i.test(String(e.message || ''))); };
+var taille = function () { var t = 0; try { for (var i = 0; i < LS.length; i++) { var k = LS.key(i), v = LS.getItem(k) || ''; t += k.length + v.length; } } catch (e) { } return t * 2; };
+function compacter(sauf) {
+  var gain = 0, K = [];
+  try { for (var i = 0; i < LS.length; i++) K.push(LS.key(i)); } catch (e) { }
+  K.forEach(function (k) { if (k === sauf) return; var v; try { v = LS.getItem(k); } catch (e) { return; }
+    if (!v || v.length < 1000 || v.indexOf('data:image') < 0) return;
+    var n = v.replace(reThumb, '"thumb":""'); if (n.length >= v.length) return;
+    try { orig.call(LS, k, n); gain += (v.length - n.length) * 2; } catch (e) { } });
+  return gain;
+}
+var dire = function (m) { try { if (typeof toast === 'function') { toast(m, 4000); return; } } catch (e) { } console.log(m); };
+Storage.prototype.setItem = function (k, v) {
+  try { return orig.call(this, k, v); }
+  catch (e) {
+    if (this !== LS || !estQuota(e)) throw e;
+    var g = compacter(k);
+    try { var r = orig.call(this, k, v); dire('🧠 Mémoire libérée (' + Math.round(g / 1024) + ' Ko d\'aperçus photos) : enregistré ✔'); return r; }
+    catch (e2) {
+      var s = String(v), s2 = s.replace(reThumb, '"thumb":""');   // dernier recours : enregistrer sans l'aperçu
+      if (s2.length < s.length) { var r2 = orig.call(this, k, s2); dire('🧠 Mémoire pleine : enregistré sans aperçu (la photo est dans le Drive)'); return r2; }
+      throw e2;
+    }
+  }
+};
+/* au démarrage : si la mémoire dépasse ~3,5 Mo, on fait le ménage tout de suite */
+try { if (taille() > 3.5 * 1024 * 1024) { var g0 = compacter(null); if (g0 > 0) console.log('garde-mémoire : ' + Math.round(g0 / 1024) + ' Ko libérés'); } } catch (e) { }
+window.EvoludGarde = { taille: taille, compacter: compacter };
+})();
+
 /* Évolud – ☢️ analyse des rapports de repérage amiante (moteur, sans interface)
  * Conçu et développé par Saïd OUFQIR
  * Lit le PDF (pdf.js), retrouve chaque sondage (pièce, matériau, prélèvement / homogénéité / décision),
@@ -362,6 +406,9 @@ function pdfjs() {   // lecteur PDF : à la racine du site (ou dossier pdfjs/) ;
 function idb() { return new Promise(function (ok, ko) { var r = indexedDB.open('evolud_diagam', 1); r.onupgradeneeded = function () { r.result.createObjectStore('pdf'); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { ko(r.error); }; }); }
 function putPdf(ug, blob, name) { return idb().then(function (db) { return new Promise(function (ok) { var tx = db.transaction('pdf', 'readwrite'); tx.objectStore('pdf').put({ blob: blob, name: name, at: Date.now() }, String(ug)); tx.oncomplete = tx.onerror = function () { db.close(); ok(); }; }); }).catch(function () { }); }
 function getPdf(ug) { return idb().then(function (db) { return new Promise(function (ok) { var g = db.transaction('pdf').objectStore('pdf').get(String(ug)); g.onsuccess = function () { db.close(); ok(g.result || null); }; g.onerror = function () { db.close(); ok(null); }; }); }).catch(function () { return null; }); }
+function delPdf(ug) { return idb().then(function (db) { return new Promise(function (ok) { var tx = db.transaction('pdf', 'readwrite'); tx.objectStore('pdf').delete(String(ug)); tx.oncomplete = tx.onerror = function () { db.close(); ok(); }; }); }).catch(function () { }); }
+/* ménage : un PDF déjà rangé dans le Drive n'a pas besoin de rester sur le téléphone */
+function menagePdf() { return keysPdf().then(function (K) { return Promise.all(K.map(function (ug) { var r = resOf(ug); return r && r.url ? delPdf(ug) : null; })); }); }
 function keysPdf() { return idb().then(function (db) { return new Promise(function (ok) { var g = db.transaction('pdf').objectStore('pdf').getAllKeys(); g.onsuccess = function () { db.close(); ok(g.result || []); }; g.onerror = function () { db.close(); ok([]); }; }); }).catch(function () { return []; }); }
 
 /* ---------- résultats d'analyse ---------- */
@@ -433,7 +480,7 @@ function analyseFichier(file, ugHint, onEtape) {
       apprendre(res); saveRes(ug, res);
       return putPdf(ug, new Blob([ab], { type: 'application/pdf' }), file.name).then(function () {
         if (typeof onEtape === 'function') onEtape('☁️ Envoi du PDF dans le Drive…');
-        return versDrive(ug, ab, file.name, res.adr).then(function (u) { res.url = u; saveRes(ug, res); res._drive = 'ok'; return res; })
+        return versDrive(ug, ab, file.name, res.adr).then(function (u) { res.url = u; saveRes(ug, res); res._drive = 'ok'; return delPdf(ug).then(function () { return res; }); })
           .catch(function (e) { res._drive = e.message || String(e); return res; });
       });
     });
@@ -615,5 +662,5 @@ function brancher() {
   if (window.visualViewport) { var h0 = window.visualViewport.height; window.visualViewport.addEventListener('resize', function () { var h = window.visualViewport.height; if (h > h0 - 2) recale(); h0 = h; }); }
 })();
 window.EvoludDiag = { analyseFichier: analyseFichier, resOf: resOf, page: page, getPdf: getPdf, carte: carte, poserCarte: poserCarte };
-(window.EVX_READY || Promise.resolve()).then(function () { var n = 0; (function t() { if (brancher() || ++n > 120) return; setTimeout(t, 500); })(); });
+(window.EVX_READY || Promise.resolve()).then(function () { var n = 0; (function t() { if (brancher() || ++n > 120) { setTimeout(menagePdf, 3000); return; } setTimeout(t, 500); })(); });
 })();
