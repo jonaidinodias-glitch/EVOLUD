@@ -745,3 +745,47 @@ setTimeout(cloturer, 8000); setInterval(cloturer, 120000);
 window.addEventListener('hashchange', function () { setTimeout(cloturer, 1500); });
 window.EvoludReel = { cloturer: cloturer };
 })();
+
+/* Évolud – 📊 planning Excel : état + récupération forcée (v1.0) · conçu et développé par Saïd OUFQIR
+ * Sur #/previsions et #/geotemp : affiche la date du planning sur ce téléphone et celle du serveur ;
+ * si le serveur a plus récent, bouton « ⬇️ Charger le planning du serveur » (sans condition) avec message d'erreur précis.
+ */
+(function () {
+'use strict';
+if (window.__evXlEtat) return; window.__evXlEtat = 1;
+var XK = 'evo_xld_planning';
+var frd = function (s) { s = String(s || '').slice(0, 10); return s ? s.split('-').reverse().join('/') : '?'; };
+function etat() {
+  var P = (typeof DB !== 'undefined' && DB && DB.params) || {}, mm = P.xldMeta, m = mm && !mm.deleted && mm.v ? mm.v : null, ok = 0, manque = [];
+  if (m && m.n) for (var i = 1; i <= m.n; i++) { var p = P['xldD' + i]; if (p && !p.deleted && typeof p.v === 'string') ok++; else manque.push(i); }
+  var R = (window.EVO_XLD || {}).R || {};
+  return { m: m, ok: ok, manque: manque, ici: R.le || '' };
+}
+function charger() {
+  var e = etat(); if (!e.m) throw new Error('aucun planning sur le serveur (importe-le depuis le PC)');
+  if (e.manque.length) throw new Error('planning du serveur incomplet : morceaux ' + e.manque.slice(0, 5).join(', ') + ' pas encore reçus sur ce téléphone (' + e.ok + '/' + e.m.n + '). Appuie sur ⟳ et réessaie dans 1 min.');
+  var s = ''; for (var i = 1; i <= e.m.n; i++) s += DB.params['xldD' + i].v;
+  var d = JSON.parse(s); if (!d.X || !d.X.R) throw new Error('planning du serveur illisible');
+  if (window.EVO_XLD) Object.assign(window.EVO_XLD, d.X); window.__xldSrc = d;
+  try { localStorage.setItem(XK, JSON.stringify(d)); } catch (x) { console.warn('planning gardé en mémoire seulement (stockage plein)', x); }
+  return d;
+}
+function boite() {
+  try {
+    if (!/^#\/(previsions|geotemp)/.test(location.hash || '')) return; var app = document.getElementById('app'); if (!app || document.getElementById('evXl')) return;
+    var e = etat(); if (!e.m) return;
+    var srv = String(e.m.le || ''), ici = String(e.ici || ''), aJour = ici.slice(0, 10) >= srv.slice(0, 10);
+    var h = '<div class="card" id="evXl" style="border-left:5px solid ' + (aJour ? '#2e7d32' : '#e8792b') + ';padding:10px 12px"><div class="small">📊 <b>Planning Excel</b> · sur cet appareil : <b>' + frd(ici) + '</b> · sur le serveur : <b>' + frd(srv) + '</b>' + (e.m.par ? ' (importé par ' + String(e.m.par).replace(/[<>&]/g, '') + ')' : '') + (aJour ? ' ✅ à jour' : '') + '</div>' +
+      (aJour ? '' : '<button class="btn sm" id="evXlB" style="margin-top:6px">⬇️ Charger le planning du serveur</button><div class="small" id="evXlM" style="margin-top:4px"></div>') + '</div>';
+    app.insertAdjacentHTML('afterbegin', h);
+    var b = document.getElementById('evXlB'); if (b) b.onclick = function () {
+      var M = document.getElementById('evXlM');
+      try { var d = charger(); if (typeof toast === 'function') toast('📊 Planning Excel du ' + frd(d.X.R.le) + ' chargé'); var c = document.getElementById('evXl'); if (c) c.remove(); if (typeof render === 'function') render(); }
+      catch (x) { if (M) M.textContent = '⚠️ ' + (x.message || x); }
+    };
+  } catch (x) { console.warn('planning état', x); }
+}
+var t = null; try { new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = null; boite(); }, 400); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (x) { }
+window.addEventListener('hashchange', function () { setTimeout(boite, 600); });
+window.EvoludPlanning = { etat: etat, charger: charger };
+})();
