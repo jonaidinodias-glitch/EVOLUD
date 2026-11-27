@@ -324,6 +324,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = API; else 
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* Évolud – ☢️ module Diag amiante (interface) · conçu et développé par Saïd OUFQIR
+ * v1.1 : le diag amiante est affiché dans CHAQUE VTE ouverte (en haut), sans exception ; s'il manque, alerte rouge ;
+ *        s'il existe en ligne mais n'est pas analysé, il est analysé automatiquement ; analyse selon le scénario validé.
  * v1.0 : carte « Diag amiante » dans la fiche logement (ouvrir / télécharger le rapport, analyse, diag complémentaire),
  *        page #/diagam (import de plusieurs PDF, liste, filtres, export Excel au format « Synt. Logements allégés »).
  * Module ajouté par-dessus l'existant (comme scen.js) : aucune fonction d'origine n'est modifiée.
@@ -399,7 +401,9 @@ var KS = 'evolud_diagam_scen_v1';
 function scMap() { var M = {}; try { M = JSON.parse(localStorage.getItem(KS) || '{}') || {}; } catch (e) { }
   allUgs().forEach(function (u) { var r = resOf(u); if (r && r.scen && r.desc && !M[r.scen]) M[r.scen] = r.desc; }); return M; }
 function apprendre(r) { if (!r || !r.scen || !r.desc) return; try { var M = JSON.parse(localStorage.getItem(KS) || '{}') || {}; M[r.scen] = r.desc; localStorage.setItem(KS, JSON.stringify(M)); } catch (e) { } }
-function scenActuel(ug) { var v = ''; try { var g = window.GAMMA && window.GAMMA[ug]; if (g && g.sc) v = g.sc; } catch (e) { } try { if (!v) { var l = log(ug) || {}; v = l.sc || l.scen || ''; } } catch (e) { } try { if (!v && typeof SEEDMAP !== 'undefined' && SEEDMAP[ug]) v = SEEDMAP[ug].sc || SEEDMAP[ug].scen || ''; } catch (e) { } return String(v || ''); }
+function scenActuel(ug) { var v = '';
+  try { var l0 = log(ug) || {}, g0 = (window.GAMMA && window.GAMMA[ug]) || {}; v = l0.scValide || l0.scv || l0.scenValide || g0.scValide || g0.scv || ''; } catch (e) { }   // scénario validé en priorité
+  try { var g = window.GAMMA && window.GAMMA[ug]; if (!v && g && g.sc) v = g.sc; } catch (e) { } try { if (!v) { var l = log(ug) || {}; v = l.sc || l.scen || ''; } } catch (e) { } try { if (!v && typeof SEEDMAP !== 'undefined' && SEEDMAP[ug]) v = SEEDMAP[ug].sc || SEEDMAP[ug].scen || ''; } catch (e) { } return String(v || ''); }
 function nomsTaches(ug) { var N = [];
   try { if (typeof tachesOf === 'function') (tachesOf(ug) || []).forEach(function (t) { if (t && !t.deleted && t.prest) N.push(t.prest); }); } catch (e) { }
   try { if (typeof vteOf === 'function') { var v = vteOf(ug); if (v && v.prest) Object.keys(v.prest).forEach(function (k) { if (!/^(np|non|annul)/i.test(String(v.prest[k]))) N.push(k); }); } } catch (e) { }
@@ -407,7 +411,7 @@ function nomsTaches(ug) { var N = [];
 function travauxActuels(ug, r) {
   var sc = scenActuel(ug), N = nomsTaches(ug), M = scMap(), T = null, src = '';
   if (N.length) { T = C.travauxTaches(N); src = 'tâches du logement'; }
-  if (sc && M[sc]) { var T2 = C.travauxTexte(M[sc], sc); if (T) Object.keys(T2).forEach(function (k) { T[k] = T[k] || T2[k]; }); else T = T2; src = (src ? src + ' + ' : '') + 'scénario ' + sc; }
+  if (sc && M[sc]) { var T2 = C.travauxTexte(M[sc], sc); if (T) Object.keys(T2).forEach(function (k) { T[k] = T[k] || T2[k]; }); else T = T2; src = (src ? src + ' + ' : '') + 'scénario validé ' + sc; }
   else if (sc && (+sc === 13 || +sc === 14) && T) { T.murFroid = true; }
   if (!T) { T = C.travauxTexte((r && r.desc) || '', (r && r.scen) || ''); src = 'travaux écrits dans le diag'; }
   return { T: T, src: src, sc: sc };
@@ -442,17 +446,20 @@ function carte(ug) {
   if (r0 && r0.url && on.indexOf(r0.url) < 0) on = [r0.url].concat(on);
   var tete = !r ? pill('non analysé', '#555', '#eceff3') : (r.am === 'OUI' ? pill('☣️ Amiante présent', '#C00000', '#fbe0e0') : pill('✔ Pas d\'amiante', '#1b5e20', '#dff3e0')) + ' ' +
     (r.compl === 'OUI' ? pill('Diag complémentaire : OUI', '#a34a00', '#fde9d7') : r.compl === 'NON' ? pill('Diag complet', '#1b5e20', '#dff3e0') : pill('Complément à vérifier', '#7a5b00', '#fff3c4'));
-  var h = '<div class="card" id="dgaC" style="border-left:5px solid ' + (!r ? '#9aa5b4' : r.am === 'OUI' ? 'var(--red,#C00000)' : r.compl === 'OUI' ? 'var(--orange,#e8792b)' : 'var(--green,#2e7d32)') + '">' +
+  if (!r) tete = on.length ? pill('⏳ analyse automatique…', '#7a5b00', '#fff3c4') : pill('⛔ DIAG MANQUANT', '#fff', '#C00000');
+  var h = '<div class="card" id="dgaC" style="border-left:5px solid ' + (!r ? (on.length ? '#e8792b' : '#C00000') : r.am === 'OUI' ? 'var(--red,#C00000)' : r.compl === 'OUI' ? 'var(--orange,#e8792b)' : 'var(--green,#2e7d32)') + '">' +
     '<div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 class="grow" style="margin:0;flex:1">☢️ Diag amiante</h3>' + tete + '</div>';
   if (r) {
     h += '<div class="small mut" style="margin:6px 0">Repérage du ' + E(r.date || '?') + (r.scen ? ' · scénario ' + E(r.scen) : '') + ' · ' + r.n + ' sondages' + (r.file ? ' · ' + E(r.file) : '') + '</div>';
     if (r.desc) h += '<div class="small"><b>Travaux écrits dans le diag :</b> ' + E(r.desc) + '</div>';
     h += '<div class="small" style="margin-top:4px"><b>Analyse faite selon :</b> ' + E(A.src) + ' → ' + Object.keys(NOMT).filter(function (k) { return A.T && A.T[k]; }).map(function (k) { return NOMT[k]; }).join(', ') + '</div>';
+    if (!A.sc) h += '<div class="small" style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#fde9d7;color:#a34a00"><b>⚠️ Scénario validé introuvable</b> pour ce logement : l\'analyse se base sur ' + E(A.src) + '. Renseigne le scénario pour une analyse fiable.</div>';
     if (A.change) h += '<div class="small" style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff3c4;color:#7a5b00"><b>⚠️ Scénario changé :</b> le diag a été fait pour le scénario ' + E(r0.scen) + ', le logement est maintenant en scénario ' + E(A.sc) + '. L\'analyse ci-dessous est refaite pour le scénario ' + E(A.sc) + '.</div>';
     if (r.ou && r.ou.length) h += '<div class="small" style="margin-top:6px;color:#C00000"><b>Amiante :</b><br>' + r.ou.map(E).join('<br>') + '</div>';
     if (r.impacts && r.impacts.length) h += '<div class="small" style="margin-top:6px"><b>Impact sur les travaux :</b><ul style="margin:4px 0 0 18px;padding:0">' + r.impacts.map(function (t) { return '<li>' + E(t) + '</li>'; }).join('') + '</ul></div>';
     if (r.items && r.items.length) h += '<div class="small" style="margin-top:6px"><b>Diag complémentaire (' + E(r.compl) + ') – à faire sonder :</b><ul style="margin:4px 0 0 18px;padding:0">' + r.items.map(function (t) { return '<li>' + E(t) + '</li>'; }).join('') + '</ul></div>';
-  } else h += '<div class="small mut" style="margin:6px 0">Importe le PDF du rapport de repérage amiante : l\'appli dit s\'il y a de l\'amiante, où, l\'impact sur les travaux du scénario et s\'il faut un diag complémentaire.</div>';
+  } else if (on.length) h += '<div class="small" style="margin:6px 0">Le diag existe en ligne : analyse automatique en cours selon le scénario validé…</div>';
+  else h += '<div class="small" style="margin:6px 0;padding:8px;border-radius:8px;background:#fbe0e0;color:#C00000"><b>⛔ Aucun diag amiante pour ce logement.</b> Pas de VTE ni de travaux sans diag : récupère le rapport et importe-le ci-dessous.</div>';
   h += '<div class="row" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' +
     '<button class="btn sm" data-dga="open" style="display:none">📄 Ouvrir le diag (téléphone)</button><button class="btn sm sec" data-dga="dl" style="display:none">⬇️ Télécharger</button>' +
     on.map(function (u, i) { return '<a class="btn sm sec" href="' + E(u) + '" target="_blank" rel="noopener">' + (r0 && u === r0.url ? '📄 Diag (Drive)' : '🌐 Rapport en ligne' + (on.length > 1 ? ' ' + i : '')) + '</a>'; }).join('') +
@@ -469,14 +476,38 @@ function lierCarte(ug) {
     d.onclick = function () { var a = document.createElement('a'); a.href = u; a.download = p.name || ('Diag_amiante_' + ug + '.pdf'); document.body.appendChild(a); a.click(); a.remove(); }; });
   var inp = Q('[data-dga="imp"]', c);
   inp.onchange = function () { var f = inp.files && inp.files[0]; if (!f) return; msg.textContent = '⏳ Lecture du rapport…';
-    analyseFichier(f, ug, function (m) { msg.textContent = m; }).then(function (r) { T('☢️ Diag analysé : amiante ' + r.am + (r._drive === 'ok' ? ' · rangé dans le Drive' : ' · Drive : ' + r._drive)); var n = document.createElement('div'); n.innerHTML = carte(ug); c.replaceWith(n.firstElementChild); lierCarte(ug); })
+    analyseFichier(f, ug, function (m) { msg.textContent = m; }).then(function (r) { T('☢️ Diag analysé : amiante ' + r.am + (r._drive === 'ok' ? ' · rangé dans le Drive' : ' · Drive : ' + r._drive)); var n = document.createElement('div'); n.innerHTML = carte(ug); n.firstElementChild.dataset.top = c.dataset.top || '0'; c.replaceWith(n.firstElementChild); lierCarte(ug); })
       .catch(function (e) { msg.textContent = e.message === 'annulé' ? '' : '⚠️ ' + (e.message || e); }); };
 }
-function poserCarte(ug) {
+/* diag pas encore analysé mais disponible en ligne : on le récupère et on l'analyse tout seul (une fois par UG et par session) */
+var AUTO = {};
+function autoAnalyse(ug) {
+  if (AUTO[ug] || resOf(ug)) return; var on = lienEnLigne(ug); if (!on.length) return; AUTO[ug] = 1;
+  fetch(on[0]).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+    .then(function (b) { var f = new File([b], 'Diag_amiante_' + ug + '.pdf', { type: 'application/pdf' }); return analyseFichier(f, ug); })
+    .then(function () { var c = Q('#dgaC'); if (c) { var top = c.dataset.top === '1'; c.remove(); poserCarte(ug, top); } })
+    .catch(function (e) { var m = Q('#dgaC [data-dga="msg"]'); if (m) m.textContent = '⚠️ Analyse automatique impossible (' + (e.message || e) + ') : ouvre le rapport en ligne et importe-le.'; });
+}
+function poserCarte(ug, enHaut) {
   if (!ug || Q('#dgaC')) return; var app = Q('#app'); if (!app) return;
-  var ref = Q('#tmc') || Q('#m6c') || Q('#qrc') || Q('#planbox'), h = carte(ug);
-  if (ref) ref.insertAdjacentHTML('beforebegin', h); else app.insertAdjacentHTML('beforeend', h);
-  lierCarte(ug);
+  var h = carte(ug);
+  if (enHaut) app.insertAdjacentHTML('afterbegin', h);   // VTE : le diag est la première chose qu'on voit
+  else { var ref = Q('#tmc') || Q('#m6c') || Q('#qrc') || Q('#planbox'); if (ref) ref.insertAdjacentHTML('beforebegin', h); else app.insertAdjacentHTML('beforeend', h); }
+  var c = Q('#dgaC'); if (c) c.dataset.top = enHaut ? '1' : '0';
+  lierCarte(ug); autoAnalyse(ug);
+}
+/* ---------- VTE : le diag dans chaque VTE ouverte, sans exception ---------- */
+var reVTE = /vte|visite/i;
+function ugDuHash() { var m = String(location.hash).match(/(?:^|[^\d])(\d{5,7})(?:[^\d]|$)/); return m ? m[1] : ''; }
+function surVTE() { try { if (!reVTE.test(location.hash)) return; var ug = ugDuHash(); if (ug) poserCarte(ug, true); } catch (e) { } }
+function brancherVTE() {
+  try { Object.keys(routes).forEach(function (k) { var f = routes[k]; if (!reVTE.test(k) || typeof f !== 'function' || f.__dga) return;
+    var w = function () { var o = f.apply(this, arguments); setTimeout(surVTE, 0); return o; }; w.__dga = 1; routes[k] = w; }); } catch (e) { }
+}
+function surveiller() {
+  window.addEventListener('hashchange', function () { brancherVTE(); setTimeout(surVTE, 150); });
+  var t = null; try { new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = null; brancherVTE(); surVTE(); }, 250); }).observe(document.body, { childList: true, subtree: true }); } catch (e) { }
+  surVTE();
 }
 
 /* ---------- page #/diagam ---------- */
@@ -571,6 +602,7 @@ function brancher() {
   routes.diagam = function () { page(); };
   var lg0 = routes.logement; if (lg0) routes.logement = function () { var a = arguments, o = lg0.apply(this, a); try { var ug = (a[0] && a[0][0]) || a[0] || (location.hash.split('/')[2] || '').split('?')[0]; if (Array.isArray(ug)) ug = ug[0]; poserCarte(String(ug)); } catch (e) { console.warn('diagam', e); } return o; };
   var pl0 = routes.plus; if (pl0) routes.plus = function () { var o = pl0.apply(this, arguments); try { if (!Q('#dgaPlus')) Q('#app').insertAdjacentHTML('afterbegin', '<a class="card" id="dgaPlus" href="#/diagam" style="display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit"><span style="font-size:26px">☢️</span><span><b>Diags amiante</b><br><span class="small mut">Analyse des rapports, diags complémentaires, export Excel</span></span></a>'); } catch (e) { } return o; };
+  brancherVTE(); surveiller();
   try { var h = location.hash; if (/^#\/(logement|diagam|plus)\b/.test(h) && typeof render === 'function') render(); } catch (e) { }
   return true;
 }
@@ -582,6 +614,6 @@ function brancher() {
   window.addEventListener('focus', recale); window.addEventListener('pageshow', recale); document.addEventListener('visibilitychange', function () { if (!document.hidden) recale(); });
   if (window.visualViewport) { var h0 = window.visualViewport.height; window.visualViewport.addEventListener('resize', function () { var h = window.visualViewport.height; if (h > h0 - 2) recale(); h0 = h; }); }
 })();
-window.EvoludDiag = { analyseFichier: analyseFichier, resOf: resOf, page: page, getPdf: getPdf };
+window.EvoludDiag = { analyseFichier: analyseFichier, resOf: resOf, page: page, getPdf: getPdf, carte: carte, poserCarte: poserCarte };
 (window.EVX_READY || Promise.resolve()).then(function () { var n = 0; (function t() { if (brancher() || ++n > 120) return; setTimeout(t, 500); })(); });
 })();
